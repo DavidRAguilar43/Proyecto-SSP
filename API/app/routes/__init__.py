@@ -1,0 +1,9 @@
+# Importar todas las rutas aquí
+from app.routes.auth import router as auth_router
+from app.routes.persona import router as persona_router
+from app.routes.atencion import router as atencion_router
+from app.routes.grupo import router as grupo_router
+from app.routes.personal import router as personal_router
+from app.routes.contacto_emergencia import router as contacto_emergencia_router
+from app.routes.programa_educativo import router as programa_educativo_router
+from app.routes.cuestionario import router as cuestionario_router

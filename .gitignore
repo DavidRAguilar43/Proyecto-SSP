@@ -1,0 +1,4 @@
+API/app/__pycache__/
+API/__pycache__/
+venv/
+*.db

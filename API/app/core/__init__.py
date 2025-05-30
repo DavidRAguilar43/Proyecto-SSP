@@ -1,0 +1,1 @@
+# Importar configuraciones centrales aquí
