@@ -13,7 +13,7 @@ class Personal(Base):
     numero_empleado = Column(String, unique=True, index=True)
 
     # Relación con Persona
-    id_persona = Column(Integer, ForeignKey("persona.id"), unique=True)
+    id_persona = Column(Integer, ForeignKey("personas.id"), unique=True)
     persona = relationship("Persona", back_populates="personal")
 
     # Relación con Atencion

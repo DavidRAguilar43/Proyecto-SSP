@@ -1,4 +1,4 @@
-import { useContext } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -10,7 +10,8 @@ import {
   Toolbar,
   Card,
   CardContent,
-  CardActions
+  CardActions,
+  Grid
 } from '@mui/material';
 import {
   People as PeopleIcon,
@@ -19,10 +20,26 @@ import {
   School as SchoolIcon
 } from '@mui/icons-material';
 import { AuthContext } from '@/contexts/AuthContext';
+import AlumnoPage from './AlumnoPage';
+import EstudiantesCuestionarios from '@/components/EstudiantesCuestionarios';
+import SolicitudesCitas from '@/components/SolicitudesCitas';
 
 const Dashboard = () => {
   const { user, logout } = useContext(AuthContext);
   const navigate = useNavigate();
+  const [citasPendientes, setCitasPendientes] = useState(0);
+
+  // Redirigir alumnos a su página específica
+  useEffect(() => {
+    if (user?.rol === 'alumno') {
+      navigate('/alumno', { replace: true });
+    }
+  }, [user, navigate]);
+
+  // Si es alumno, mostrar su página directamente
+  if (user?.rol === 'alumno') {
+    return <AlumnoPage user={user} onLogout={logout} />;
+  }
 
   const menuItems = [
     {
@@ -95,6 +112,20 @@ const Dashboard = () => {
             </Box>
           )}
         </Paper>
+
+        {/* Notificaciones de Cuestionarios (solo para admin y personal) */}
+        {(user?.rol === 'admin' || user?.rol === 'personal') && (
+          <Box sx={{ mb: 4 }}>
+            <EstudiantesCuestionarios />
+          </Box>
+        )}
+
+        {/* Solicitudes de Citas (solo para admin y personal) */}
+        {(user?.rol === 'admin' || user?.rol === 'personal') && (
+          <Box sx={{ mb: 4 }}>
+            <SolicitudesCitas onBadgeUpdate={setCitasPendientes} />
+          </Box>
+        )}
 
         {/* Menú de funcionalidades */}
         <Typography variant="h5" gutterBottom>

@@ -14,20 +14,28 @@ import {
   Select,
   MenuItem,
   CircularProgress,
-  Backdrop
+  Backdrop,
+  IconButton
 } from '@mui/material';
 import {
   Add as AddIcon,
   Search as SearchIcon,
-  Delete as DeleteIcon
+  Delete as DeleteIcon,
+  ArrowBack as ArrowBackIcon
 } from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
 import { personasService } from '@/services/api';
 import PersonasTable from '@/components/PersonasTable';
 import PersonaForm from '@/components/PersonaForm';
 import ConfirmDialog from '@/components/ConfirmDialog';
+import CuestionarioPsicopedagogico from '@/components/CuestionarioPsicopedagogico';
+import ReportePsicopedagogico from '@/components/ReportePsicopedagogico';
 import type { Persona, PersonaCreate } from '@/types';
+import { useAuth } from '@/contexts/AuthContext';
 
 const PersonasPage = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [personas, setPersonas] = useState<Persona[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -39,6 +47,11 @@ const PersonasPage = () => {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [selectedPersona, setSelectedPersona] = useState<Persona | null>(null);
   const [personaToDelete, setPersonaToDelete] = useState<Persona | null>(null);
+
+  // Estados para cuestionario psicopedagógico
+  const [cuestionarioOpen, setCuestionarioOpen] = useState(false);
+  const [reporteOpen, setReporteOpen] = useState(false);
+  const [personaCuestionario, setPersonaCuestionario] = useState<Persona | null>(null);
 
   // Estados para notificaciones
   const [snackbar, setSnackbar] = useState({
@@ -210,6 +223,23 @@ const PersonasPage = () => {
     }
   };
 
+  // Funciones para cuestionario psicopedagógico
+  const handleCuestionario = (persona: Persona) => {
+    setPersonaCuestionario(persona);
+    setCuestionarioOpen(true);
+  };
+
+  const handleVerReporte = (persona: Persona) => {
+    setPersonaCuestionario(persona);
+    setReporteOpen(true);
+  };
+
+  const handleCuestionarioSuccess = () => {
+    showSnackbar('Cuestionario completado exitosamente', 'success');
+    // Recargar personas para actualizar el estado
+    loadPersonas();
+  };
+
   // Filtrar personas localmente
   const filteredPersonas = personas.filter(persona => {
     const matchesSearch = !searchQuery ||
@@ -225,9 +255,18 @@ const PersonasPage = () => {
 
   return (
     <Box sx={{ p: 3 }}>
-      <Typography variant="h4" component="h1" gutterBottom>
-        Gestión de Personas
-      </Typography>
+      <Box display="flex" alignItems="center" mb={2}>
+        <IconButton
+          onClick={() => navigate('/dashboard')}
+          sx={{ mr: 2 }}
+          aria-label="Regresar al dashboard"
+        >
+          <ArrowBackIcon />
+        </IconButton>
+        <Typography variant="h4" component="h1">
+          Gestión de Personas
+        </Typography>
+      </Box>
 
       {/* Barra de herramientas */}
       <Paper sx={{ mb: 2 }}>
@@ -305,6 +344,9 @@ const PersonasPage = () => {
         onDelete={handleDelete}
         onView={handleView}
         onBulkDelete={handleBulkDelete}
+        onCuestionario={handleCuestionario}
+        onVerReporte={handleVerReporte}
+        currentUserRole={user?.rol}
       />
 
       {/* Formulario de persona */}
@@ -357,6 +399,28 @@ const PersonasPage = () => {
           {snackbar.message}
         </Alert>
       </Snackbar>
+
+      {/* Cuestionario Psicopedagógico */}
+      <CuestionarioPsicopedagogico
+        open={cuestionarioOpen}
+        onClose={() => {
+          setCuestionarioOpen(false);
+          setPersonaCuestionario(null);
+        }}
+        personaId={personaCuestionario?.id || 0}
+        onSuccess={handleCuestionarioSuccess}
+      />
+
+      {/* Reporte Psicopedagógico */}
+      <ReportePsicopedagogico
+        open={reporteOpen}
+        onClose={() => {
+          setReporteOpen(false);
+          setPersonaCuestionario(null);
+        }}
+        personaId={personaCuestionario?.id || 0}
+        personaNombre={personaCuestionario?.correo_institucional}
+      />
 
       {/* Indicador de carga global */}
       <Backdrop

@@ -10,3 +10,5 @@ email-validator>=2.1.0
 bcrypt>=4.1.2
 alembic>=1.13.1
 typing-extensions>=4.9.0
+openai>=1.68.0
+requests>=2.31.0

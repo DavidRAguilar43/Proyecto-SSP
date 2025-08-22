@@ -25,7 +25,7 @@ class Atencion(Base):
     id_personal = Column(Integer, ForeignKey("personal.id"), nullable=True)
     personal = relationship("Personal", back_populates="atenciones")
 
-    id_persona = Column(Integer, ForeignKey("persona.id"), nullable=True)
+    id_persona = Column(Integer, ForeignKey("personas.id"), nullable=True)
     persona = relationship("Persona", back_populates="atenciones")
 
     id_grupo = Column(Integer, ForeignKey("grupo.id"), nullable=True)

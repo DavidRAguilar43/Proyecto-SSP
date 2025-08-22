@@ -2,6 +2,7 @@ from sqlalchemy import Column, Integer, String
 from sqlalchemy.orm import relationship
 
 from app.db.database import Base
+from app.models.associations import persona_programa
 
 
 class ProgramaEducativo(Base):
@@ -12,4 +13,4 @@ class ProgramaEducativo(Base):
     clave_programa = Column(String, unique=True, index=True)
 
     # Relaciones
-    personas = relationship("Persona", secondary="persona_programa", back_populates="programas")
+    personas = relationship("Persona", secondary=persona_programa, back_populates="programas")

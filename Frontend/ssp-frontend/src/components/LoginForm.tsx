@@ -1,4 +1,5 @@
 import { useState, useContext } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   TextField,
@@ -6,7 +7,9 @@ import {
   Typography,
   Paper,
   Container,
-  Alert
+  Alert,
+  Divider,
+  Link
 } from '@mui/material';
 import { AuthContext } from '@/contexts/AuthContext';
 
@@ -14,6 +17,7 @@ const LoginForm = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const { login, error } = useContext(AuthContext);
+  const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,6 +74,27 @@ const LoginForm = () => {
           >
             Iniciar Sesión
           </Button>
+
+          <Divider sx={{ my: 2 }}>
+            <Typography variant="body2" color="text.secondary">
+              ¿Eres estudiante?
+            </Typography>
+          </Divider>
+
+          <Button
+            fullWidth
+            variant="outlined"
+            onClick={() => navigate('/registro-alumno')}
+            sx={{ mt: 1 }}
+          >
+            Registrarse como Estudiante
+          </Button>
+
+          <Box sx={{ mt: 2, textAlign: 'center' }}>
+            <Typography variant="body2" color="text.secondary">
+              ¿Ya tienes cuenta? Usa tus credenciales institucionales arriba
+            </Typography>
+          </Box>
         </Box>
       </Paper>
     </Container>

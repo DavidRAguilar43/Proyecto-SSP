@@ -25,6 +25,16 @@ export interface AuthContextType {
   error: string | null;
 }
 
+export interface Cohorte {
+  id: number;
+  nombre: string;
+  descripcion?: string;
+  fecha_inicio?: string;
+  fecha_fin?: string;
+  activo: boolean;
+  fecha_creacion: string;
+}
+
 export interface Persona {
   id: number;
   tipo_persona: string;
@@ -47,8 +57,10 @@ export interface Persona {
   grupo_etnico?: string;
   rol: 'admin' | 'personal' | 'docente' | 'alumno';
   is_active: boolean;
+  cohorte_id?: number;
   programas?: any[];
   grupos?: any[];
+  cohorte?: Cohorte;
 }
 
 export interface PersonaCreate {
@@ -72,6 +84,7 @@ export interface PersonaCreate {
   grupo_etnico?: string;
   rol: 'admin' | 'personal' | 'docente' | 'alumno';
   password: string;
+  cohorte_id?: number;  // Nuevo campo
   programas_ids?: number[];
   grupos_ids?: number[];
 }
@@ -142,4 +155,105 @@ export interface AtencionCreate {
   id_grupo?: number;
   atendido: boolean;
   ultima_fecha_contacto?: string;
+}
+
+// Tipos para el sistema de citas
+export type EstadoCita = 'pendiente' | 'confirmada' | 'cancelada' | 'completada';
+export type TipoCita = 'psicologica' | 'academica' | 'general';
+
+export interface CitaCreate {
+  tipo_cita: TipoCita;
+  motivo: string;
+  fecha_propuesta_alumno?: string;
+  observaciones_alumno?: string;
+}
+
+export interface CitaUpdate {
+  estado?: EstadoCita;
+  fecha_confirmada?: string;
+  observaciones_personal?: string;
+  ubicacion?: string;
+  id_personal?: number;
+}
+
+export interface Cita {
+  id_cita: number;
+  id_alumno: number;
+  id_personal?: number;
+  tipo_cita: TipoCita;
+  motivo: string;
+  estado: EstadoCita;
+  fecha_solicitud: string;
+  fecha_propuesta_alumno?: string;
+  fecha_confirmada?: string;
+  fecha_completada?: string;
+  observaciones_alumno?: string;
+  observaciones_personal?: string;
+  ubicacion?: string;
+  fecha_creacion: string;
+  fecha_actualizacion?: string;
+
+  // Información del alumno
+  alumno_nombre?: string;
+  alumno_email?: string;
+  alumno_celular?: string;
+  alumno_matricula?: string;
+
+  // Información del personal
+  personal_nombre?: string;
+  personal_email?: string;
+}
+
+export interface SolicitudCita {
+  id_cita: number;
+  tipo_cita: TipoCita;
+  motivo: string;
+  estado: EstadoCita;
+  fecha_solicitud: string;
+  fecha_propuesta_alumno?: string;
+  observaciones_alumno?: string;
+
+  // Información del alumno
+  id_alumno: number;
+  alumno_nombre: string;
+  alumno_email: string;
+  alumno_celular?: string;
+  alumno_matricula?: string;
+  alumno_semestre?: number;
+}
+
+export interface NotificacionCita {
+  id_cita: number;
+  tipo_notificacion: string;
+  mensaje: string;
+  fecha_cita?: string;
+  ubicacion?: string;
+  personal_nombre?: string;
+}
+
+export interface EstadisticasCitas {
+  total_solicitudes: number;
+  pendientes: number;
+  confirmadas: number;
+  canceladas: number;
+  completadas: number;
+  por_tipo: Record<string, number>;
+}
+
+// Tipos para cuestionario psicopedagógico
+export interface CuestionarioPsicopedagogicoEstudianteOut {
+  id_cuestionario: number;
+  fecha_creacion: string;
+  fecha_completado: string | null;
+  completado: boolean;
+  persona_nombre?: string;
+  persona_email?: string;
+}
+
+export interface ReportePsicopedagogicoOut {
+  id_cuestionario: number;
+  fecha_completado: string;
+  reporte_ia: string;
+  persona_nombre?: string;
+  persona_email?: string;
 }

@@ -31,13 +31,16 @@ import {
   Search as SearchIcon,
   CheckCircle as CheckCircleIcon,
   Schedule as ScheduleIcon,
+  ArrowBack as ArrowBackIcon
 } from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
 import { AtencionForm } from '../components/AtencionForm';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { atencionesApi } from '@/services/api';
 import type { Atencion } from '../types/index';
 
 export const AtencionesPage: React.FC = () => {
+  const navigate = useNavigate();
   const [atenciones, setAtenciones] = useState<Atencion[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -194,9 +197,18 @@ export const AtencionesPage: React.FC = () => {
   return (
     <Box sx={{ p: 3 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4" component="h1">
-          Gestión de Atenciones
-        </Typography>
+        <Box display="flex" alignItems="center">
+          <IconButton
+            onClick={() => navigate('/dashboard')}
+            sx={{ mr: 2 }}
+            aria-label="Regresar al dashboard"
+          >
+            <ArrowBackIcon />
+          </IconButton>
+          <Typography variant="h4" component="h1">
+            Gestión de Atenciones
+          </Typography>
+        </Box>
         <Button
           variant="contained"
           startIcon={<AddIcon />}

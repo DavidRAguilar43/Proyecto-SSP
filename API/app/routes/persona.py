@@ -26,6 +26,114 @@ from app.utils.deps import (
 router = APIRouter(prefix="/personas", tags=["personas"])
 
 
+@router.post("/registro-alumno/", response_model=PersonaOut)
+def registro_alumno(
+    *,
+    db: Session = Depends(get_db),
+    persona_in: PersonaCreate
+) -> Any:
+    """
+    Auto-registro para alumnos. No requiere autenticación.
+    """
+    # Verificar que el tipo de persona sea alumno
+    if persona_in.tipo_persona != "alumno":
+        raise HTTPException(status_code=400, detail="Este endpoint es solo para registro de alumnos")
+
+    # Verificar que el rol sea alumno
+    if persona_in.rol != "alumno":
+        persona_in.rol = "alumno"  # Forzar rol de alumno
+
+    # Verificar si ya existe una persona con el mismo correo
+    db_persona = db.query(Persona).filter(Persona.correo_institucional == persona_in.correo_institucional).first()
+    if db_persona:
+        raise HTTPException(status_code=400, detail="Ya existe una persona con este correo institucional")
+
+    # Crear objeto Persona (solo campos básicos para alumnos)
+    db_persona = Persona(
+        tipo_persona="alumno",
+        sexo=persona_in.sexo,
+        genero=persona_in.genero,
+        edad=persona_in.edad,
+        estado_civil=persona_in.estado_civil,
+        religion=persona_in.religion,
+        trabaja=persona_in.trabaja,
+        lugar_trabajo=persona_in.lugar_trabajo,
+        lugar_origen=persona_in.lugar_origen,
+        colonia_residencia_actual=persona_in.colonia_residencia_actual,
+        celular=persona_in.celular,
+        correo_institucional=persona_in.correo_institucional,
+        discapacidad=persona_in.discapacidad,
+        observaciones=persona_in.observaciones,
+        matricula=persona_in.matricula,
+        semestre=persona_in.semestre,
+        numero_hijos=persona_in.numero_hijos,
+        grupo_etnico=persona_in.grupo_etnico,
+        rol="alumno",
+        cohorte_id=persona_in.cohorte_id,
+        hashed_password=get_password_hash(persona_in.password)
+    )
+
+    db.add(db_persona)
+    db.commit()
+    db.refresh(db_persona)
+
+    # Los alumnos no pueden asignar programas y grupos en el auto-registro
+    # Esto debe ser hecho por el personal administrativo
+
+    return db_persona
+
+
+@router.get("/mi-perfil/", response_model=PersonaOut)
+def get_mi_perfil(
+    *,
+    db: Session = Depends(get_db),
+    current_user: Persona = Depends(get_current_active_user)
+) -> Any:
+    """
+    Obtener el perfil del usuario actual (para alumnos).
+    """
+    return PersonaOut.from_orm_with_relations(current_user)
+
+
+@router.put("/mi-perfil/", response_model=PersonaOut)
+def update_mi_perfil(
+    *,
+    db: Session = Depends(get_db),
+    persona_in: PersonaUpdate,
+    current_user: Persona = Depends(get_current_active_user)
+) -> Any:
+    """
+    Actualizar el perfil del usuario actual (para alumnos).
+    Los alumnos solo pueden actualizar ciertos campos.
+    """
+    # Campos que los alumnos pueden actualizar
+    allowed_fields = {
+        'sexo', 'genero', 'edad', 'estado_civil', 'religion', 'trabaja',
+        'lugar_trabajo', 'lugar_origen', 'colonia_residencia_actual',
+        'celular', 'discapacidad', 'observaciones', 'matricula',
+        'semestre', 'numero_hijos', 'grupo_etnico', 'password'
+    }
+
+    # Filtrar solo los campos permitidos
+    update_data = {}
+    for field, value in persona_in.dict(exclude_unset=True).items():
+        if field in allowed_fields and value is not None:
+            if field == 'password':
+                update_data['hashed_password'] = get_password_hash(value)
+            else:
+                update_data[field] = value
+
+    # Actualizar la persona
+    for field, value in update_data.items():
+        setattr(current_user, field, value)
+
+    db.add(current_user)
+    db.commit()
+    db.refresh(current_user)
+
+    return PersonaOut.from_orm_with_relations(current_user)
+
+
 @router.post("/", response_model=PersonaOut)
 def create_persona(
     *,
@@ -70,6 +178,7 @@ def create_persona(
         numero_hijos=persona_in.numero_hijos,
         grupo_etnico=persona_in.grupo_etnico,
         rol=persona_in.rol,
+        cohorte_id=persona_in.cohorte_id,  # Nuevo campo
         hashed_password=get_password_hash(persona_in.password)
     )
 
@@ -93,7 +202,7 @@ def create_persona(
     return db_persona
 
 
-@router.get("/", response_model=List[PersonaOut])
+@router.get("/", response_model=List[dict])
 def read_personas(
     db: Session = Depends(get_db),
     skip: int = 0,
@@ -114,7 +223,47 @@ def read_personas(
         query = query.filter(Persona.rol == rol)
 
     personas = query.offset(skip).limit(limit).all()
-    return personas
+
+    # Convertir a diccionario simple para evitar problemas de serialización
+    result = []
+    for persona in personas:
+        # Normalizar estado_civil si es necesario
+        estado_civil_normalizado = persona.estado_civil
+        if estado_civil_normalizado not in ['soltero', 'soltera', 'casado', 'casada', 'divorciado', 'divorciada', 'viudo', 'viuda', 'union_libre', 'otro']:
+            estado_civil_normalizado = 'soltero'
+
+        persona_dict = {
+            'id': persona.id,
+            'tipo_persona': persona.tipo_persona,
+            'sexo': persona.sexo,
+            'genero': persona.genero,
+            'edad': persona.edad,
+            'estado_civil': estado_civil_normalizado,
+            'religion': persona.religion,
+            'trabaja': persona.trabaja,
+            'lugar_trabajo': persona.lugar_trabajo,
+            'lugar_origen': persona.lugar_origen,
+            'colonia_residencia_actual': persona.colonia_residencia_actual,
+            'celular': persona.celular,
+            'correo_institucional': persona.correo_institucional,
+            'discapacidad': persona.discapacidad,
+            'observaciones': persona.observaciones,
+            'matricula': persona.matricula,
+            'semestre': persona.semestre,
+            'numero_hijos': persona.numero_hijos,
+            'grupo_etnico': persona.grupo_etnico,
+            'rol': persona.rol,
+            'is_active': persona.is_active,
+            'fecha_creacion': persona.fecha_creacion.isoformat() if persona.fecha_creacion else None,
+            'fecha_actualizacion': persona.fecha_actualizacion.isoformat() if persona.fecha_actualizacion else None,
+            'cohorte_id': persona.cohorte_id,
+            'programas': [],
+            'grupos': [],
+            'cohorte': None
+        }
+        result.append(persona_dict)
+
+    return result
 
 
 @router.get("/{persona_id}", response_model=PersonaOut)

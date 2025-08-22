@@ -7,3 +7,4 @@ from app.schemas.personal import PersonalCreate, PersonalUpdate, PersonalInDB, P
 from app.schemas.contacto_emergencia import ContactoEmergenciaCreate, ContactoEmergenciaUpdate, ContactoEmergenciaInDB, ContactoEmergenciaOut
 from app.schemas.programa_educativo import ProgramaEducativoCreate, ProgramaEducativoUpdate, ProgramaEducativoInDB, ProgramaEducativoOut
 from app.schemas.cuestionario import CuestionarioCreate, CuestionarioUpdate, CuestionarioInDB, CuestionarioOut
+from app.schemas.cohorte import CohorteBase, CohorteCreate, CohorteUpdate, CohorteInDB, CohorteOut

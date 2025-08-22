@@ -18,8 +18,8 @@ import {
   Chip,
   Autocomplete
 } from '@mui/material';
-import type { Persona, PersonaCreate, Grupo, ProgramaEducativo } from '../types/index';
-import { gruposApi, programasEducativosApi } from '@/services/api';
+import type { Persona, PersonaCreate, Grupo, ProgramaEducativo, Cohorte } from '../types/index';
+import { gruposApi, programasEducativosApi, cohortesApi } from '@/services/api';
 
 interface PersonaFormProps {
   open: boolean;
@@ -55,25 +55,29 @@ const PersonaForm = ({ open, onClose, onSubmit, persona, loading = false }: Pers
     grupos_ids: [],
   });
 
-  // Estados para cargar grupos y programas
+  // Estados para cargar grupos, programas y cohortes
   const [grupos, setGrupos] = useState<Grupo[]>([]);
   const [programas, setProgramas] = useState<ProgramaEducativo[]>([]);
+  const [cohortes, setCohortes] = useState<Cohorte[]>([]);
   const [selectedGrupos, setSelectedGrupos] = useState<Grupo[]>([]);
   const [selectedPrograma, setSelectedPrograma] = useState<ProgramaEducativo | null>(null);
+  const [selectedCohorte, setSelectedCohorte] = useState<Cohorte | null>(null);
 
-  // Cargar grupos y programas cuando se abra el formulario
+  // Cargar grupos, programas y cohortes cuando se abra el formulario
   useEffect(() => {
     const loadData = async () => {
       if (open) {
         try {
-          const [gruposData, programasData] = await Promise.all([
+          const [gruposData, programasData, cohortesData] = await Promise.all([
             gruposApi.getAll(),
-            programasEducativosApi.getAll()
+            programasEducativosApi.getAll(),
+            cohortesApi.getActivas()
           ]);
           setGrupos(gruposData);
           setProgramas(programasData);
+          setCohortes(cohortesData);
         } catch (error) {
-          console.error('Error loading grupos and programas:', error);
+          console.error('Error loading grupos, programas and cohortes:', error);
         }
       }
     };
@@ -104,6 +108,7 @@ const PersonaForm = ({ open, onClose, onSubmit, persona, loading = false }: Pers
         semestre: persona.semestre || 0,
         numero_hijos: persona.numero_hijos || 0,
         grupo_etnico: persona.grupo_etnico || '',
+        cohorte_id: persona.cohorte_id || null,
         programas_ids: persona.programas?.map(p => p.id) || [],
         grupos_ids: persona.grupos?.map(g => g.id) || [],
       });
@@ -117,6 +122,12 @@ const PersonaForm = ({ open, onClose, onSubmit, persona, loading = false }: Pers
       if (persona.programas && programas.length > 0 && persona.programas.length > 0) {
         const personaPrograma = programas.find(p => persona.programas?.some(pp => pp.id === p.id));
         setSelectedPrograma(personaPrograma || null);
+      }
+
+      // Configurar cohorte seleccionada
+      if (persona.cohorte && cohortes.length > 0) {
+        const personaCohorte = cohortes.find(c => c.id === persona.cohorte?.id);
+        setSelectedCohorte(personaCohorte || null);
       }
     } else {
       // Reset form for new persona
@@ -141,13 +152,15 @@ const PersonaForm = ({ open, onClose, onSubmit, persona, loading = false }: Pers
         semestre: 1,
         numero_hijos: 0,
         grupo_etnico: '',
+        cohorte_id: null,
         programas_ids: [],
         grupos_ids: [],
       });
       setSelectedGrupos([]);
       setSelectedPrograma(null);
+      setSelectedCohorte(null);
     }
-  }, [persona, open, grupos, programas]);
+  }, [persona, open, grupos, programas, cohortes]);
 
   const handleChange = (field: keyof PersonaCreate) => (event: any) => {
     const value = event.target.type === 'checkbox' ? event.target.checked : event.target.value;
@@ -172,6 +185,15 @@ const PersonaForm = ({ open, onClose, onSubmit, persona, loading = false }: Pers
     setFormData(prev => ({
       ...prev,
       programas_ids: newValue ? [newValue.id] : []
+    }));
+  };
+
+  // Manejar selección de cohorte
+  const handleCohorteChange = (event: any, newValue: Cohorte | null) => {
+    setSelectedCohorte(newValue);
+    setFormData(prev => ({
+      ...prev,
+      cohorte_id: newValue ? newValue.id : null
     }));
   };
 
@@ -317,6 +339,25 @@ const PersonaForm = ({ open, onClose, onSubmit, persona, loading = false }: Pers
                 onChange={handleChange('password')}
                 helperText={persona ? "Dejar vacío para mantener la contraseña actual" : "Requerida para nuevas personas"}
                 placeholder={persona ? "••••••••" : "Ingrese una contraseña"}
+              />
+            </Grid>
+
+            {/* Selección de Cohorte (Opcional) */}
+            <Grid item xs={12} sm={6}>
+              <Autocomplete
+                options={cohortes}
+                getOptionLabel={(option) => `${option.nombre} - ${option.descripcion || 'Sin descripción'}`}
+                value={selectedCohorte}
+                onChange={handleCohorteChange}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Cohorte (Opcional)"
+                    placeholder="Seleccione una cohorte..."
+                    helperText="Seleccione la cohorte académica correspondiente"
+                  />
+                )}
+                noOptionsText="No hay cohortes disponibles"
               />
             </Grid>
 

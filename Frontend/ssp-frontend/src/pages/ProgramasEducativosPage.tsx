@@ -23,13 +23,16 @@ import {
   Edit as EditIcon,
   Delete as DeleteIcon,
   Search as SearchIcon,
+  ArrowBack as ArrowBackIcon
 } from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
 import { ProgramaEducativoForm } from '../components/ProgramaEducativoForm';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { programasEducativosApi } from '@/services/api';
 import type { ProgramaEducativo } from '../types/index';
 
 export const ProgramasEducativosPage: React.FC = () => {
+  const navigate = useNavigate();
   const [programas, setProgramas] = useState<ProgramaEducativo[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -159,9 +162,18 @@ export const ProgramasEducativosPage: React.FC = () => {
   return (
     <Box sx={{ p: 3 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4" component="h1">
-          Programas Educativos
-        </Typography>
+        <Box display="flex" alignItems="center">
+          <IconButton
+            onClick={() => navigate('/dashboard')}
+            sx={{ mr: 2 }}
+            aria-label="Regresar al dashboard"
+          >
+            <ArrowBackIcon />
+          </IconButton>
+          <Typography variant="h4" component="h1">
+            Programas Educativos
+          </Typography>
+        </Box>
         <Button
           variant="contained"
           startIcon={<AddIcon />}

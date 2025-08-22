@@ -1,5 +1,17 @@
 # Tareas del Sistema de Seguimiento Psicopedagógico (SSP)
 
+## Descripción del Proyecto
+
+El Sistema de Seguimiento Psicopedagógico (SSP) es una plataforma integral que combina la recolección de datos estudiantiles con análisis de inteligencia artificial para identificar y apoyar a estudiantes en situación de vulnerabilidad, riesgo académico o que requieren apoyo psicológico.
+
+### Flujo Operativo
+1. **Captación**: Unidad académica proporciona enlace de registro al estudiante
+2. **Registro**: Estudiante completa formulario web con datos personales y académicos
+3. **Evaluación**: Cuestionario interactivo en formato chat para detectar vulnerabilidades
+4. **Análisis IA**: Procesamiento automático con OpenRouter API y generación de informe
+5. **Validación**: Personal académico revisa y valida diagnósticos de IA
+6. **Seguimiento**: Registro de atenciones y seguimiento continuo del estudiante
+
 ## Tareas Completadas
 
 ### Configuración Inicial
@@ -30,7 +42,7 @@
 - [x] Implementar esquemas para Token
 
 ### Endpoints de API
-- [x] Implementar endpoints de autenticación
+- [x] Implementar endpoint de autenticación
 - [x] Implementar CRUD para Persona
 - [x] Implementar CRUD para Personal
 - [x] Implementar CRUD para Atencion
@@ -38,67 +50,146 @@
 - [x] Implementar CRUD para Cuestionario
 - [x] Implementar CRUD para ContactoEmergencia
 - [x] Implementar CRUD para ProgramaEducativo
-- [x] Implementar operaciones por lotes para todas las entidades
-- [x] Implementar búsqueda y filtrado para todas las entidades
+- [x] Implementar operaciones por lotes
+- [x] Implementar búsqueda y filtrado
+- [x] Endpoint específico para obtener estudiantes (/personas/estudiantes/)
 
-### Seguridad
-- [x] Implementar hashing de contraseñas
-- [x] Implementar autenticación JWT
-- [x] Implementar control de acceso basado en roles
-- [x] Implementar validación de datos de entrada
-
-### Utilidades
-- [x] Implementar script de inicio (start_api.py)
-- [x] Implementar creación automática de usuario administrador
-- [x] Implementar documentación automática (Swagger/ReDoc)
+### Mejoras de UX Implementadas (Diciembre 2024)
+- [x] **Atenciones solo para Estudiantes**: Modificado formulario para mostrar únicamente estudiantes
+- [x] **Validación obligatoria**: Selección de estudiante es requerida para crear atenciones
+- [x] **Información del estudiante**: Mostrar datos del estudiante seleccionado en el formulario
+- [x] **Preservar asignaciones**: En edición de personas, grupos y programas se muestran como solo lectura
+- [x] **Prevenir cambios accidentales**: Asignaciones académicas solo editables en creación
 
 ## Tareas Pendientes
 
-### Mejoras en la Base de Datos
-- [ ] Implementar migraciones con Alembic
-- [ ] Optimizar consultas para mejor rendimiento
-- [ ] Implementar índices adicionales para búsquedas frecuentes
+### Integración con Inteligencia Artificial
+- [ ] **Configurar OpenRouter API**
+  - [ ] Obtener API key de OpenRouter
+  - [ ] Configurar cliente OpenAI con base_url de OpenRouter
+  - [ ] Implementar manejo de errores y reintentos
+- [ ] **Desarrollo de Prompts Especializados**
+  - [ ] Crear prompt para análisis psicopedagógico
+  - [ ] Incluir contexto de datos del estudiante
+  - [ ] Definir formato de respuesta estructurada
+- [ ] **Procesamiento de Cuestionarios**
+  - [ ] Integrar respuestas del cuestionario con análisis de IA
+  - [ ] Implementar lógica de procesamiento automático
+  - [ ] Crear sistema de puntuación y clasificación
+- [ ] **Generación de Informes de IA**
+  - [ ] Desarrollar plantillas de informes
+  - [ ] Implementar almacenamiento de análisis en base de datos
+  - [ ] Crear visualización de resultados para personal académico
 
-### Funcionalidades Adicionales
-- [ ] Implementar sistema de notificaciones
-- [ ] Implementar generación de reportes
-- [ ] Implementar exportación de datos (PDF, Excel)
-- [ ] Implementar carga masiva de datos
+### Gestión de Cohorte
+- [x] Crear modelo Cohorte
+- [x] Establecer relación con Persona
+- [x] Implementar esquemas Pydantic
+- [x] Crear endpoints API
+- [x] Hacer cohorte opcional en registro
 
-### Pruebas
-- [ ] Implementar pruebas unitarias
-- [ ] Implementar pruebas de integración
-- [ ] Implementar pruebas de carga
+### Portal Estudiantil
+- [ ] **Formulario de Registro Web**
+  - [ ] Diseñar interfaz amigable para estudiantes
+  - [ ] Implementar validación en tiempo real
+  - [ ] Crear flujo de registro paso a paso
+- [ ] **Cuestionario Interactivo Tipo Chat**
+  - [ ] Desarrollar interfaz estilo WhatsApp
+  - [ ] Implementar preguntas dinámicas
+  - [ ] Crear sistema de respuestas múltiples
+  - [ ] Integrar indicadores de progreso
 
-### Documentación
-- [ ] Completar documentación de API
-- [ ] Crear manual de usuario
-- [ ] Crear manual de administrador
-- [ ] Documentar procedimientos de instalación y despliegue
+### Panel de Validación Académica
+- [ ] **Dashboard para Personal**
+  - [ ] Visualización de expedientes estudiantiles
+  - [ ] Mostrar análisis de IA de forma clara
+  - [ ] Implementar filtros y búsqueda avanzada
+- [ ] **Flujo de Validación**
+  - [ ] Sistema de aprobación/denegación de diagnósticos
+  - [ ] Comentarios y observaciones del personal
+  - [ ] Historial de decisiones y cambios
+- [ ] **Sistema de Notificaciones**
+  - [ ] Alertas para casos prioritarios
+  - [ ] Notificaciones de nuevos análisis
+  - [ ] Recordatorios de seguimiento
 
-### Despliegue
-- [ ] Configurar Docker para desarrollo
-- [ ] Configurar Docker para producción
-- [ ] Configurar CI/CD
-- [ ] Preparar scripts de respaldo de base de datos
+### Optimizaciones
+- [ ] Implementar caché para consultas frecuentes
+- [ ] Optimizar consultas a base de datos
+- [ ] Implementar paginación eficiente
+- [ ] Mejorar mensajes de error
 
 ## Tareas en Progreso
 
-### Corrección de Errores
-- [ ] Solucionar problema con la tabla atencion (columna fecha_atencion)
-- [ ] Revisar y corregir validaciones en endpoints
+### Mejoras de Seguridad
+- [ ] Implementar autenticación de dos factores
+- [ ] Mejorar validación de datos
+- [ ] Implementar registro de auditoría
+- [ ] Configurar HTTPS
 
-### Mejoras de Rendimiento
-- [ ] Optimizar consultas de base de datos
-- [ ] Implementar caché para consultas frecuentes
+### Documentación
+- [ ] Actualizar documentación API
+- [ ] Crear guía de usuario
+- [ ] Documentar procedimientos de instalación
+- [ ] Crear manual técnico
 
-## Tareas Descubiertas Durante el Desarrollo
+## Próximos Pasos Prioritarios
 
-### Problemas de Compatibilidad
-- [ ] Actualizar código para compatibilidad con Pydantic v2
-- [ ] Resolver problemas con SQLAlchemy y SQLite
+### Fase Inmediata (Sprint 1-2)
+1. **Integración con OpenRouter API**
+   - Configurar credenciales y conexión
+   - Desarrollar prompts especializados para análisis psicopedagógico
+   - Implementar procesamiento básico de cuestionarios
 
-### Mejoras de Usabilidad
-- [ ] Mejorar mensajes de error
-- [ ] Implementar paginación más eficiente
-- [ ] Mejorar filtros de búsqueda
+2. **Portal de Registro Estudiantil**
+   - Crear interfaz web simplificada para estudiantes
+   - Implementar formulario de registro paso a paso
+   - Desarrollar cuestionario en formato chat interactivo
+
+### Fase de Desarrollo (Sprint 3-4)
+3. **Panel de Validación Académica**
+   - Dashboard para visualización de expedientes
+   - Sistema de validación de diagnósticos de IA
+   - Implementar flujo de aprobación/denegación
+
+4. **Análisis y Reportes**
+   - Generación automática de informes de IA
+   - Visualización de indicadores clave
+   - Sistema de alertas para casos prioritarios
+
+### Fase de Optimización (Sprint 5-6)
+5. **Mejoras de Rendimiento**
+   - Optimizar consultas a base de datos
+   - Implementar caché para análisis de IA
+   - Mejorar tiempos de respuesta
+
+6. **Documentación y Testing**
+   - Completar documentación técnica
+   - Implementar pruebas automatizadas
+   - Crear manuales de usuario
+
+## Código de Integración con IA
+
+```python
+# Ejemplo de integración con OpenRouter API
+from openai import OpenAI
+
+client = OpenAI(
+  base_url="https://openrouter.ai/api/v1",
+  api_key="<OPENROUTER_API_KEY>",
+)
+
+completion = client.chat.completions.create(
+  extra_headers={
+    "HTTP-Referer": "<YOUR_SITE_URL>",
+    "X-Title": "Sistema SSP",
+  },
+  model="nousresearch/deephermes-3-mistral-24b-preview:free",
+  messages=[
+    {
+      "role": "user",
+      "content": "Análisis psicopedagógico del estudiante..."
+    }
+  ]
+)
+```

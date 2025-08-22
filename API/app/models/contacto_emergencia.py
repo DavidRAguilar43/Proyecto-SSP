@@ -13,5 +13,5 @@ class ContactoEmergencia(Base):
     parentesco = Column(String)
 
     # Relación con Persona
-    id_persona = Column(Integer, ForeignKey("persona.id"))
+    id_persona = Column(Integer, ForeignKey("personas.id"))
     persona = relationship("Persona", back_populates="contactos_emergencia")

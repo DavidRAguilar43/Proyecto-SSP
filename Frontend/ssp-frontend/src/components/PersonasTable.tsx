@@ -18,7 +18,9 @@ import {
 import {
   Edit as EditIcon,
   Delete as DeleteIcon,
-  Visibility as ViewIcon
+  Visibility as ViewIcon,
+  Psychology as PsychologyIcon,
+  Assessment as AssessmentIcon
 } from '@mui/icons-material';
 import type { Persona } from '@/types';
 
@@ -29,6 +31,9 @@ interface PersonasTableProps {
   onDelete: (persona: Persona) => void;
   onView: (persona: Persona) => void;
   onBulkDelete: (ids: number[]) => void;
+  onCuestionario?: (persona: Persona) => void;
+  onVerReporte?: (persona: Persona) => void;
+  currentUserRole?: string;
 }
 
 const PersonasTable = ({
@@ -37,7 +42,10 @@ const PersonasTable = ({
   onEdit,
   onDelete,
   onView,
-  onBulkDelete
+  onBulkDelete,
+  onCuestionario,
+  onVerReporte,
+  currentUserRole
 }: PersonasTableProps) => {
   const [selected, setSelected] = useState<number[]>([]);
   const [page, setPage] = useState(0);
@@ -204,6 +212,40 @@ const PersonasTable = ({
                           <DeleteIcon />
                         </IconButton>
                       </Tooltip>
+
+                      {/* Botón de cuestionario para estudiantes */}
+                      {persona.tipo_persona === 'estudiante' && onCuestionario && (
+                        <Tooltip title="Cuestionario Psicopedagógico">
+                          <IconButton
+                            size="small"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onCuestionario(persona);
+                            }}
+                            color="primary"
+                          >
+                            <PsychologyIcon />
+                          </IconButton>
+                        </Tooltip>
+                      )}
+
+                      {/* Botón de reporte para admin/personal */}
+                      {persona.tipo_persona === 'estudiante' &&
+                       onVerReporte &&
+                       (currentUserRole === 'admin' || currentUserRole === 'personal') && (
+                        <Tooltip title="Ver Reporte Psicopedagógico">
+                          <IconButton
+                            size="small"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onVerReporte(persona);
+                            }}
+                            color="secondary"
+                          >
+                            <AssessmentIcon />
+                          </IconButton>
+                        </Tooltip>
+                      )}
                     </TableCell>
                   </TableRow>
                 );

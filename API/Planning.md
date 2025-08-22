@@ -1,223 +1,183 @@
 # Planificación del Sistema de Seguimiento Psicopedagógico (SSP)
 
-## Visión General
+## Visión del Sistema
 
-El Sistema de Seguimiento Psicopedagógico (SSP) es una aplicación diseñada para gestionar el seguimiento de estudiantes, docentes y personal administrativo en un entorno educativo. El sistema permite registrar atenciones psicopedagógicas, gestionar grupos, programas educativos, personal y contactos de emergencia.
+El Sistema de Seguimiento Psicopedagógico (SSP) es una plataforma integral que combina la recolección de datos estudiantiles con análisis de inteligencia artificial para identificar y apoyar a estudiantes en situación de vulnerabilidad, riesgo académico o que requieren apoyo psicológico.
 
-## Arquitectura
+## Flujo Operativo del Sistema
 
-El sistema está construido con una arquitectura de API RESTful utilizando FastAPI como framework principal. La estructura sigue un patrón de diseño modular con separación clara de responsabilidades:
+### 1. **Captación y Registro Inicial**
+- La unidad académica identifica estudiantes que requieren seguimiento
+- Se proporciona un enlace web personalizado para cada estudiante
+- El estudiante accede al formulario de registro en línea
+- Se capturan datos personales, académicos y de contacto
 
-- **Modelos**: Representan las entidades de la base de datos
-- **Esquemas**: Definen la validación y serialización de datos
-- **Rutas**: Implementan los endpoints de la API
-- **Dependencias**: Proporcionan funcionalidades reutilizables como autenticación
-- **Core**: Contiene configuraciones centrales y funcionalidades de seguridad
+### 2. **Evaluación Psicopedagógica Interactiva**
+- Cuestionario presentado en formato chat (estilo WhatsApp)
+- Preguntas diseñadas para detectar:
+  - Indicadores de vulnerabilidad social
+  - Factores de riesgo académico
+  - Necesidades de apoyo psicológico
+- Respuestas almacenadas automáticamente en la base de datos
 
-## Estructura de Carpetas
+### 3. **Análisis Automatizado con IA**
+- Procesamiento de datos mediante OpenRouter API
+- Generación de prompt contextualizado con información del estudiante
+- Análisis realizado por modelo: `nousresearch/deephermes-3-mistral-24b-preview:free`
+- Generación de informe con:
+  - Evaluación general del estudiante
+  - Clasificación de riesgo/vulnerabilidad
+  - Recomendaciones de apoyo específicas
 
+### 4. **Gestión de Expedientes**
+- Creación automática de expediente digital
+- Almacenamiento del análisis de IA
+- Visualización de indicadores clave
+- Historial completo de interacciones
+
+### 5. **Validación y Seguimiento Profesional**
+- Acceso del personal académico al sistema
+- Revisión de análisis generados por IA
+- Validación profesional del diagnóstico
+- Registro de atenciones y seguimientos
+- Confirmación o modificación de clasificaciones
+
+## Arquitectura del Sistema
+
+### Componentes Principales
+
+1. **Frontend Web Multiplataforma**
+   - **Portal Estudiantil**: Formulario de registro y cuestionario interactivo
+   - **Panel Administrativo**: Gestión de expedientes y validación de diagnósticos
+   - **Dashboard Analítico**: Visualización de indicadores y estadísticas
+
+2. **API Backend Inteligente**
+   - Servicio REST con FastAPI
+   - Autenticación JWT con roles diferenciados
+   - Integración con OpenRouter API para análisis de IA
+   - Procesamiento de cuestionarios y generación de informes
+
+3. **Base de Datos Relacional**
+   - SQLite para desarrollo y pruebas
+   - PostgreSQL para producción
+   - Modelos SQLAlchemy optimizados
+   - Almacenamiento de expedientes y análisis de IA
+
+4. **Servicios de Inteligencia Artificial**
+   - OpenRouter API como gateway de IA
+   - Modelo especializado en análisis psicopedagógico
+   - Generación de informes contextualizados
+   - Procesamiento de lenguaje natural
+
+### Flujo de Datos Inteligente
+
+1. **Captura**: Estudiante → Portal Web → API → Base de Datos
+2. **Análisis**: Base de Datos → API → OpenRouter IA → API → Base de Datos
+3. **Validación**: Personal → Panel Admin → API → Base de Datos
+4. **Seguimiento**: Base de Datos → API → Dashboard → Personal
+
+## Plan de Implementación
+
+### Fase 1: Núcleo del Sistema
+- [x] Configuración inicial
+- [x] Modelos de base de datos
+- [x] Autenticación básica
+
+### Fase 2: Módulo de Estudiantes
+- [x] Registro de estudiantes
+- [x] Cuestionario interactivo
+- [x] Almacenamiento de respuestas
+
+### Fase 3: Análisis con IA
+- [ ] Integración con OpenRouter API
+- [ ] Desarrollo de prompts especializados
+- [ ] Procesamiento automático de cuestionarios
+- [ ] Generación de informes de IA
+- [ ] Almacenamiento de análisis en expedientes
+
+### Fase 4: Validación Académica
+- [ ] Panel de administración para personal
+- [ ] Flujo de validación de diagnósticos
+- [ ] Sistema de confirmación/denegación
+- [ ] Notificaciones automáticas
+- [ ] Registro de decisiones profesionales
+
+### Fase 5: Portal Estudiantil
+- [ ] Interfaz de registro simplificada
+- [ ] Cuestionario en formato chat
+- [ ] Experiencia de usuario optimizada
+- [ ] Accesibilidad y responsividad
+
+### Fase 6: Analytics y Reportes
+- [ ] Dashboard de indicadores clave
+- [ ] Reportes estadísticos
+- [ ] Análisis de tendencias
+- [ ] Exportación de datos
+
+## Stack Tecnológico
+
+| Componente              | Tecnología                                    | Propósito                           |
+|------------------------|-----------------------------------------------|-------------------------------------|
+| **Frontend**           | React, TypeScript, Material-UI               | Interfaces de usuario interactivas |
+| **Backend**            | FastAPI, Python, SQLAlchemy                  | API REST y lógica de negocio       |
+| **Base de Datos**      | SQLite (desarrollo), PostgreSQL (producción) | Almacenamiento de datos             |
+| **Inteligencia Artificial** | OpenRouter API, OpenAI Client            | Análisis psicopedagógico automatizado |
+| **Modelo de IA**       | nousresearch/deephermes-3-mistral-24b-preview:free | Procesamiento de lenguaje natural |
+| **Autenticación**      | JWT, bcrypt                                   | Seguridad y control de acceso      |
+| **Estilos**            | Material-UI, CSS-in-JS                       | Diseño y experiencia de usuario    |
+| **Validación**         | Pydantic, Zod                                | Validación de datos                 |
+
+## Integración con OpenRouter
+
+```python
+# Configuración del cliente de IA
+from openai import OpenAI
+
+client = OpenAI(
+  base_url="https://openrouter.ai/api/v1",
+  api_key="<OPENROUTER_API_KEY>",
+)
+
+# Análisis de estudiante
+completion = client.chat.completions.create(
+  extra_headers={
+    "HTTP-Referer": "<YOUR_SITE_URL>",
+    "X-Title": "Sistema SSP",
+  },
+  model="nousresearch/deephermes-3-mistral-24b-preview:free",
+  messages=[
+    {
+      "role": "system",
+      "content": "Eres un especialista en análisis psicopedagógico..."
+    },
+    {
+      "role": "user",
+      "content": f"Analiza el siguiente perfil estudiantil: {student_data}"
+    }
+  ]
+)
 ```
-API/
-├── app/                  # Directorio principal de la aplicación
-│   ├── core/             # Configuración central
-│   │   ├── config.py     # Configuración de la aplicación
-│   │   └── security.py   # Funciones de seguridad (JWT, hash)
-│   ├── db/               # Configuración de la base de datos
-│   │   └── database.py   # Configuración de la conexión a la base de datos
-│   ├── models/           # Modelos SQLAlchemy
-│   │   ├── persona.py    # Modelo Persona
-│   │   ├── personal.py   # Modelo Personal
-│   │   ├── atencion.py   # Modelo Atencion
-│   │   ├── grupo.py      # Modelo Grupo
-│   │   ├── cuestionario.py # Modelo Cuestionario
-│   │   ├── contacto_emergencia.py # Modelo ContactoEmergencia
-│   │   ├── programa_educativo.py # Modelo ProgramaEducativo
-│   │   └── __init__.py   # Importaciones de modelos
-│   ├── schemas/          # Esquemas Pydantic
-│   │   ├── persona.py    # Esquemas para Persona
-│   │   ├── personal.py   # Esquemas para Personal
-│   │   ├── atencion.py   # Esquemas para Atencion
-│   │   ├── grupo.py      # Esquemas para Grupo
-│   │   ├── cuestionario.py # Esquemas para Cuestionario
-│   │   ├── contacto_emergencia.py # Esquemas para ContactoEmergencia
-│   │   ├── programa_educativo.py # Esquemas para ProgramaEducativo
-│   │   ├── token.py      # Esquemas para tokens
-│   │   └── __init__.py   # Importaciones de esquemas
-│   ├── routes/           # Rutas de la API
-│   │   ├── auth.py       # Endpoints de autenticación
-│   │   ├── persona.py    # Endpoints para Persona
-│   │   ├── personal.py   # Endpoints para Personal
-│   │   ├── atencion.py   # Endpoints para Atencion
-│   │   ├── grupo.py      # Endpoints para Grupo
-│   │   ├── cuestionario.py # Endpoints para Cuestionario
-│   │   ├── contacto_emergencia.py # Endpoints para ContactoEmergencia
-│   │   ├── programa_educativo.py # Endpoints para ProgramaEducativo
-│   │   └── __init__.py   # Importaciones de rutas
-│   ├── utils/            # Utilidades
-│   │   └── deps.py       # Dependencias para inyección
-│   └── main.py           # Punto de entrada de la aplicación
-├── Planning.md           # Documentación de planificación
-├── README.md             # Documentación general
-├── Tasks.md              # Lista de tareas
-├── requirements.txt      # Dependencias del proyecto
-├── ssp.db                # Base de datos SQLite
-├── start_api.py          # Script para iniciar la API
-└── update_atencion_table.py # Script para actualizar la tabla atencion
-```
 
-## Tecnologías Utilizadas
+## Próximos Pasos Prioritarios
 
-- **FastAPI**: Framework web de alto rendimiento
-- **SQLAlchemy**: ORM para interactuar con la base de datos
-- **Pydantic**: Validación de datos y serialización
-- **JWT**: Autenticación basada en tokens
-- **SQLite**: Base de datos relacional
-- **Uvicorn**: Servidor ASGI para ejecutar la aplicación
+### Desarrollo Inmediato
+1. **Integración con OpenRouter API**
+   - Configuración de credenciales
+   - Desarrollo de prompts especializados
+   - Testing de respuestas de IA
 
-## Estructura de la Base de Datos
+2. **Portal Estudiantil**
+   - Diseño de interfaz de registro
+   - Implementación de cuestionario chat
+   - Validación de formularios
 
-### Entidades Principales
+3. **Panel de Validación**
+   - Dashboard para personal académico
+   - Flujo de aprobación de diagnósticos
+   - Sistema de notificaciones
 
-1. **Persona**
-   - Entidad central que representa a estudiantes, docentes y personal administrativo
-   - Campos: id, tipo_persona, sexo, genero, edad, estado_civil, religion, trabaja, lugar_trabajo, lugar_origen, colonia_residencia_actual, celular, correo_institucional, discapacidad, observaciones, matricula, semestre, numero_hijos, grupo_etnico, rol, hashed_password, is_active
-   - Relaciones: programas, grupos, personal, contactos_emergencia, atenciones
-
-2. **Personal**
-   - Información específica del personal
-   - Campos: id, area, rol, numero_empleado, id_persona
-   - Relaciones: persona, atenciones
-
-3. **Atencion**
-   - Registro de atenciones psicopedagógicas
-   - Campos: id, fecha_atencion, motivo_psicologico, motivo_academico, salud_en_general_vulnerable, requiere_seguimiento, requiere_canalizacion_externa, estatus_canalizacion_externa, observaciones, fecha_proxima_sesion, atendido, ultima_fecha_contacto, id_personal, id_persona, id_grupo, id_cuestionario
-   - Relaciones: personal, persona, grupo, cuestionario
-
-4. **Grupo**
-   - Agrupación de personas
-   - Campos: id, nombre_grupo, tipo_grupo, observaciones_grupo, cohorte, fecha_creacion_registro
-   - Relaciones: personas, atenciones
-
-5. **Cuestionario**
-   - Almacena variables de cuestionarios
-   - Campos: id_cuestionario, variables
-   - Relaciones: atenciones
-
-6. **ContactoEmergencia**
-   - Información de contactos de emergencia
-   - Campos: id_contacto, id_persona, nombre_contacto, telefono_contacto, parentesco
-   - Relaciones: persona
-
-7. **ProgramaEducativo**
-   - Información de programas educativos
-   - Campos: id_programa, nombre_programa, clave_programa
-   - Relaciones: personas
-
-### Relaciones
-
-- **Persona-ProgramaEducativo**: Muchos a muchos
-- **Persona-Grupo**: Muchos a muchos
-- **Persona-Personal**: Uno a uno
-- **Persona-ContactoEmergencia**: Uno a muchos
-- **Persona-Atencion**: Uno a muchos
-- **Personal-Atencion**: Uno a muchos
-- **Grupo-Atencion**: Uno a muchos
-- **Cuestionario-Atencion**: Uno a muchos
-
-## Endpoints de la API
-
-La API está organizada en los siguientes grupos de endpoints:
-
-1. **Autenticación**
-   - `/api/v1/auth/login`: Iniciar sesión
-   - `/api/v1/auth/test-token`: Verificar token
-
-2. **Personas**
-   - CRUD completo para personas
-   - Operaciones por lotes
-   - Búsqueda y filtrado
-
-3. **Personal**
-   - CRUD completo para personal
-   - Operaciones por lotes
-   - Búsqueda y filtrado
-
-4. **Atenciones**
-   - CRUD completo para atenciones
-   - Operaciones por lotes
-   - Búsqueda y filtrado
-
-5. **Grupos**
-   - CRUD completo para grupos
-   - Operaciones por lotes
-   - Búsqueda y filtrado
-
-6. **Cuestionarios**
-   - CRUD completo para cuestionarios
-   - Operaciones por lotes
-
-7. **Contactos de Emergencia**
-   - CRUD completo para contactos de emergencia
-   - Operaciones por lotes
-   - Búsqueda y filtrado
-
-8. **Programas Educativos**
-   - CRUD completo para programas educativos
-   - Operaciones por lotes
-   - Búsqueda y filtrado
-
-## Control de Acceso
-
-El sistema implementa un control de acceso basado en roles:
-
-- **admin**: Acceso completo a todas las funcionalidades
-- **personal**: Puede gestionar información de personas y realizar operaciones administrativas
-- **docente**: Acceso limitado a información relacionada con su función
-- **alumno**: Acceso únicamente a su propia información
-
-## Flujo de Trabajo
-
-1. **Autenticación**
-   - El usuario se autentica con correo/matrícula y contraseña
-   - El sistema devuelve un token JWT
-   - El token se utiliza para autorizar las solicitudes subsiguientes
-
-2. **Gestión de Personas**
-   - Registro de nuevas personas (estudiantes, docentes, personal)
-   - Asignación a programas educativos y grupos
-   - Registro de contactos de emergencia
-
-3. **Atenciones**
-   - Registro de atenciones psicopedagógicas
-   - Seguimiento de casos
-   - Aplicación de cuestionarios
-
-4. **Reportes**
-   - Generación de reportes de atenciones
-   - Estadísticas por programa educativo, grupo, etc.
-
-## Consideraciones de Seguridad
-
-- Contraseñas almacenadas con hash seguro (bcrypt)
-- Autenticación basada en tokens JWT
-- Validación estricta de datos de entrada
-- Control de acceso basado en roles
-- Protección contra ataques comunes (CSRF, XSS, inyección SQL)
-
-## Próximos Pasos
-
-1. **Implementación de Reportes**
-   - Desarrollo de endpoints para generación de reportes
-   - Exportación a formatos comunes (PDF, Excel)
-
-2. **Mejoras en la Búsqueda**
-   - Implementación de búsqueda avanzada
-   - Filtros combinados
-
-3. **Notificaciones**
-   - Sistema de notificaciones para seguimiento de casos
-   - Recordatorios de próximas sesiones
-
-4. **Integración con Sistemas Externos**
-   - Conexión con sistemas académicos
-   - Importación/exportación de datos
+### Optimizaciones Futuras
+4. Análisis de rendimiento de consultas
+5. Implementación de caché para IA
+6. Sistema de backup automático
+7. Monitoreo y logging avanzado

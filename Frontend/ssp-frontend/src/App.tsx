@@ -2,11 +2,13 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { CssBaseline } from '@mui/material';
 import { AuthProvider } from '@/contexts/AuthContext';
 import LoginPage from '@/pages/LoginPage';
+import RegistroAlumnoPage from '@/pages/RegistroAlumnoPage';
 import Dashboard from '@/pages/Dashboard';
 import PersonasPage from '@/pages/PersonasPage';
 import { ProgramasEducativosPage } from '@/pages/ProgramasEducativosPage';
 import { GruposPage } from '@/pages/GruposPage';
 import { AtencionesPage } from '@/pages/AtencionesPage';
+import AlumnoPage from '@/pages/AlumnoPage';
 import ProtectedRoute from '@/components/ProtectedRoute';
 
 function App() {
@@ -16,6 +18,7 @@ function App() {
       <Router>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/registro-alumno" element={<RegistroAlumnoPage />} />
           <Route
             path="/dashboard"
             element={
@@ -53,6 +56,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <AtencionesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/alumno"
+            element={
+              <ProtectedRoute allowedRoles={['alumno']}>
+                <AlumnoPage />
               </ProtectedRoute>
             }
           />

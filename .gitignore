@@ -1,4 +1,10 @@
-API/app/__pycache__/
-API/__pycache__/
 venv/
-*.db
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+API/__pycache__/
+API/app/__pycache__/
+API/app/models/__pycache__/
+API/app/routes/__pycache__/

@@ -54,4 +54,4 @@ def test_token(current_user: Persona = Depends(get_current_active_user)) -> Any:
     """
     Prueba el token JWT y devuelve información del usuario actual.
     """
-    return current_user
+    return PersonaOut.from_orm_with_relations(current_user)

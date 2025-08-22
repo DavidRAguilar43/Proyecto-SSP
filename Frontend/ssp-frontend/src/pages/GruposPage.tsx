@@ -27,13 +27,16 @@ import {
   Edit as EditIcon,
   Delete as DeleteIcon,
   Search as SearchIcon,
+  ArrowBack as ArrowBackIcon
 } from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
 import { GrupoForm } from '../components/GrupoForm';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { gruposApi } from '@/services/api';
 import type { Grupo } from '../types/index';
 
 export const GruposPage: React.FC = () => {
+  const navigate = useNavigate();
   const [grupos, setGrupos] = useState<Grupo[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -179,9 +182,18 @@ export const GruposPage: React.FC = () => {
   return (
     <Box sx={{ p: 3 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4" component="h1">
-          Gestión de Grupos
-        </Typography>
+        <Box display="flex" alignItems="center">
+          <IconButton
+            onClick={() => navigate('/dashboard')}
+            sx={{ mr: 2 }}
+            aria-label="Regresar al dashboard"
+          >
+            <ArrowBackIcon />
+          </IconButton>
+          <Typography variant="h4" component="h1">
+            Gestión de Grupos
+          </Typography>
+        </Box>
         <Button
           variant="contained"
           startIcon={<AddIcon />}

@@ -4,7 +4,7 @@ from sqlalchemy.exc import OperationalError
 
 from app.core.config import settings
 from app.db.database import engine, Base
-from app.routes import auth_router, persona_router, atencion_router, grupo_router, personal_router, contacto_emergencia_router, programa_educativo_router, cuestionario_router
+from app.routes import auth_router, persona_router, atencion_router, grupo_router, personal_router, contacto_emergencia_router, programa_educativo_router, cuestionario_router, cohorte_router, cuestionario_psicopedagogico_router
 
 # Crear tablas en la base de datos
 try:
@@ -35,6 +35,8 @@ app.include_router(personal_router, prefix=settings.API_V1_STR)
 app.include_router(contacto_emergencia_router, prefix=settings.API_V1_STR)
 app.include_router(programa_educativo_router, prefix=settings.API_V1_STR)
 app.include_router(cuestionario_router, prefix=settings.API_V1_STR)
+app.include_router(cuestionario_psicopedagogico_router, prefix=f"{settings.API_V1_STR}/cuestionario-psicopedagogico")
+app.include_router(cohorte_router, prefix=settings.API_V1_STR)
 
 
 @app.get("/")
