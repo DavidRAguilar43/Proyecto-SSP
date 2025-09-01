@@ -4,7 +4,7 @@ Script para resetear la contraseña de Juan Pérez.
 """
 
 from sqlalchemy.orm import Session
-from app.database import SessionLocal
+from app.db.database import SessionLocal
 from app.models.persona import Persona
 from app.core.security import get_password_hash
 

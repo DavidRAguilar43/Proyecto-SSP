@@ -43,8 +43,9 @@ const AlumnoPerfilForm = ({ open, onClose, onSubmit, persona, loading = false }:
         try {
           const cohortesData = await cohortesApi.getActivas();
           setCohortes(cohortesData);
-        } catch (error) {
+        } catch (error: any) {
           console.error('Error loading cohortes:', error);
+          // Silently fail for now, cohortes will be empty
         }
       }
     };
@@ -85,7 +86,13 @@ const AlumnoPerfilForm = ({ open, onClose, onSubmit, persona, loading = false }:
   }, [persona, open, cohortes]);
 
   const handleChange = (field: keyof PersonaCreate) => (event: any) => {
-    const value = event.target.type === 'checkbox' ? event.target.checked : event.target.value;
+    let value = event.target.type === 'checkbox' ? event.target.checked : event.target.value;
+
+    // Convert numeric fields to numbers
+    if (event.target.type === 'number' && value !== '') {
+      value = parseInt(value, 10);
+    }
+
     setFormData(prev => ({
       ...prev,
       [field]: value
@@ -116,12 +123,20 @@ const AlumnoPerfilForm = ({ open, onClose, onSubmit, persona, loading = false }:
       return;
     }
 
-    // Filtrar campos vacíos
+    // Filtrar campos vacíos y asegurar tipos correctos
     const cleanData = Object.fromEntries(
-      Object.entries(formData).filter(([key, value]) => 
+      Object.entries(formData).filter(([key, value]) =>
         value !== '' && value !== null && value !== undefined
       )
     );
+
+    // Asegurar que los campos numéricos sean números
+    const numericFields = ['edad', 'semestre', 'numero_hijos', 'cohorte_id'];
+    numericFields.forEach(field => {
+      if (cleanData[field] !== undefined && cleanData[field] !== null) {
+        cleanData[field] = parseInt(cleanData[field], 10);
+      }
+    });
 
     onSubmit(cleanData);
   };

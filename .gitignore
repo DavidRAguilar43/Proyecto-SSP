@@ -1,10 +1,16 @@
-venv/
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+ssp.db
+API/ssp.db
+
+# Python cache
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 .Python
-API/__pycache__/
-API/app/__pycache__/
-API/app/models/__pycache__/
-API/app/routes/__pycache__/
+
+# Virtual environment
+venv/

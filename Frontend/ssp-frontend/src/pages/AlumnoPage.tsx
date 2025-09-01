@@ -92,7 +92,17 @@ const AlumnoPage = ({ user: propUser, onLogout: propOnLogout }: AlumnoPageProps)
       showSnackbar('Perfil actualizado exitosamente', 'success');
     } catch (error: any) {
       console.error('Error updating profile:', error);
-      const errorMessage = error.response?.data?.detail || 'Error al actualizar el perfil';
+      let errorMessage = 'Error al actualizar el perfil';
+
+      if (error.response?.data?.detail) {
+        if (Array.isArray(error.response.data.detail)) {
+          // Si es un array de errores de validación, tomar el primer mensaje
+          errorMessage = error.response.data.detail[0]?.msg || errorMessage;
+        } else if (typeof error.response.data.detail === 'string') {
+          errorMessage = error.response.data.detail;
+        }
+      }
+
       showSnackbar(errorMessage, 'error');
     } finally {
       setLoading(false);

@@ -117,6 +117,29 @@ def generar_opciones_cohortes(
     return cohortes_generadas
 
 
+@router.get("/search/", response_model=List[CohorteOut])
+def search_cohortes(
+    *,
+    db: Session = Depends(get_db),
+    q: str = Query(None, min_length=1),
+    current_user: Persona = Depends(get_current_active_user)
+) -> Any:
+    """
+    Buscar cohortes por texto en varios campos.
+    """
+    if not q:
+        return []
+
+    cohortes = db.query(Cohorte).filter(
+        or_(
+            Cohorte.nombre.contains(q),
+            Cohorte.descripcion.contains(q)
+        )
+    ).order_by(Cohorte.nombre.desc()).all()
+
+    return cohortes
+
+
 @router.get("/{cohorte_id}", response_model=CohorteOut)
 def read_cohorte(
     *,
@@ -189,26 +212,3 @@ def delete_cohorte(
     db.delete(cohorte)
     db.commit()
     return cohorte
-
-
-@router.get("/search/", response_model=List[CohorteOut])
-def search_cohortes(
-    *,
-    db: Session = Depends(get_db),
-    q: str = Query(None, min_length=1),
-    current_user: Persona = Depends(get_current_active_user)
-) -> Any:
-    """
-    Buscar cohortes por texto en varios campos.
-    """
-    if not q:
-        return []
-
-    cohortes = db.query(Cohorte).filter(
-        or_(
-            Cohorte.nombre.contains(q),
-            Cohorte.descripcion.contains(q)
-        )
-    ).order_by(Cohorte.nombre.desc()).all()
-
-    return cohortes
