@@ -3,14 +3,14 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime, timedelta
 
-from app.database import get_db
+from app.db.database import get_db
 from app.models.persona import Persona
 from app.models.cita import Cita, EstadoCita, TipoCita
 from app.schemas.cita import (
     CitaCreate, CitaUpdate, CitaOut, SolicitudCitaOut, 
     NotificacionCita, EstadisticasCitas
 )
-from app.core.deps import get_current_active_user
+from app.utils.deps import get_current_active_user
 
 router = APIRouter()
 
