@@ -76,7 +76,7 @@ const RegistroAlumnoPage = () => {
           <SchoolIcon sx={{ mr: 2 }} />
           
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            Sistema SSP - Registro de Estudiantes
+            Sistema SSP - Registro de datos
           </Typography>
         </Toolbar>
       </AppBar>
@@ -87,10 +87,10 @@ const RegistroAlumnoPage = () => {
           <Box sx={{ textAlign: 'center', mb: 4 }}>
             <SchoolIcon sx={{ fontSize: 60, color: 'primary.main', mb: 2 }} />
             <Typography variant="h4" component="h1" gutterBottom>
-              Registro de Estudiante
+              Registro de datos
             </Typography>
             <Typography variant="body1" color="text.secondary">
-              Complete el formulario para crear su cuenta estudiantil en el Sistema de Seguimiento Psicopedagógico
+              Complete el formulario para crear su cuenta personal en el Sistema de Seguimiento Psicopedagógico
             </Typography>
           </Box>
 

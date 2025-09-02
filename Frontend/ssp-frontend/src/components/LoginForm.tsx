@@ -77,7 +77,7 @@ const LoginForm = () => {
 
           <Divider sx={{ my: 2 }}>
             <Typography variant="body2" color="text.secondary">
-              ¿Eres estudiante?
+              ¿No tienes cuenta?
             </Typography>
           </Divider>
 
@@ -87,7 +87,7 @@ const LoginForm = () => {
             onClick={() => navigate('/registro-alumno')}
             sx={{ mt: 1 }}
           >
-            Registrarse como Estudiante
+            Registrate aquí
           </Button>
 
           <Box sx={{ mt: 2, textAlign: 'center' }}>

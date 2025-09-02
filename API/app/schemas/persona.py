@@ -1,4 +1,4 @@
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Union
 from pydantic import BaseModel, EmailStr, field_validator, ConfigDict
 from datetime import datetime
 from enum import Enum
@@ -56,17 +56,19 @@ class PersonaBase(BaseModel):
     trabaja: bool = False
     lugar_trabajo: Optional[str] = None
     lugar_origen: str
-    colonia_residencia_actual: str
+    colonia_residencia_actual: Optional[str] = None
     celular: str
     correo_institucional: EmailStr
     discapacidad: Optional[str] = None
     observaciones: Optional[str] = None
-    matricula: Optional[str] = None
+    matricula: str
     semestre: Optional[int] = None
     numero_hijos: int = 0
     grupo_etnico: Optional[str] = None
     rol: Rol = Rol.ALUMNO
-    cohorte_id: Optional[int] = None  # Nuevo campo para cohorte
+    # Campos de cohorte simplificados
+    cohorte_ano: Optional[int] = None  # Año de cohorte (ej: 2024, 2025)
+    cohorte_periodo: Optional[int] = 1  # Período de cohorte (1 o 2, por defecto 1)
 
     @field_validator('edad')
     @classmethod
@@ -96,6 +98,29 @@ class PersonaCreate(PersonaBase):
             raise ValueError('La contraseña debe tener al menos 6 caracteres')
         return v
 
+    @field_validator('matricula')
+    @classmethod
+    def validate_matricula(cls, v):
+        if not v or v.strip() == '':
+            raise ValueError('La matrícula es obligatoria')
+        return v.strip()
+
+    @field_validator('cohorte_ano')
+    @classmethod
+    def validate_cohorte_ano(cls, v):
+        if v is not None:
+            if not isinstance(v, int) or v < 1000 or v > 9999:
+                raise ValueError('El año de cohorte debe ser un número de 4 dígitos')
+        return v
+
+    @field_validator('cohorte_periodo')
+    @classmethod
+    def validate_cohorte_periodo(cls, v):
+        if v is not None:
+            if not isinstance(v, int) or v not in [1, 2]:
+                raise ValueError('El período de cohorte debe ser 1 o 2')
+        return v
+
 
 # Esquema para actualizar una persona
 class PersonaUpdate(BaseModel):
@@ -119,7 +144,9 @@ class PersonaUpdate(BaseModel):
     grupo_etnico: Optional[str] = None
     rol: Optional[Rol] = None
     password: Optional[str] = None
-    cohorte_id: Optional[int] = None  # Nuevo campo para cohorte
+    # Campos de cohorte simplificados
+    cohorte_ano: Optional[int] = None  # Año de cohorte (ej: 2024, 2025)
+    cohorte_periodo: Optional[int] = 1  # Período de cohorte (1 o 2, por defecto 1)
     programas_ids: Optional[List[int]] = None
     grupos_ids: Optional[List[int]] = None
 
@@ -157,6 +184,8 @@ class PersonaInDB(PersonaBase):
 
 # Esquema para respuesta de persona (sin datos sensibles)
 class PersonaOut(PersonaInDB):
+    # Override matricula para que sea opcional en respuestas (compatibilidad con datos existentes)
+    matricula: Optional[str] = None
     programas: Optional[List[Dict[str, Any]]] = []
     grupos: Optional[List[Dict[str, Any]]] = []
     cohorte: Optional[Dict[str, Any]] = None  # Información de la cohorte
@@ -182,7 +211,7 @@ class PersonaOut(PersonaInDB):
                 'correo_institucional': persona.correo_institucional,
                 'discapacidad': persona.discapacidad,
                 'observaciones': persona.observaciones,
-                'matricula': persona.matricula,
+                'matricula': persona.matricula or '',
                 'semestre': persona.semestre,
                 'numero_hijos': persona.numero_hijos,
                 'grupo_etnico': persona.grupo_etnico,
@@ -190,7 +219,8 @@ class PersonaOut(PersonaInDB):
                 'is_active': persona.is_active,
                 'fecha_creacion': persona.fecha_creacion,
                 'fecha_actualizacion': persona.fecha_actualizacion,
-                'cohorte_id': persona.cohorte_id
+                'cohorte_ano': persona.cohorte_ano,
+                'cohorte_periodo': persona.cohorte_periodo
             }
 
             # Serializar programas de forma segura

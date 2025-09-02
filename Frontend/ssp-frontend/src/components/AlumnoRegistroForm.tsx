@@ -11,12 +11,12 @@ import {
   Checkbox,
   Typography,
   Box,
-  Autocomplete,
   Alert
 } from '@mui/material';
-import { DatePicker } from '@mui/x-date-pickers/DatePicker';
-import type { PersonaCreate, Cohorte } from '../types/index';
-import { cohortesApi } from '@/services/api';
+
+import type { PersonaCreate } from '../types/index';
+import { personasApi, catalogosApi } from '@/services/api';
+import CatalogoSelector from './CatalogoSelector';
 
 interface AlumnoRegistroFormProps {
   open: boolean;
@@ -31,8 +31,8 @@ const AlumnoRegistroForm = ({ open, onClose, onSubmit, loading = false }: Alumno
     correo_institucional: '',
     rol: 'alumno',
     password: '',
-    sexo: 'masculino',
-    genero: 'masculino',
+    sexo: 'no_decir',
+    genero: 'no_decir',
     edad: 18,
     estado_civil: 'soltero',
     religion: '',
@@ -47,30 +47,27 @@ const AlumnoRegistroForm = ({ open, onClose, onSubmit, loading = false }: Alumno
     semestre: 1,
     numero_hijos: 0,
     grupo_etnico: '',
-    cohorte_id: null,
+    cohorte_ano: undefined,
+    cohorte_periodo: 1,
     programas_ids: [],
     grupos_ids: [],
   });
 
-  // Estados para cohortes
-  const [cohortes, setCohortes] = useState<Cohorte[]>([]);
-  const [selectedCohorte, setSelectedCohorte] = useState<Cohorte | null>(null);
+  // Estados para cohorte simplificada (campos separados)
+  const [cohorteAno, setCohorteAno] = useState<number | ''>('');
+  const [cohortePeriodo, setCohortePeriodo] = useState<number>(1);
 
-  // Cargar cohortes cuando se abra el formulario
-  useEffect(() => {
-    const loadCohortes = async () => {
-      if (open) {
-        try {
-          const cohortesData = await cohortesApi.getActivas();
-          setCohortes(cohortesData);
-        } catch (error) {
-          console.error('Error loading cohortes:', error);
-        }
-      }
-    };
+  // Estado para confirmación de contraseña
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordError, setPasswordError] = useState('');
 
-    loadCohortes();
-  }, [open]);
+  // Estados para validación de duplicados
+  const [emailError, setEmailError] = useState('');
+  const [matriculaError, setMatriculaError] = useState('');
+  const [validatingEmail, setValidatingEmail] = useState(false);
+  const [validatingMatricula, setValidatingMatricula] = useState(false);
+
+
 
   // Reset form when dialog closes
   useEffect(() => {
@@ -96,11 +93,17 @@ const AlumnoRegistroForm = ({ open, onClose, onSubmit, loading = false }: Alumno
         semestre: 1,
         numero_hijos: 0,
         grupo_etnico: '',
-        cohorte_id: null,
+        cohorte_ano: undefined,
+        cohorte_periodo: 1,
         programas_ids: [],
         grupos_ids: [],
       });
-      setSelectedCohorte(null);
+      setCohorteAno('');
+      setCohortePeriodo(1);
+      setConfirmPassword('');
+      setPasswordError('');
+      setEmailError('');
+      setMatriculaError('');
     }
   }, [open]);
 
@@ -110,24 +113,128 @@ const AlumnoRegistroForm = ({ open, onClose, onSubmit, loading = false }: Alumno
       ...prev,
       [field]: value
     }));
+
+    // Validar contraseñas cuando se cambie el campo password
+    if (field === 'password' && confirmPassword) {
+      validatePasswordMatch(value, confirmPassword);
+    }
   };
 
-  // Manejar selección de cohorte
-  const handleCohorteChange = (event: any, newValue: Cohorte | null) => {
-    setSelectedCohorte(newValue);
+  // Effect para validar email con debounce
+  useEffect(() => {
+    if (formData.correo_institucional) {
+      setEmailError('');
+      const timeoutId = setTimeout(() => {
+        validateEmail(formData.correo_institucional);
+      }, 500);
+      return () => clearTimeout(timeoutId);
+    } else {
+      setEmailError('');
+    }
+  }, [formData.correo_institucional]);
+
+  // Effect para validar matrícula con debounce
+  useEffect(() => {
+    setMatriculaError('');
+    const timeoutId = setTimeout(() => {
+      validateMatricula(formData.matricula);
+    }, 500);
+    return () => clearTimeout(timeoutId);
+  }, [formData.matricula]);
+
+  // Manejar cambio en confirmación de contraseña
+  const handleConfirmPasswordChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value;
+    setConfirmPassword(value);
+    validatePasswordMatch(formData.password, value);
+  };
+
+  // Validar que las contraseñas coincidan
+  const validatePasswordMatch = (password: string, confirmPass: string) => {
+    if (confirmPass && password !== confirmPass) {
+      setPasswordError('Las contraseñas no coinciden');
+    } else {
+      setPasswordError('');
+    }
+  };
+
+  // Validar email en tiempo real
+  const validateEmail = async (email: string) => {
+    if (!email || !email.includes('@')) {
+      setEmailError('');
+      return;
+    }
+
+    try {
+      setValidatingEmail(true);
+      const result = await personasApi.validateEmail(email);
+      if (!result.available) {
+        setEmailError('Este correo electrónico ya está registrado');
+      } else {
+        setEmailError('');
+      }
+    } catch (error) {
+      console.error('Error validating email:', error);
+      setEmailError('');
+    } finally {
+      setValidatingEmail(false);
+    }
+  };
+
+  // Validar matrícula en tiempo real
+  const validateMatricula = async (matricula: string) => {
+    if (!matricula || matricula.trim() === '') {
+      setMatriculaError('La matrícula es obligatoria');
+      return;
+    }
+
+    try {
+      setValidatingMatricula(true);
+      const result = await personasApi.validateMatricula(matricula);
+      if (!result.available) {
+        setMatriculaError(result.message || 'Esta matrícula ya está registrada');
+      } else {
+        setMatriculaError('');
+      }
+    } catch (error) {
+      console.error('Error validating matricula:', error);
+      setMatriculaError('');
+    } finally {
+      setValidatingMatricula(false);
+    }
+  };
+
+  // Manejar cambio de año de cohorte
+  const handleCohorteAnoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value;
+    const numValue = value === '' ? '' : parseInt(value, 10);
+    setCohorteAno(numValue);
+
+    // Actualizar formData directamente
     setFormData(prev => ({
       ...prev,
-      cohorte_id: newValue ? newValue.id : null
+      cohorte_ano: numValue === '' ? undefined : numValue
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Manejar cambio de período de cohorte
+  const handleCohortePeriodoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parseInt(event.target.value, 10);
+    setCohortePeriodo(value);
+
+    // Actualizar formData directamente
+    setFormData(prev => ({
+      ...prev,
+      cohorte_periodo: value
+    }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     // Validación básica
     if (!formData.correo_institucional || !formData.celular ||
-        !formData.lugar_origen || !formData.colonia_residencia_actual ||
-        !formData.password) {
+        !formData.lugar_origen || !formData.password || !formData.matricula) {
       alert('Por favor, complete todos los campos requeridos.');
       return;
     }
@@ -135,6 +242,28 @@ const AlumnoRegistroForm = ({ open, onClose, onSubmit, loading = false }: Alumno
     // Validación de contraseña
     if (formData.password.length < 6) {
       alert('La contraseña debe tener al menos 6 caracteres.');
+      return;
+    }
+
+    // Validación de confirmación de contraseña
+    if (!confirmPassword) {
+      alert('Por favor, confirme su contraseña.');
+      return;
+    }
+
+    if (formData.password !== confirmPassword) {
+      alert('Las contraseñas no coinciden.');
+      return;
+    }
+
+    // Validación de duplicados
+    if (emailError) {
+      alert('El correo electrónico ya está registrado.');
+      return;
+    }
+
+    if (matriculaError) {
+      alert('La matrícula ya está registrada.');
       return;
     }
 
@@ -148,24 +277,44 @@ const AlumnoRegistroForm = ({ open, onClose, onSubmit, loading = false }: Alumno
       observaciones: formData.observaciones || '',
       matricula: formData.matricula || '',
       grupo_etnico: formData.grupo_etnico || '',
+      colonia_residencia_actual: formData.colonia_residencia_actual || '',
       // Asegurar que los arrays no sean null/undefined
       programas_ids: formData.programas_ids || [],
       grupos_ids: formData.grupos_ids || [],
-      // Asegurar que cohorte_id sea null si no está seleccionado
-      cohorte_id: formData.cohorte_id || null
+      // Enviar campos de cohorte por separado
+      cohorte_ano: formData.cohorte_ano || undefined,
+      cohorte_periodo: formData.cohorte_periodo || 1
     };
 
     console.log('Datos a enviar:', cleanedData);
-    onSubmit(cleanedData);
+
+    // Enviar datos y procesar elementos personalizados después del éxito
+    try {
+      await onSubmit(cleanedData);
+
+      // Solo después del envío exitoso, procesar elementos personalizados
+      await catalogosApi.procesarElementosPersonalizados(cleanedData);
+
+    } catch (error) {
+      // Si hay error en el envío, no procesar elementos personalizados
+      throw error;
+    }
   };
 
   const isFormValid = () => {
-    return formData.correo_institucional && 
-           formData.celular && 
-           formData.lugar_origen && 
-           formData.colonia_residencia_actual &&
+    return formData.correo_institucional &&
+           formData.celular &&
+           formData.lugar_origen &&
            formData.password &&
-           formData.password.length >= 6;
+           formData.password.length >= 6 &&
+           formData.matricula &&
+           confirmPassword &&
+           formData.password === confirmPassword &&
+           !passwordError &&
+           !emailError &&
+           !matriculaError &&
+           !validatingEmail &&
+           !validatingMatricula;
   };
 
   return (
@@ -193,7 +342,8 @@ const AlumnoRegistroForm = ({ open, onClose, onSubmit, loading = false }: Alumno
                 type="email"
                 value={formData.correo_institucional}
                 onChange={handleChange('correo_institucional')}
-                helperText="Use su correo institucional oficial"
+                error={!!emailError}
+                helperText={emailError || (validatingEmail ? "Verificando disponibilidad..." : "Use su correo institucional oficial")}
               />
             </Grid>
 
@@ -212,10 +362,25 @@ const AlumnoRegistroForm = ({ open, onClose, onSubmit, loading = false }: Alumno
             <Grid size={{ xs: 12, sm: 6 }}>
               <TextField
                 fullWidth
+                required
+                label="Confirmar contraseña"
+                type="password"
+                value={confirmPassword}
+                onChange={handleConfirmPasswordChange}
+                error={!!passwordError}
+                helperText={passwordError || "Repita su contraseña"}
+              />
+            </Grid>
+
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField
+                fullWidth
+                required
                 label="Matrícula"
                 value={formData.matricula}
                 onChange={handleChange('matricula')}
-                helperText="Su número de matrícula estudiantil"
+                error={!!matriculaError}
+                helperText={matriculaError || (validatingMatricula ? "Verificando disponibilidad..." : "Su número de matrícula estudiantil")}
               />
             </Grid>
 
@@ -237,6 +402,7 @@ const AlumnoRegistroForm = ({ open, onClose, onSubmit, loading = false }: Alumno
                   onChange={handleChange('sexo')}
                   label="Sexo"
                 >
+                  <MenuItem value="no_decir">Prefiero no decir</MenuItem>
                   <MenuItem value="masculino">Masculino</MenuItem>
                   <MenuItem value="femenino">Femenino</MenuItem>
                   <MenuItem value="otro">Otro</MenuItem>
@@ -252,6 +418,7 @@ const AlumnoRegistroForm = ({ open, onClose, onSubmit, loading = false }: Alumno
                   onChange={handleChange('genero')}
                   label="Género"
                 >
+                  <MenuItem value="no_decir">Prefiero no decir</MenuItem>
                   <MenuItem value="masculino">Masculino</MenuItem>
                   <MenuItem value="femenino">Femenino</MenuItem>
                   <MenuItem value="no_binario">No binario</MenuItem>
@@ -267,7 +434,7 @@ const AlumnoRegistroForm = ({ open, onClose, onSubmit, loading = false }: Alumno
                 type="number"
                 value={formData.edad}
                 onChange={handleChange('edad')}
-                inputProps={{ min: 15, max: 100 }}
+                slotProps={{ htmlInput: { min: 15, max: 100 } }}
               />
             </Grid>
 
@@ -302,7 +469,6 @@ const AlumnoRegistroForm = ({ open, onClose, onSubmit, loading = false }: Alumno
             <Grid size={{ xs: 12, sm: 6 }}>
               <TextField
                 fullWidth
-                required
                 label="Colonia de Residencia Actual"
                 value={formData.colonia_residencia_actual}
                 onChange={handleChange('colonia_residencia_actual')}
@@ -323,26 +489,43 @@ const AlumnoRegistroForm = ({ open, onClose, onSubmit, loading = false }: Alumno
                 type="number"
                 value={formData.semestre}
                 onChange={handleChange('semestre')}
-                inputProps={{ min: 1, max: 12 }}
+                slotProps={{ htmlInput: { min: 1, max: 12 } }}
               />
             </Grid>
 
+            {/* Año de Cohorte */}
             <Grid size={{ xs: 12, sm: 6 }}>
-              <Autocomplete
-                options={cohortes}
-                getOptionLabel={(option) => `${option.nombre} - ${option.descripcion || 'Sin descripción'}`}
-                value={selectedCohorte}
-                onChange={handleCohorteChange}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    label="Cohorte (Opcional)"
-                    placeholder="Seleccione una cohorte..."
-                    helperText="Seleccione su cohorte académica si la conoce"
-                  />
-                )}
-                noOptionsText="No hay cohortes disponibles"
+              <TextField
+                fullWidth
+                label="Año de Cohorte (Opcional)"
+                type="number"
+                value={cohorteAno === '' ? '' : cohorteAno}
+                onChange={handleCohorteAnoChange}
+                slotProps={{
+                  htmlInput: {
+                    min: 1000,
+                    max: 9999,
+                    step: 1
+                  }
+                }}
+                helperText="Año académico de 4 dígitos (ej: 2024, 2025)"
+                placeholder="2024"
               />
+            </Grid>
+
+            {/* Período de Cohorte */}
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField
+                fullWidth
+                select
+                label="Período de Cohorte (Opcional)"
+                value={cohortePeriodo}
+                onChange={handleCohortePeriodoChange}
+                helperText="Período académico (por defecto: 1)"
+              >
+                <MenuItem value={1}>Período 1</MenuItem>
+                <MenuItem value={2}>Período 2</MenuItem>
+              </TextField>
             </Grid>
 
             {/* Información Adicional */}
@@ -353,20 +536,20 @@ const AlumnoRegistroForm = ({ open, onClose, onSubmit, loading = false }: Alumno
             </Grid>
 
             <Grid size={{ xs: 12, sm: 6 }}>
-              <TextField
-                fullWidth
+              <CatalogoSelector
+                tipo="religion"
                 label="Religión"
-                value={formData.religion}
-                onChange={handleChange('religion')}
+                value={formData.religion || ''}
+                onChange={(value) => setFormData(prev => ({ ...prev, religion: value }))}
               />
             </Grid>
 
             <Grid size={{ xs: 12, sm: 6 }}>
-              <TextField
-                fullWidth
+              <CatalogoSelector
+                tipo="grupo_etnico"
                 label="Grupo Étnico"
-                value={formData.grupo_etnico}
-                onChange={handleChange('grupo_etnico')}
+                value={formData.grupo_etnico || ''}
+                onChange={(value) => setFormData(prev => ({ ...prev, grupo_etnico: value }))}
               />
             </Grid>
 
@@ -400,17 +583,17 @@ const AlumnoRegistroForm = ({ open, onClose, onSubmit, loading = false }: Alumno
                 type="number"
                 value={formData.numero_hijos}
                 onChange={handleChange('numero_hijos')}
-                inputProps={{ min: 0 }}
+                slotProps={{ htmlInput: { min: 0 } }}
               />
             </Grid>
 
             <Grid size={{ xs: 12 }}>
-              <TextField
-                fullWidth
+              <CatalogoSelector
+                tipo="discapacidad"
                 label="Discapacidad"
-                value={formData.discapacidad}
-                onChange={handleChange('discapacidad')}
-                helperText="Describa cualquier discapacidad o necesidad especial"
+                value={formData.discapacidad || ''}
+                onChange={(value) => setFormData(prev => ({ ...prev, discapacidad: value }))}
+                helperText="Seleccione si tiene alguna discapacidad o necesidad especial"
               />
             </Grid>
 

@@ -17,7 +17,8 @@ import {
   People as PeopleIcon,
   Assignment as AssignmentIcon,
   Group as GroupIcon,
-  School as SchoolIcon
+  School as SchoolIcon,
+  Category as CategoryIcon
 } from '@mui/icons-material';
 import { AuthContext } from '@/contexts/AuthContext';
 import AlumnoPage from './AlumnoPage';
@@ -69,6 +70,13 @@ const Dashboard = () => {
       icon: <SchoolIcon sx={{ fontSize: 40 }} />,
       path: '/programas-educativos',
       roles: ['admin', 'personal']
+    },
+    {
+      title: 'Catálogos',
+      description: 'Administrar catálogos de religiones, grupos étnicos y discapacidades',
+      icon: <CategoryIcon sx={{ fontSize: 40 }} />,
+      path: '/catalogos',
+      roles: ['admin']
     }
   ];
 

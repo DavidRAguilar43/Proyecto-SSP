@@ -9,6 +9,7 @@ import { ProgramasEducativosPage } from '@/pages/ProgramasEducativosPage';
 import { GruposPage } from '@/pages/GruposPage';
 import { AtencionesPage } from '@/pages/AtencionesPage';
 import AlumnoPage from '@/pages/AlumnoPage';
+import CatalogosPage from '@/pages/CatalogosPage';
 import ProtectedRoute from '@/components/ProtectedRoute';
 
 function App() {
@@ -56,6 +57,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <AtencionesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/catalogos"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <CatalogosPage />
               </ProtectedRoute>
             }
           />

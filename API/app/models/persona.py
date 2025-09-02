@@ -31,10 +31,12 @@ class Persona(Base):
     hashed_password = Column(String, nullable=False)
     fecha_creacion = Column(DateTime, server_default=func.now())
     fecha_actualizacion = Column(DateTime, onupdate=func.now())
-    cohorte_id = Column(Integer, ForeignKey("cohorte.id"), nullable=True)
+    # Campos de cohorte simplificados
+    cohorte_ano = Column(Integer, nullable=True)  # Año de cohorte (ej: 2024, 2025)
+    cohorte_periodo = Column(Integer, nullable=True, default=1)  # Período de cohorte (1 o 2)
 
     # Relaciones
-    cohorte = relationship("Cohorte", back_populates="personas")
+    # Nota: cohorte_id ahora es string, no hay relación directa con tabla cohorte
     grupos = relationship("Grupo", secondary=persona_grupo, back_populates="personas")
     programas = relationship("ProgramaEducativo", secondary=persona_programa, back_populates="personas")
     personal = relationship("Personal", back_populates="persona", uselist=False)

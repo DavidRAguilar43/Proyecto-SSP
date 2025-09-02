@@ -11,3 +11,6 @@ from app.models.atencion import Atencion
 from app.models.cuestionario import Cuestionario
 from app.models.cohorte import Cohorte
 from app.models.cita import Cita
+from app.models.religion import Religion
+from app.models.grupo_etnico import GrupoEtnico
+from app.models.discapacidad import Discapacidad

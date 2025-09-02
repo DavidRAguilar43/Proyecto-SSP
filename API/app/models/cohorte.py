@@ -17,5 +17,5 @@ class Cohorte(Base):
     fecha_creacion = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relaciones
-    personas = relationship("Persona", back_populates="cohorte")
+    # Nota: Relación con Persona eliminada debido a simplificación de cohortes
     grupos = relationship("Grupo", back_populates="cohorte")

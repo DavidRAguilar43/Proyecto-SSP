@@ -65,26 +65,28 @@ export interface Persona {
 
 export interface PersonaCreate {
   tipo_persona: 'alumno' | 'docente' | 'administrativo' | 'otro';
-  sexo: 'masculino' | 'femenino' | 'otro';
-  genero: 'masculino' | 'femenino' | 'no_binario' | 'otro';
+  sexo: 'no_decir' | 'masculino' | 'femenino' | 'otro';
+  genero: 'no_decir' | 'masculino' | 'femenino' | 'no_binario' | 'otro';
   edad: number;
   estado_civil: 'soltero' | 'casado' | 'divorciado' | 'viudo' | 'union_libre' | 'otro';
   religion?: string;
   trabaja: boolean;
   lugar_trabajo?: string;
   lugar_origen: string;
-  colonia_residencia_actual: string;
+  colonia_residencia_actual?: string;
   celular: string;
   correo_institucional: string;
   discapacidad?: string;
   observaciones?: string;
-  matricula?: string;
+  matricula: string;
   semestre?: number;
   numero_hijos: number;
   grupo_etnico?: string;
   rol: 'admin' | 'personal' | 'docente' | 'alumno';
   password: string;
-  cohorte_id?: number;  // Nuevo campo
+  // Campos de cohorte simplificados
+  cohorte_ano?: number;  // Año de cohorte (ej: 2024, 2025)
+  cohorte_periodo?: number;  // Período de cohorte (1 o 2)
   programas_ids?: number[];
   grupos_ids?: number[];
 }
@@ -256,4 +258,41 @@ export interface ReportePsicopedagogicoOut {
   reporte_ia: string;
   persona_nombre?: string;
   persona_email?: string;
+}
+
+// Interfaces para Catálogos
+export interface CatalogoBase {
+  id: number;
+  titulo: string;
+  activo: boolean;
+  fecha_creacion: string;
+  fecha_actualizacion: string;
+}
+
+export interface Religion extends CatalogoBase {}
+
+export interface GrupoEtnico extends CatalogoBase {}
+
+export interface Discapacidad extends CatalogoBase {}
+
+export interface CatalogoCreate {
+  titulo: string;
+  activo?: boolean;
+}
+
+export interface CatalogoUpdate {
+  titulo?: string;
+  activo?: boolean;
+}
+
+export interface ElementosPendientes {
+  religiones: Religion[];
+  grupos_etnicos: GrupoEtnico[];
+  discapacidades: Discapacidad[];
+  total: number;
+}
+
+export interface ElementoPersonalizado {
+  titulo: string;
+  tipo_catalogo: 'religion' | 'grupo_etnico' | 'discapacidad';
 }

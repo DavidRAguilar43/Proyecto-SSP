@@ -123,6 +123,18 @@ export const personasService = {
     const response = await api.put('/personas/mi-perfil', data);
     return response.data;
   },
+
+  // Validar si un email está disponible
+  validateEmail: async (email: string) => {
+    const response = await api.get(`/personas/validate-email/${encodeURIComponent(email)}`);
+    return response.data;
+  },
+
+  // Validar si una matrícula está disponible
+  validateMatricula: async (matricula: string) => {
+    const response = await api.get(`/personas/validate-matricula/${encodeURIComponent(matricula)}`);
+    return response.data;
+  },
 };
 
 // API para Cohortes
@@ -178,6 +190,143 @@ export const cohortesApi = {
 
 // Alias para mantener compatibilidad
 export const personasApi = personasService;
+
+// API para Catálogos
+export const catalogosApi = {
+  // Religiones
+  religiones: {
+    getAll: async (activo?: boolean) => {
+      const params = activo !== undefined ? { activo } : {};
+      const response = await api.get('/catalogos/religiones/', { params });
+      return response.data;
+    },
+    getActivas: async () => {
+      const response = await api.get('/catalogos/religiones/activas/');
+      return response.data;
+    },
+    create: async (data: any) => {
+      const response = await api.post('/catalogos/religiones/', data);
+      return response.data;
+    },
+    update: async (id: number, data: any) => {
+      const response = await api.put(`/catalogos/religiones/${id}`, data);
+      return response.data;
+    },
+    delete: async (id: number) => {
+      const response = await api.delete(`/catalogos/religiones/${id}`);
+      return response.data;
+    }
+  },
+
+  // Grupos Étnicos
+  gruposEtnicos: {
+    getAll: async (activo?: boolean) => {
+      const params = activo !== undefined ? { activo } : {};
+      const response = await api.get('/catalogos/grupos-etnicos/', { params });
+      return response.data;
+    },
+    getActivos: async () => {
+      const response = await api.get('/catalogos/grupos-etnicos/activos/');
+      return response.data;
+    },
+    create: async (data: any) => {
+      const response = await api.post('/catalogos/grupos-etnicos/', data);
+      return response.data;
+    },
+    update: async (id: number, data: any) => {
+      const response = await api.put(`/catalogos/grupos-etnicos/${id}`, data);
+      return response.data;
+    },
+    delete: async (id: number) => {
+      const response = await api.delete(`/catalogos/grupos-etnicos/${id}`);
+      return response.data;
+    }
+  },
+
+  // Discapacidades
+  discapacidades: {
+    getAll: async (activo?: boolean) => {
+      const params = activo !== undefined ? { activo } : {};
+      const response = await api.get('/catalogos/discapacidades/', { params });
+      return response.data;
+    },
+    getActivas: async () => {
+      const response = await api.get('/catalogos/discapacidades/activas/');
+      return response.data;
+    },
+    create: async (data: any) => {
+      const response = await api.post('/catalogos/discapacidades/', data);
+      return response.data;
+    },
+    update: async (id: number, data: any) => {
+      const response = await api.put(`/catalogos/discapacidades/${id}`, data);
+      return response.data;
+    },
+    delete: async (id: number) => {
+      const response = await api.delete(`/catalogos/discapacidades/${id}`);
+      return response.data;
+    }
+  },
+
+  // Endpoints especiales
+  getPendientes: async () => {
+    const response = await api.get('/catalogos/pendientes/');
+    return response.data;
+  },
+
+  createElementoPersonalizado: async (data: any) => {
+    const response = await api.post('/catalogos/elemento-personalizado/', data);
+    return response.data;
+  },
+
+  activarMultiples: async (elementos: any) => {
+    const response = await api.post('/catalogos/activar-multiples/', elementos);
+    return response.data;
+  },
+
+  // Procesar elementos personalizados después del envío exitoso del formulario
+  procesarElementosPersonalizados: async (formData: any) => {
+    const elementosPersonalizados = [];
+
+    // Verificar religión personalizada
+    if (formData.religion && formData.religion !== 'otro' && formData.religion.trim()) {
+      elementosPersonalizados.push({
+        titulo: formData.religion.trim(),
+        tipo_catalogo: 'religion'
+      });
+    }
+
+    // Verificar grupo étnico personalizado
+    if (formData.grupo_etnico && formData.grupo_etnico !== 'otro' && formData.grupo_etnico.trim()) {
+      elementosPersonalizados.push({
+        titulo: formData.grupo_etnico.trim(),
+        tipo_catalogo: 'grupo_etnico'
+      });
+    }
+
+    // Verificar discapacidad personalizada
+    if (formData.discapacidad && formData.discapacidad !== 'otro' && formData.discapacidad.trim()) {
+      elementosPersonalizados.push({
+        titulo: formData.discapacidad.trim(),
+        tipo_catalogo: 'discapacidad'
+      });
+    }
+
+    // Crear elementos personalizados en el backend
+    const resultados = [];
+    for (const elemento of elementosPersonalizados) {
+      try {
+        const resultado = await catalogosApi.createElementoPersonalizado(elemento);
+        resultados.push(resultado);
+      } catch (error) {
+        console.error('Error creating custom element:', error);
+        // Continuar con los demás elementos aunque uno falle
+      }
+    }
+
+    return resultados;
+  }
+};
 
 // API para Programas Educativos
 export const programasEducativosApi = {

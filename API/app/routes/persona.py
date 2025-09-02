@@ -26,6 +26,33 @@ from app.utils.deps import (
 router = APIRouter(prefix="/personas", tags=["personas"])
 
 
+@router.get("/validate-email/{email}")
+def validate_email(
+    email: str,
+    db: Session = Depends(get_db)
+) -> Any:
+    """
+    Validar si un correo electrónico ya está en uso.
+    """
+    db_persona = db.query(Persona).filter(Persona.correo_institucional == email).first()
+    return {"available": db_persona is None}
+
+
+@router.get("/validate-matricula/{matricula}")
+def validate_matricula(
+    matricula: str,
+    db: Session = Depends(get_db)
+) -> Any:
+    """
+    Validar si una matrícula ya está en uso.
+    """
+    if not matricula or matricula.strip() == "":
+        return {"available": False, "message": "La matrícula es obligatoria"}
+
+    db_persona = db.query(Persona).filter(Persona.matricula == matricula.strip()).first()
+    return {"available": db_persona is None}
+
+
 @router.post("/registro-alumno/", response_model=PersonaOut)
 def registro_alumno(
     *,
