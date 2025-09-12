@@ -30,6 +30,7 @@ import PersonaForm from '@/components/PersonaForm';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import CuestionarioPsicopedagogico from '@/components/CuestionarioPsicopedagogico';
 import ReportePsicopedagogico from '@/components/ReportePsicopedagogico';
+import NotificacionesRegistrosPendientes from '@/components/admin/NotificacionesRegistrosPendientes';
 import type { Persona, PersonaCreate } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -325,6 +326,11 @@ const PersonasPage = () => {
               Buscar
             </Button>
           </Box>
+
+          {/* Notificaciones para administradores */}
+          {user?.rol === 'admin' && (
+            <NotificacionesRegistrosPendientes />
+          )}
 
           <Button
             variant="contained"

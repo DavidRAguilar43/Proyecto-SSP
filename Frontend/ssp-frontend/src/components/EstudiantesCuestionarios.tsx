@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import {
   Box,
   Card,
@@ -21,9 +21,13 @@ import {
   Psychology as PsychologyIcon,
   Assessment as AssessmentIcon,
   Person as PersonIcon,
-  Notifications as NotificationsIcon
+  Notifications as NotificationsIcon,
+  FiberNew as FiberNewIcon,
+  CheckCircle as CheckCircleIcon
 } from '@mui/icons-material';
 import { api } from '@/services/api';
+import { notificationService } from '@/services/notificationService';
+import { AuthContext } from '@/contexts/AuthContext';
 import ReportePsicopedagogico from './ReportePsicopedagogico';
 
 interface EstudianteConCuestionario {
@@ -43,7 +47,9 @@ interface EstudiantesCuestionariosProps {
 const EstudiantesCuestionarios: React.FC<EstudiantesCuestionariosProps> = ({
   onEstudianteSelect
 }) => {
-  const [estudiantes, setEstudiantes] = useState<EstudianteConCuestionario[]>([]);
+  const { user } = useContext(AuthContext);
+  const [todosLosEstudiantes, setTodosLosEstudiantes] = useState<EstudianteConCuestionario[]>([]);
+  const [estudiantesNoLeidos, setEstudiantesNoLeidos] = useState<EstudianteConCuestionario[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reporteOpen, setReporteOpen] = useState(false);
@@ -51,13 +57,24 @@ const EstudiantesCuestionarios: React.FC<EstudiantesCuestionariosProps> = ({
 
   useEffect(() => {
     cargarEstudiantesConCuestionarios();
+
+    // Limpiar cuestionarios antiguos al cargar el componente
+    notificationService.limpiarCuestionariosAntiguos();
   }, []);
 
   const cargarEstudiantesConCuestionarios = async () => {
     try {
       setLoading(true);
       const response = await api.get('/cuestionario-psicopedagogico/estudiantes-con-cuestionarios');
-      setEstudiantes(response.data);
+      setTodosLosEstudiantes(response.data);
+
+      // Filtrar solo cuestionarios no leídos para mostrar en el dashboard
+      if (user?.id) {
+        const noLeidos = response.data.filter((estudiante: EstudianteConCuestionario) =>
+          !notificationService.estaLeido(estudiante.id_cuestionario, user.id)
+        );
+        setEstudiantesNoLeidos(noLeidos);
+      }
     } catch (error: any) {
       console.error('Error cargando estudiantes:', error);
       setError(error.response?.data?.detail || 'Error al cargar estudiantes con cuestionarios');
@@ -70,6 +87,15 @@ const EstudiantesCuestionarios: React.FC<EstudiantesCuestionariosProps> = ({
     setEstudianteSeleccionado(estudiante);
     setReporteOpen(true);
     onEstudianteSelect?.(estudiante);
+
+    // Marcar como leído si no lo estaba antes
+    if (user?.id && !notificationService.estaLeido(estudiante.id_cuestionario, user.id)) {
+      notificationService.marcarComoLeido(estudiante.id_cuestionario, user.id);
+
+      // Remover inmediatamente del dashboard (filtrar cuestionarios no leídos)
+      const nuevosNoLeidos = estudiantesNoLeidos.filter(e => e.id_cuestionario !== estudiante.id_cuestionario);
+      setEstudiantesNoLeidos(nuevosNoLeidos);
+    }
   };
 
   const formatearFecha = (fechaString: string) => {
@@ -113,6 +139,11 @@ const EstudiantesCuestionarios: React.FC<EstudiantesCuestionariosProps> = ({
     );
   }
 
+  // Si no hay cuestionarios nuevos, no mostrar nada en el dashboard
+  if (!loading && !error && estudiantesNoLeidos.length === 0) {
+    return null;
+  }
+
   return (
     <Box>
       <Card>
@@ -120,29 +151,23 @@ const EstudiantesCuestionarios: React.FC<EstudiantesCuestionariosProps> = ({
           <Box display="flex" alignItems="center" mb={2}>
             <NotificationsIcon color="primary" sx={{ mr: 1 }} />
             <Typography variant="h6">
-              Cuestionarios Psicopedagógicos Completados
+              Cuestionarios Nuevos Pendientes de Revisión
             </Typography>
-            <Badge 
-              badgeContent={estudiantes.length} 
-              color="error" 
+            <Badge
+              badgeContent={estudiantesNoLeidos.length}
+              color="error"
               sx={{ ml: 2 }}
             >
               <PsychologyIcon />
             </Badge>
           </Box>
 
-          {estudiantes.length === 0 ? (
-            <Alert severity="info">
-              No hay cuestionarios psicopedagógicos pendientes de revisión.
-            </Alert>
-          ) : (
-            <>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                {estudiantes.length} estudiante{estudiantes.length !== 1 ? 's han' : ' ha'} completado el cuestionario psicopedagógico
-              </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            {estudiantesNoLeidos.length} cuestionario{estudiantesNoLeidos.length !== 1 ? 's nuevos' : ' nuevo'} pendiente{estudiantesNoLeidos.length !== 1 ? 's' : ''} de revisión
+          </Typography>
 
               <List>
-                {estudiantes.map((estudiante, index) => (
+                {estudiantesNoLeidos.map((estudiante, index) => (
                   <React.Fragment key={estudiante.id}>
                     <ListItem
                       sx={{
@@ -155,21 +180,21 @@ const EstudiantesCuestionarios: React.FC<EstudiantesCuestionariosProps> = ({
                     >
                       <ListItemIcon>
                         <Badge badgeContent="1" color="error">
-                          <PersonIcon color="primary" />
+                          <FiberNewIcon color="error" />
                         </Badge>
                       </ListItemIcon>
-                      
+
                       <ListItemText
                         primary={
                           <Box display="flex" alignItems="center" gap={1}>
                             <Typography variant="subtitle1" fontWeight="bold">
                               {estudiante.nombre_completo}
                             </Typography>
-                            <Chip 
-                              label="Nuevo" 
-                              color="error" 
-                              size="small" 
-                              variant="outlined"
+                            <Chip
+                              label="NUEVO"
+                              color="error"
+                              size="small"
+                              variant="filled"
                             />
                           </Box>
                         }
@@ -201,12 +226,10 @@ const EstudiantesCuestionarios: React.FC<EstudiantesCuestionariosProps> = ({
                       </ListItemSecondaryAction>
                     </ListItem>
                     
-                    {index < estudiantes.length - 1 && <Divider sx={{ my: 1 }} />}
+                    {index < estudiantesNoLeidos.length - 1 && <Divider sx={{ my: 1 }} />}
                   </React.Fragment>
                 ))}
               </List>
-            </>
-          )}
         </CardContent>
       </Card>
 

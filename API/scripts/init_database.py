@@ -38,7 +38,7 @@ def create_all_tables():
         # Importar todos los modelos para asegurar que se registren
         from app.models import (
             persona, programa_educativo, grupo, personal, contacto_emergencia,
-            atencion, cuestionario, cohorte, cita, religion, grupo_etnico, discapacidad
+            atencion, cuestionario, cohorte, cita, religion, grupo_etnico, discapacidad, notificacion
         )
         
         Base.metadata.create_all(bind=engine)

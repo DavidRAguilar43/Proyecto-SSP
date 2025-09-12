@@ -44,6 +44,10 @@ class Persona(Base):
     atenciones = relationship("Atencion", back_populates="persona")
     cuestionarios_completados = relationship("Cuestionario", back_populates="persona")
 
+    # Relaciones para notificaciones de registro
+    notificaciones_enviadas = relationship("NotificacionRegistro", foreign_keys="NotificacionRegistro.usuario_solicitante_id", back_populates="usuario_solicitante")
+    notificaciones_recibidas = relationship("NotificacionRegistro", foreign_keys="NotificacionRegistro.usuario_destinatario_id", back_populates="usuario_destinatario")
+
     # Relaciones de citas
     citas_como_alumno = relationship("Cita", foreign_keys="Cita.id_alumno", back_populates="alumno")
     citas_como_personal = relationship("Cita", foreign_keys="Cita.id_personal", back_populates="personal")

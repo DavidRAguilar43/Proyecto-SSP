@@ -10,6 +10,7 @@ import { GruposPage } from '@/pages/GruposPage';
 import { AtencionesPage } from '@/pages/AtencionesPage';
 import AlumnoPage from '@/pages/AlumnoPage';
 import CatalogosPage from '@/pages/CatalogosPage';
+import CuestionariosCompletadosPage from '@/pages/CuestionariosCompletadosPage';
 import ProtectedRoute from '@/components/ProtectedRoute';
 
 function App() {
@@ -65,6 +66,14 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={['admin']}>
                 <CatalogosPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/cuestionarios-completados"
+            element={
+              <ProtectedRoute allowedRoles={['admin', 'personal']}>
+                <CuestionariosCompletadosPage />
               </ProtectedRoute>
             }
           />

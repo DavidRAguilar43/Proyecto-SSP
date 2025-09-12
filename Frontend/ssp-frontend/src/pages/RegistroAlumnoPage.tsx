@@ -16,7 +16,7 @@ import {
   School as SchoolIcon,
   ArrowBack as ArrowBackIcon
 } from '@mui/icons-material';
-import AlumnoRegistroForm from '../components/AlumnoRegistroForm';
+import RegistroUsuarioForm from '../components/RegistroUsuarioForm';
 import type { PersonaCreate } from '../types/index';
 import { personasApi } from '@/services/api';
 
@@ -34,25 +34,36 @@ const RegistroAlumnoPage = () => {
     setSnackbar({ open: true, message, severity });
   };
 
-  // Manejar registro de alumno
-  const handleRegistroAlumno = async (alumnoData: PersonaCreate) => {
+  // Manejar registro de usuario
+  const handleRegistroUsuario = async (userData: PersonaCreate) => {
     try {
       setLoading(true);
-      await personasApi.registroAlumno(alumnoData);
-      
-      showSnackbar(
-        '¡Registro exitoso! Ya puedes iniciar sesión con tus credenciales.',
-        'success'
-      );
-      
-      // Redirigir al login después de 2 segundos
-      setTimeout(() => {
-        navigate('/login');
-      }, 2000);
-      
+      await personasApi.registroAlumno(userData);
+
+      // Mensaje diferente según el tipo de usuario
+      if (userData.tipo_persona === 'alumno') {
+        showSnackbar(
+          '¡Registro exitoso! Ya puedes iniciar sesión con tus credenciales.',
+          'success'
+        );
+        // Redirigir al login después de 2 segundos
+        setTimeout(() => {
+          navigate('/login');
+        }, 2000);
+      } else {
+        showSnackbar(
+          '¡Solicitud enviada! Tu registro será revisado por un administrador. Recibirás una confirmación por correo electrónico.',
+          'info'
+        );
+        // Redirigir al login después de 3 segundos
+        setTimeout(() => {
+          navigate('/login');
+        }, 3000);
+      }
+
     } catch (error: any) {
       console.error('Error en registro:', error);
-      const errorMessage = error.response?.data?.detail || 'Error al registrar el estudiante';
+      const errorMessage = error.response?.data?.detail || 'Error al procesar el registro';
       showSnackbar(errorMessage, 'error');
     } finally {
       setLoading(false);
@@ -90,14 +101,14 @@ const RegistroAlumnoPage = () => {
               Registro de datos
             </Typography>
             <Typography variant="body1" color="text.secondary">
-              Complete el formulario para crear su cuenta personal en el Sistema de Seguimiento Psicopedagógico
+              Complete el formulario para crear su cuenta en el Sistema de Seguimiento Psicopedagógico
             </Typography>
           </Box>
 
-          <AlumnoRegistroForm
+          <RegistroUsuarioForm
             open={true}
             onClose={() => navigate('/login')}
-            onSubmit={handleRegistroAlumno}
+            onSubmit={handleRegistroUsuario}
             loading={loading}
           />
         </Paper>

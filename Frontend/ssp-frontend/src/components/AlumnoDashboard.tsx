@@ -38,6 +38,7 @@ import CuestionarioPsicopedagogico from './CuestionarioPsicopedagogico';
 import SolicitudCitaForm from './SolicitudCitaForm';
 import MisCitas from './MisCitas';
 import NotificacionesCitas from './NotificacionesCitas';
+import AppointmentRequestModal from './AppointmentRequestModal';
 import { api, citasApi } from '@/services/api';
 
 interface AlumnoDashboardProps {
@@ -57,6 +58,7 @@ const AlumnoDashboard = ({ user, onEditProfile }: AlumnoDashboardProps) => {
   const [loadingCita, setLoadingCita] = useState(false);
   const [notificacionesOpen, setNotificacionesOpen] = useState(false);
   const [notificacionesBadge, setNotificacionesBadge] = useState(0);
+  const [showAppointmentModal, setShowAppointmentModal] = useState(false);
 
   // Función para obtener las iniciales del nombre
   const getInitials = (correo: string) => {
@@ -99,11 +101,9 @@ const AlumnoDashboard = ({ user, onEditProfile }: AlumnoDashboardProps) => {
   const handleCuestionarioSuccess = () => {
     setCuestionarioCompletado(true);
     setCuestionarioOpen(false);
-    // Mostrar opción de solicitar cita después de completar cuestionario
+    // Mostrar modal de solicitud de cita después de completar cuestionario
     setTimeout(() => {
-      if (window.confirm('¡Cuestionario completado! ¿Te gustaría solicitar una cita con el personal para recibir apoyo personalizado?')) {
-        setSolicitudCitaOpen(true);
-      }
+      setShowAppointmentModal(true);
     }, 1000);
   };
 
@@ -113,13 +113,26 @@ const AlumnoDashboard = ({ user, onEditProfile }: AlumnoDashboardProps) => {
       setLoadingCita(true);
       await citasApi.solicitar(citaData);
       setSolicitudCitaOpen(false);
+      // TODO: Replace with proper snackbar notification system
       alert('¡Solicitud de cita enviada exitosamente! El personal revisará tu solicitud y te contactará pronto.');
     } catch (error: any) {
       console.error('Error solicitando cita:', error);
+      // TODO: Replace with proper snackbar notification system
       alert(error.response?.data?.detail || 'Error al solicitar la cita');
     } finally {
       setLoadingCita(false);
     }
+  };
+
+  // Manejar solicitud de cita desde el modal de cuestionario completado
+  const handleAppointmentRequest = () => {
+    setShowAppointmentModal(false);
+    setSolicitudCitaOpen(true);
+  };
+
+  // Cerrar modal de solicitud de cita
+  const handleCloseAppointmentModal = () => {
+    setShowAppointmentModal(false);
   };
 
   return (
@@ -545,6 +558,14 @@ const AlumnoDashboard = ({ user, onEditProfile }: AlumnoDashboardProps) => {
         open={notificacionesOpen}
         onClose={() => setNotificacionesOpen(false)}
         onBadgeUpdate={setNotificacionesBadge}
+      />
+
+      {/* Modal de Solicitud de Cita después del Cuestionario */}
+      <AppointmentRequestModal
+        open={showAppointmentModal}
+        onClose={handleCloseAppointmentModal}
+        onRequestAppointment={handleAppointmentRequest}
+        loading={loadingCita}
       />
     </Box>
   );

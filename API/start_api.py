@@ -25,6 +25,7 @@ def main():
         import app.models.contacto_emergencia
         import app.models.atencion
         import app.models.cuestionario
+        import app.models.notificacion
 
         # Crear todas las tablas
         Base.metadata.create_all(bind=engine)
@@ -35,6 +36,9 @@ def main():
 
         # Iniciar API
         logger.info("Iniciando servidor API...")
+        logger.info("Servidor disponible en: http://localhost:8000")
+        logger.info("Documentación API en: http://localhost:8000/docs")
+        logger.info("Presiona Ctrl+C para detener el servidor")
         uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
     except Exception as e:
         logger.error(f"Error al iniciar la API: {e}")
@@ -43,7 +47,8 @@ def create_admin():
     """Crea un usuario administrador si no existe"""
     try:
         from app.db.database import SessionLocal
-        from app.models.persona import Persona, Rol, TipoPersona, Sexo, Genero, EstadoCivil
+        from app.models.persona import Persona
+        from app.schemas.persona import Rol, TipoPersona, Sexo, Genero, EstadoCivil
         from app.core.security import get_password_hash
 
         db = SessionLocal()

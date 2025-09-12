@@ -201,13 +201,25 @@ def delete_cohorte(
     if not cohorte:
         raise HTTPException(status_code=404, detail="Cohorte no encontrada")
 
-    # Verificar si hay personas asociadas
-    personas_count = db.query(Persona).filter(Persona.cohorte_id == cohorte_id).count()
-    if personas_count > 0:
-        raise HTTPException(
-            status_code=400,
-            detail=f"No se puede eliminar la cohorte. Hay {personas_count} personas asociadas."
-        )
+    # Verificar si hay personas asociadas (usando el nuevo formato de cohorte)
+    # Extraer año y período del nombre de la cohorte (formato: "YYYY-P")
+    try:
+        cohorte_parts = cohorte.nombre.split('-')
+        if len(cohorte_parts) == 2:
+            cohorte_ano = int(cohorte_parts[0])
+            cohorte_periodo = int(cohorte_parts[1])
+            personas_count = db.query(Persona).filter(
+                Persona.cohorte_ano == cohorte_ano,
+                Persona.cohorte_periodo == cohorte_periodo
+            ).count()
+            if personas_count > 0:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"No se puede eliminar la cohorte. Hay {personas_count} personas asociadas."
+                )
+    except (ValueError, IndexError):
+        # Si no se puede parsear el nombre, continuar con la eliminación
+        pass
 
     db.delete(cohorte)
     db.commit()

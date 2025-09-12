@@ -518,4 +518,39 @@ export const cuestionarioPsicopedagogicoApi = {
   }
 };
 
+// Servicio de notificaciones de registro
+export const notificacionesApi = {
+  // Obtener notificaciones de registros pendientes
+  getNotificacionesRegistros: async (params?: {
+    skip?: number;
+    limit?: number;
+    solo_pendientes?: boolean;
+    tipo_notificacion?: string;
+  }) => {
+    const response = await api.get('/notificaciones/registros', { params });
+    return response.data;
+  },
+
+  // Marcar notificación como leída
+  marcarComoLeida: async (notificacionId: number) => {
+    const response = await api.patch(`/notificaciones/${notificacionId}/marcar-leida`);
+    return response.data;
+  },
+
+  // Procesar notificación (aprobar/rechazar)
+  procesarNotificacion: async (notificacionId: number, datos: {
+    aprobada: boolean;
+    observaciones_admin?: string;
+  }) => {
+    const response = await api.post(`/notificaciones/${notificacionId}/procesar`, datos);
+    return response.data;
+  },
+
+  // Obtener estadísticas de notificaciones
+  getEstadisticas: async () => {
+    const response = await api.get('/notificaciones/estadisticas');
+    return response.data;
+  }
+};
+
 export default api;

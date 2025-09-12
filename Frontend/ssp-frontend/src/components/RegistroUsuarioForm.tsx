@@ -18,14 +18,17 @@ import type { PersonaCreate } from '../types/index';
 import { personasApi, catalogosApi } from '@/services/api';
 import CatalogoSelector from './CatalogoSelector';
 
-interface AlumnoRegistroFormProps {
+interface RegistroUsuarioFormProps {
   open: boolean;
   onClose: () => void;
   onSubmit: (persona: PersonaCreate) => void;
   loading?: boolean;
 }
 
-const AlumnoRegistroForm = ({ open, onClose, onSubmit, loading = false }: AlumnoRegistroFormProps) => {
+const RegistroUsuarioForm = ({ open, onClose, onSubmit, loading = false }: RegistroUsuarioFormProps) => {
+  // Estado para el tipo de usuario seleccionado
+  const [tipoUsuario, setTipoUsuario] = useState<'alumno' | 'docente' | 'administrativo'>('alumno');
+
   const [formData, setFormData] = useState<PersonaCreate>({
     tipo_persona: 'alumno',
     correo_institucional: '',
@@ -69,9 +72,25 @@ const AlumnoRegistroForm = ({ open, onClose, onSubmit, loading = false }: Alumno
 
 
 
+  // Función para manejar cambio de tipo de usuario
+  const handleTipoUsuarioChange = (tipo: 'alumno' | 'docente' | 'administrativo') => {
+    setTipoUsuario(tipo);
+
+    // Actualizar formData según el tipo seleccionado
+    const nuevoRol = tipo === 'administrativo' ? 'personal' : tipo;
+    setFormData(prev => ({
+      ...prev,
+      tipo_persona: tipo,
+      rol: nuevoRol,
+      // Solo limpiar semestre si no es alumno, mantener matrícula para todos
+      semestre: tipo === 'alumno' ? prev.semestre : undefined,
+    }));
+  };
+
   // Reset form when dialog closes
   useEffect(() => {
     if (!open) {
+      setTipoUsuario('alumno');
       setFormData({
         tipo_persona: 'alumno',
         correo_institucional: '',
@@ -232,7 +251,7 @@ const AlumnoRegistroForm = ({ open, onClose, onSubmit, loading = false }: Alumno
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validación básica
+    // Validación básica común
     if (!formData.correo_institucional || !formData.celular ||
         !formData.lugar_origen || !formData.password || !formData.matricula) {
       alert('Por favor, complete todos los campos requeridos.');
@@ -320,11 +339,41 @@ const AlumnoRegistroForm = ({ open, onClose, onSubmit, loading = false }: Alumno
   return (
     <Box component="form" onSubmit={handleSubmit}>
         <Grid container spacing={3}>
-            
+
+            {/* Selección de tipo de usuario */}
             <Grid size={{ xs: 12 }}>
-              <Alert severity="info">
-                <strong>Información importante:</strong> Los programas educativos y grupos serán asignados por el personal administrativo después del registro.
-              </Alert>
+              <Typography variant="h6" gutterBottom>
+                Tipo de Usuario
+              </Typography>
+              <FormControl fullWidth>
+                <InputLabel>¿Qué tipo de usuario eres?</InputLabel>
+                <Select
+                  value={tipoUsuario}
+                  onChange={(e) => handleTipoUsuarioChange(e.target.value as 'alumno' | 'docente' | 'administrativo')}
+                  label="¿Qué tipo de usuario eres?"
+                >
+                  <MenuItem value="alumno">Estudiante</MenuItem>
+                  <MenuItem value="docente">Docente</MenuItem>
+                  <MenuItem value="administrativo">Personal Administrativo</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+
+            {/* Alerta informativa según el tipo */}
+            <Grid size={{ xs: 12 }}>
+              {tipoUsuario === 'alumno' ? (
+                <Alert severity="info">
+                  <strong>Información importante:</strong> Los programas educativos y grupos serán asignados por el personal administrativo después del registro.
+                </Alert>
+              ) : tipoUsuario === 'administrativo' ? (
+                <Alert severity="warning">
+                  <strong>Registro de Personal:</strong> Tu registro será revisado por un administrador antes de ser activado. Recibirás una confirmación por correo electrónico.
+                </Alert>
+              ) : (
+                <Alert severity="info">
+                  <strong>Registro de Docente:</strong> Tu registro será revisado por un administrador antes de ser activado.
+                </Alert>
+              )}
             </Grid>
 
             {/* Información Personal Básica */}
@@ -372,6 +421,7 @@ const AlumnoRegistroForm = ({ open, onClose, onSubmit, loading = false }: Alumno
               />
             </Grid>
 
+            {/* Matrícula - para todos los tipos de usuario */}
             <Grid size={{ xs: 12, sm: 6 }}>
               <TextField
                 fullWidth
@@ -380,7 +430,11 @@ const AlumnoRegistroForm = ({ open, onClose, onSubmit, loading = false }: Alumno
                 value={formData.matricula}
                 onChange={handleChange('matricula')}
                 error={!!matriculaError}
-                helperText={matriculaError || (validatingMatricula ? "Verificando disponibilidad..." : "Su número de matrícula estudiantil")}
+                helperText={matriculaError || (validatingMatricula ? "Verificando disponibilidad..." :
+                  tipoUsuario === 'alumno' ? "Su número de matrícula estudiantil" :
+                  tipoUsuario === 'docente' ? "Su número de matrícula como docente" :
+                  "Su número de matrícula institucional"
+                )}
               />
             </Grid>
 
@@ -475,58 +529,62 @@ const AlumnoRegistroForm = ({ open, onClose, onSubmit, loading = false }: Alumno
               />
             </Grid>
 
-            {/* Información Académica */}
-            <Grid size={{ xs: 12 }}>
-              <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>
-                Información Académica
-              </Typography>
-            </Grid>
+            {/* Información Académica - solo para alumnos */}
+            {tipoUsuario === 'alumno' && (
+              <>
+                <Grid size={{ xs: 12 }}>
+                  <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>
+                    Información Académica
+                  </Typography>
+                </Grid>
 
-            <Grid size={{ xs: 12, sm: 6 }}>
-              <TextField
-                fullWidth
-                label="Semestre"
-                type="number"
-                value={formData.semestre}
-                onChange={handleChange('semestre')}
-                slotProps={{ htmlInput: { min: 1, max: 12 } }}
-              />
-            </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextField
+                    fullWidth
+                    label="Semestre"
+                    type="number"
+                    value={formData.semestre}
+                    onChange={handleChange('semestre')}
+                    slotProps={{ htmlInput: { min: 1, max: 12 } }}
+                  />
+                </Grid>
+              </>
+            )}
 
-            {/* Año de Cohorte */}
-            <Grid size={{ xs: 12, sm: 6 }}>
-              <TextField
-                fullWidth
-                label="Año de Cohorte (Opcional)"
-                type="number"
-                value={cohorteAno === '' ? '' : cohorteAno}
-                onChange={handleCohorteAnoChange}
-                slotProps={{
-                  htmlInput: {
-                    min: 1000,
-                    max: 9999,
-                    step: 1
-                  }
-                }}
-                helperText="Año académico de 4 dígitos (ej: 2024, 2025)"
-                placeholder="2024"
-              />
-            </Grid>
+                {/* Año de Cohorte */}
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextField
+                    fullWidth
+                    label="Año de Cohorte (Opcional)"
+                    type="number"
+                    value={cohorteAno === '' ? '' : cohorteAno}
+                    onChange={handleCohorteAnoChange}
+                    slotProps={{
+                      htmlInput: {
+                        min: 1000,
+                        max: 9999,
+                        step: 1
+                      }
+                    }}
+                    helperText="Año académico de 4 dígitos (ej: 2024, 2025)"
+                    placeholder="2024"
+                  />
+                </Grid>
 
-            {/* Período de Cohorte */}
-            <Grid size={{ xs: 12, sm: 6 }}>
-              <TextField
-                fullWidth
-                select
-                label="Período de Cohorte (Opcional)"
-                value={cohortePeriodo}
-                onChange={handleCohortePeriodoChange}
-                helperText="Período académico (por defecto: 1)"
-              >
-                <MenuItem value={1}>Período 1</MenuItem>
-                <MenuItem value={2}>Período 2</MenuItem>
-              </TextField>
-            </Grid>
+                {/* Período de Cohorte */}
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextField
+                    fullWidth
+                    select
+                    label="Período de Cohorte (Opcional)"
+                    value={cohortePeriodo}
+                    onChange={handleCohortePeriodoChange}
+                    helperText="Período académico (por defecto: 1)"
+                  >
+                    <MenuItem value={1}>Período 1</MenuItem>
+                    <MenuItem value={2}>Período 2</MenuItem>
+                  </TextField>
+                </Grid>
 
             {/* Información Adicional */}
             <Grid size={{ xs: 12 }}>
@@ -618,7 +676,9 @@ const AlumnoRegistroForm = ({ open, onClose, onSubmit, loading = false }: Alumno
               disabled={!isFormValid() || loading}
               sx={{ py: 1.5 }}
             >
-              {loading ? 'Registrando...' : 'Registrar Estudiante'}
+              {loading ? 'Registrando...' :
+               tipoUsuario === 'alumno' ? 'Registrar' :
+               'Enviar Solicitud de Registro'}
             </Button>
           </Grid>
 
@@ -627,4 +687,4 @@ const AlumnoRegistroForm = ({ open, onClose, onSubmit, loading = false }: Alumno
   );
 };
 
-export default AlumnoRegistroForm;
+export default RegistroUsuarioForm;

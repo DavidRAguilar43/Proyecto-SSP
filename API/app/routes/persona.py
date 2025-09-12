@@ -9,6 +9,7 @@ from app.db.database import get_db
 from app.models.persona import Persona
 from app.models.programa_educativo import ProgramaEducativo
 from app.models.grupo import Grupo
+from app.models.notificacion import NotificacionRegistro
 from app.schemas.persona import (
     PersonaCreate,
     PersonaUpdate,
@@ -54,30 +55,38 @@ def validate_matricula(
 
 
 @router.post("/registro-alumno/", response_model=PersonaOut)
-def registro_alumno(
+def registro_usuario(
     *,
     db: Session = Depends(get_db),
     persona_in: PersonaCreate
 ) -> Any:
     """
-    Auto-registro para alumnos. No requiere autenticación.
+    Auto-registro para usuarios (alumnos, docentes, personal). No requiere autenticación.
+    Los alumnos se activan inmediatamente, el personal y docentes requieren aprobación.
     """
-    # Verificar que el tipo de persona sea alumno
-    if persona_in.tipo_persona != "alumno":
-        raise HTTPException(status_code=400, detail="Este endpoint es solo para registro de alumnos")
+    # Validar tipos de persona permitidos
+    tipos_permitidos = ["alumno", "docente", "administrativo"]
+    if persona_in.tipo_persona not in tipos_permitidos:
+        raise HTTPException(status_code=400, detail="Tipo de persona no válido")
 
-    # Verificar que el rol sea alumno
-    if persona_in.rol != "alumno":
-        persona_in.rol = "alumno"  # Forzar rol de alumno
+    # Ajustar rol según tipo de persona
+    if persona_in.tipo_persona == "administrativo":
+        persona_in.rol = "personal"
+    else:
+        persona_in.rol = persona_in.tipo_persona
 
     # Verificar si ya existe una persona con el mismo correo
     db_persona = db.query(Persona).filter(Persona.correo_institucional == persona_in.correo_institucional).first()
     if db_persona:
         raise HTTPException(status_code=400, detail="Ya existe una persona con este correo institucional")
 
-    # Crear objeto Persona (solo campos básicos para alumnos)
+    # Determinar si el usuario debe estar activo inmediatamente
+    # Solo los alumnos se activan automáticamente
+    is_active = persona_in.tipo_persona == "alumno"
+
+    # Crear objeto Persona
     db_persona = Persona(
-        tipo_persona="alumno",
+        tipo_persona=persona_in.tipo_persona,
         sexo=persona_in.sexo,
         genero=persona_in.genero,
         edad=persona_in.edad,
@@ -92,17 +101,41 @@ def registro_alumno(
         discapacidad=persona_in.discapacidad,
         observaciones=persona_in.observaciones,
         matricula=persona_in.matricula,
-        semestre=persona_in.semestre,
+        semestre=persona_in.semestre if persona_in.tipo_persona == "alumno" else None,
         numero_hijos=persona_in.numero_hijos,
         grupo_etnico=persona_in.grupo_etnico,
-        rol="alumno",
-        cohorte_id=persona_in.cohorte_id,
-        hashed_password=get_password_hash(persona_in.password)
+        rol=persona_in.rol,
+        cohorte_ano=persona_in.cohorte_ano if persona_in.tipo_persona == "alumno" else None,
+        cohorte_periodo=persona_in.cohorte_periodo if persona_in.tipo_persona == "alumno" else None,
+        hashed_password=get_password_hash(persona_in.password),
+        is_active=is_active
     )
 
     db.add(db_persona)
     db.commit()
     db.refresh(db_persona)
+
+    # Si es personal o docente, crear notificación para administradores
+    if persona_in.tipo_persona in ["administrativo", "docente"]:
+        # Buscar administradores para notificar
+        admins = db.query(Persona).filter(Persona.rol == "admin", Persona.is_active == True).all()
+
+        tipo_notificacion = "registro_personal_pendiente" if persona_in.tipo_persona == "administrativo" else "registro_docente_pendiente"
+        tipo_usuario_texto = "personal administrativo" if persona_in.tipo_persona == "administrativo" else "docente"
+
+        mensaje = f"Nuevo registro de {tipo_usuario_texto} pendiente de aprobación: {persona_in.correo_institucional}"
+
+        # Crear notificación para cada administrador
+        for admin in admins:
+            notificacion = NotificacionRegistro(
+                tipo_notificacion=tipo_notificacion,
+                mensaje=mensaje,
+                usuario_solicitante_id=db_persona.id,
+                usuario_destinatario_id=admin.id
+            )
+            db.add(notificacion)
+
+        db.commit()
 
     # Los alumnos no pueden asignar programas y grupos en el auto-registro
     # Esto debe ser hecho por el personal administrativo
@@ -205,7 +238,8 @@ def create_persona(
         numero_hijos=persona_in.numero_hijos,
         grupo_etnico=persona_in.grupo_etnico,
         rol=persona_in.rol,
-        cohorte_id=persona_in.cohorte_id,  # Nuevo campo
+        cohorte_ano=persona_in.cohorte_ano,  # Año de cohorte
+        cohorte_periodo=persona_in.cohorte_periodo,  # Período de cohorte
         hashed_password=get_password_hash(persona_in.password)
     )
 
@@ -283,7 +317,8 @@ def read_personas(
             'is_active': persona.is_active,
             'fecha_creacion': persona.fecha_creacion.isoformat() if persona.fecha_creacion else None,
             'fecha_actualizacion': persona.fecha_actualizacion.isoformat() if persona.fecha_actualizacion else None,
-            'cohorte_id': persona.cohorte_id,
+            'cohorte_ano': persona.cohorte_ano,
+            'cohorte_periodo': persona.cohorte_periodo,
             'programas': [],
             'grupos': [],
             'cohorte': None

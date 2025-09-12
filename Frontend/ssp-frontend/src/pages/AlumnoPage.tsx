@@ -54,20 +54,6 @@ const AlumnoPage = ({ user: propUser, onLogout: propOnLogout }: AlumnoPageProps)
     severity: 'success' as 'success' | 'error' | 'warning' | 'info'
   });
 
-  // Recargar perfil del usuario
-  const reloadUserProfile = async () => {
-    try {
-      setLoading(true);
-      const updatedUser = await personasApi.getMiPerfil();
-      setUser(updatedUser);
-    } catch (error) {
-      console.error('Error reloading user profile:', error);
-      showSnackbar('Error al cargar el perfil', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   // Mostrar notificación
   const showSnackbar = (message: string, severity: 'success' | 'error' | 'warning' | 'info') => {
     setSnackbar({ open: true, message, severity });
@@ -154,12 +140,6 @@ const AlumnoPage = ({ user: propUser, onLogout: propOnLogout }: AlumnoPageProps)
                 setEditProfileOpen(true);
               }}>
                 Editar Perfil
-              </MenuItem>
-              <MenuItem onClick={() => {
-                handleClose();
-                reloadUserProfile();
-              }}>
-                Actualizar Datos
               </MenuItem>
               <MenuItem onClick={() => {
                 handleClose();
