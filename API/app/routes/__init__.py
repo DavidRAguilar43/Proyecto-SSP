@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from . import auth, persona, personal, atencion, grupo, cuestionario, contacto_emergencia, programa_educativo, cuestionario_psicopedagogico, citas
+from . import auth, persona, personal, atencion, grupo, cuestionario, contacto_emergencia, programa_educativo, unidad, cuestionario_psicopedagogico, citas
 # Cohorte router comentado temporalmente debido a simplificación del sistema
 # from . import cohorte
 
@@ -14,6 +14,7 @@ router.include_router(cuestionario.router, tags=["cuestionarios"])
 router.include_router(cuestionario_psicopedagogico.router, tags=["cuestionario_psicopedagogico"])
 router.include_router(contacto_emergencia.router, tags=["contactos_emergencia"])
 router.include_router(programa_educativo.router, tags=["programas_educativos"])
+router.include_router(unidad.router, tags=["unidades"])
 # router.include_router(cohorte.router, tags=["cohortes"])  # Comentado temporalmente
 router.include_router(citas.router, prefix="/citas", tags=["citas"])
 
@@ -27,5 +28,6 @@ cuestionario_router = cuestionario.router
 cuestionario_psicopedagogico_router = cuestionario_psicopedagogico.router
 contacto_emergencia_router = contacto_emergencia.router
 programa_educativo_router = programa_educativo.router
+unidad_router = unidad.router
 # cohorte_router = cohorte.router  # Comentado temporalmente
 citas_router = citas.router

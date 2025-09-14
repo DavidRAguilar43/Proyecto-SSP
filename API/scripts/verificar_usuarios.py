@@ -48,7 +48,6 @@ def verificar_usuarios():
                 print(f"- ID: {persona['id']}")
                 print(f"  Email: {persona['correo_institucional']}")
                 print(f"  Rol: {persona['rol']}")
-                print(f"  Tipo: {persona.get('tipo_persona', 'N/A')}")
                 print(f"  Matrícula: {persona.get('matricula', 'N/A')}")
                 print("-" * 40)
         else:

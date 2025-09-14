@@ -1,8 +1,9 @@
 from typing import Any, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
+import logging
 
 from app.core.security import get_password_hash
 from app.db.database import get_db
@@ -12,6 +13,7 @@ from app.models.grupo import Grupo
 from app.models.notificacion import NotificacionRegistro
 from app.schemas.persona import (
     PersonaCreate,
+    PersonaRegistro,
     PersonaUpdate,
     PersonaOut,
     PersonaBulkDelete,
@@ -23,8 +25,12 @@ from app.utils.deps import (
     check_admin_role,
     check_personal_role
 )
+from app.middleware.rate_limit import registro_rate_limiter
 
 router = APIRouter(prefix="/personas", tags=["personas"])
+
+# Logger para eventos de seguridad
+security_logger = logging.getLogger("security")
 
 
 @router.get("/validate-email/{email}")
@@ -57,23 +63,40 @@ def validate_matricula(
 @router.post("/registro-alumno/", response_model=PersonaOut)
 def registro_usuario(
     *,
+    request: Request,
     db: Session = Depends(get_db),
-    persona_in: PersonaCreate
+    persona_in: PersonaRegistro  # SEGURIDAD: Usar schema sin rol editable
 ) -> Any:
     """
     Auto-registro para usuarios (alumnos, docentes, personal). No requiere autenticación.
     Los alumnos se activan inmediatamente, el personal y docentes requieren aprobación.
+    SEGURIDAD: Solo se permiten roles específicos, NUNCA admin.
     """
-    # Validar tipos de persona permitidos
-    tipos_permitidos = ["alumno", "docente", "administrativo"]
-    if persona_in.tipo_persona not in tipos_permitidos:
-        raise HTTPException(status_code=400, detail="Tipo de persona no válido")
+    # SEGURIDAD: Rate limiting para prevenir spam de registros
+    registro_rate_limiter.check_rate_limit(request, "registro")
 
-    # Ajustar rol según tipo de persona
-    if persona_in.tipo_persona == "administrativo":
-        persona_in.rol = "personal"
-    else:
-        persona_in.rol = persona_in.tipo_persona
+    # SEGURIDAD: Validar que el rol no sea admin (ya validado en schema, pero doble verificación)
+    if persona_in.rol == "admin":
+        security_logger.warning(
+            f"INTENTO DE ESCALACIÓN DE PRIVILEGIOS: IP {request.client.host} "
+            f"intentó registrarse como admin con email {persona_in.correo_institucional}"
+        )
+        raise HTTPException(status_code=403, detail="No autorizado para crear administradores")
+
+    # SEGURIDAD: Validar roles permitidos
+    roles_permitidos = ["alumno", "docente", "personal"]
+    if persona_in.rol not in roles_permitidos:
+        security_logger.warning(
+            f"INTENTO DE ROL INVÁLIDO: IP {request.client.host} "
+            f"intentó registrarse con rol '{persona_in.rol}' con email {persona_in.correo_institucional}"
+        )
+        raise HTTPException(status_code=400, detail="Rol no válido para auto-registro")
+
+    # Log de seguridad para registro exitoso
+    security_logger.info(
+        f"REGISTRO SEGURO: IP {request.client.host} registró rol '{persona_in.rol}' "
+        f"con email {persona_in.correo_institucional}"
+    )
 
     # Verificar si ya existe una persona con el mismo correo
     db_persona = db.query(Persona).filter(Persona.correo_institucional == persona_in.correo_institucional).first()
@@ -82,11 +105,11 @@ def registro_usuario(
 
     # Determinar si el usuario debe estar activo inmediatamente
     # Solo los alumnos se activan automáticamente
-    is_active = persona_in.tipo_persona == "alumno"
+    is_active = persona_in.rol == "alumno"
 
     # Crear objeto Persona
     db_persona = Persona(
-        tipo_persona=persona_in.tipo_persona,
+        # SEGURIDAD: Eliminamos tipo_persona, usamos solo rol
         sexo=persona_in.sexo,
         genero=persona_in.genero,
         edad=persona_in.edad,
@@ -101,12 +124,12 @@ def registro_usuario(
         discapacidad=persona_in.discapacidad,
         observaciones=persona_in.observaciones,
         matricula=persona_in.matricula,
-        semestre=persona_in.semestre if persona_in.tipo_persona == "alumno" else None,
+        semestre=persona_in.semestre if persona_in.rol == "alumno" else None,
         numero_hijos=persona_in.numero_hijos,
         grupo_etnico=persona_in.grupo_etnico,
-        rol=persona_in.rol,
-        cohorte_ano=persona_in.cohorte_ano if persona_in.tipo_persona == "alumno" else None,
-        cohorte_periodo=persona_in.cohorte_periodo if persona_in.tipo_persona == "alumno" else None,
+        rol=persona_in.rol,  # SEGURIDAD: Usar rol validado del schema
+        cohorte_ano=persona_in.cohorte_ano if persona_in.rol == "alumno" else None,
+        cohorte_periodo=persona_in.cohorte_periodo if persona_in.rol == "alumno" else None,
         hashed_password=get_password_hash(persona_in.password),
         is_active=is_active
     )
@@ -116,12 +139,12 @@ def registro_usuario(
     db.refresh(db_persona)
 
     # Si es personal o docente, crear notificación para administradores
-    if persona_in.tipo_persona in ["administrativo", "docente"]:
+    if persona_in.rol in ["personal", "docente"]:
         # Buscar administradores para notificar
         admins = db.query(Persona).filter(Persona.rol == "admin", Persona.is_active == True).all()
 
-        tipo_notificacion = "registro_personal_pendiente" if persona_in.tipo_persona == "administrativo" else "registro_docente_pendiente"
-        tipo_usuario_texto = "personal administrativo" if persona_in.tipo_persona == "administrativo" else "docente"
+        tipo_notificacion = "registro_personal_pendiente" if persona_in.rol == "personal" else "registro_docente_pendiente"
+        tipo_usuario_texto = "personal administrativo" if persona_in.rol == "personal" else "docente"
 
         mensaje = f"Nuevo registro de {tipo_usuario_texto} pendiente de aprobación: {persona_in.correo_institucional}"
 
@@ -219,7 +242,7 @@ def create_persona(
 
     # Crear objeto Persona
     db_persona = Persona(
-        tipo_persona=persona_in.tipo_persona,
+        # SEGURIDAD: Eliminamos tipo_persona, usamos solo rol
         sexo=persona_in.sexo,
         genero=persona_in.genero,
         edad=persona_in.edad,
@@ -268,7 +291,7 @@ def read_personas(
     db: Session = Depends(get_db),
     skip: int = 0,
     limit: int = 100,
-    tipo_persona: Optional[str] = None,
+    # SEGURIDAD: Eliminamos tipo_persona, usamos solo rol
     rol: Optional[str] = None,
     current_user: Persona = Depends(get_current_active_user)
 ) -> Any:
@@ -278,8 +301,6 @@ def read_personas(
     query = db.query(Persona)
 
     # Aplicar filtros si se proporcionan
-    if tipo_persona:
-        query = query.filter(Persona.tipo_persona == tipo_persona)
     if rol:
         query = query.filter(Persona.rol == rol)
 
@@ -295,7 +316,7 @@ def read_personas(
 
         persona_dict = {
             'id': persona.id,
-            'tipo_persona': persona.tipo_persona,
+            # SEGURIDAD: Eliminamos tipo_persona, usamos solo rol
             'sexo': persona.sexo,
             'genero': persona.genero,
             'edad': persona.edad,
@@ -467,7 +488,7 @@ def bulk_create_personas(
 
         # Crear objeto Persona
         db_persona = Persona(
-            tipo_persona=persona_data.tipo_persona,
+            # SEGURIDAD: Eliminamos tipo_persona, usamos solo rol
             sexo=persona_data.sexo,
             genero=persona_data.genero,
             edad=persona_data.edad,
@@ -611,13 +632,13 @@ def get_estudiantes(
     Obtener solo estudiantes/alumnos para atenciones.
     """
     estudiantes = db.query(Persona).filter(
-        Persona.tipo_persona == "alumno"
+        Persona.rol == "alumno"  # SEGURIDAD: Usar rol en lugar de tipo_persona
     ).offset(skip).limit(limit).all()
-    
+
     # Debug: Imprimir estudiantes encontrados
     print(f"Estudiantes encontrados: {len(estudiantes)}")
     for e in estudiantes:
-        print(f"ID: {e.id}, Tipo: {e.tipo_persona}, Matrícula: {e.matricula}")
+        print(f"ID: {e.id}, Rol: {e.rol}, Matrícula: {e.matricula}")
     
     return estudiantes
 

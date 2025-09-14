@@ -5,20 +5,23 @@ from enum import Enum
 
 
 # Enums para validación
-class TipoPersona(str, Enum):
+
+# SEGURIDAD: Enum para roles permitidos en auto-registro (SIN admin)
+class RolRegistro(str, Enum):
     ALUMNO = "alumno"
     DOCENTE = "docente"
-    ADMINISTRATIVO = "administrativo"
-    OTRO = "otro"
+    PERSONAL = "personal"  # Para personal administrativo
 
 
 class Sexo(str, Enum):
+    NO_DECIR = "no_decir"  # Opción por defecto para privacidad
     MASCULINO = "masculino"
     FEMENINO = "femenino"
     OTRO = "otro"
 
 
 class Genero(str, Enum):
+    NO_DECIR = "no_decir"  # Opción por defecto para privacidad
     MASCULINO = "masculino"
     FEMENINO = "femenino"
     NO_BINARIO = "no_binario"
@@ -47,7 +50,7 @@ class Rol(str, Enum):
 
 # Esquema base para Persona
 class PersonaBase(BaseModel):
-    tipo_persona: TipoPersona
+    # SEGURIDAD: Eliminamos tipo_persona, usamos solo rol
     sexo: Sexo
     genero: Genero
     edad: int
@@ -122,9 +125,96 @@ class PersonaCreate(PersonaBase):
         return v
 
 
+# SEGURIDAD: Esquema específico para auto-registro (sin admin)
+class PersonaRegistro(BaseModel):
+    """Schema para auto-registro de usuarios. NUNCA permite rol admin."""
+
+    # SEGURIDAD: Solo roles permitidos para auto-registro
+    rol: RolRegistro
+
+    # Campos básicos obligatorios
+    sexo: Sexo = Sexo.NO_DECIR
+    genero: Genero = Genero.NO_DECIR
+    edad: int
+    estado_civil: EstadoCivil
+    lugar_origen: str
+    colonia_residencia_actual: str  # Obligatorio para registro
+    celular: str
+    correo_institucional: EmailStr
+    matricula: str
+    password: str
+
+    # Campos opcionales
+    religion: Optional[str] = None
+    trabaja: bool = False
+    lugar_trabajo: Optional[str] = None
+    discapacidad: Optional[str] = None
+    observaciones: Optional[str] = None
+    numero_hijos: int = 0
+    grupo_etnico: Optional[str] = None
+
+    # Campos específicos para alumnos
+    semestre: Optional[int] = None
+    cohorte_ano: Optional[int] = None
+    cohorte_periodo: Optional[int] = 1
+
+    @field_validator('rol')
+    @classmethod
+    def validate_rol_registro(cls, v):
+        """SEGURIDAD: Prevenir escalación de privilegios."""
+        if v == "admin":
+            raise ValueError('No se puede auto-registrar como administrador')
+        return v
+
+    @field_validator('correo_institucional')
+    @classmethod
+    def validate_correo_institucional(cls, v):
+        """SEGURIDAD: Solo correos institucionales válidos."""
+        dominios_validos = ['@uabc.edu.mx', '@uabc.mx', '@sistema.edu']
+        if not any(str(v).endswith(dominio) for dominio in dominios_validos):
+            raise ValueError('Debe usar un correo institucional válido')
+        return v
+
+    @field_validator('edad')
+    @classmethod
+    def validate_edad(cls, v):
+        if v < 15 or v > 100:
+            raise ValueError('La edad debe estar entre 15 y 100 años')
+        return v
+
+    @field_validator('password')
+    @classmethod
+    def validate_password(cls, v):
+        if len(v) < 8:
+            raise ValueError('La contraseña debe tener al menos 8 caracteres')
+        return v
+
+    @field_validator('matricula')
+    @classmethod
+    def validate_matricula(cls, v):
+        if not v or v.strip() == '':
+            raise ValueError('La matrícula es obligatoria')
+        return v.strip()
+
+    @field_validator('colonia_residencia_actual')
+    @classmethod
+    def validate_colonia(cls, v):
+        if not v or v.strip() == '':
+            raise ValueError('La colonia de residencia es obligatoria')
+        return v.strip()
+
+    @field_validator('semestre')
+    @classmethod
+    def validate_semestre(cls, v):
+        if v is not None and (v < 1 or v > 12):
+            raise ValueError('El semestre debe estar entre 1 y 12')
+        return v
+
+
 # Esquema para actualizar una persona
 class PersonaUpdate(BaseModel):
-    tipo_persona: Optional[TipoPersona] = None
+    # SEGURIDAD: Eliminamos tipo_persona, usamos solo rol con validación
+    rol: Optional[Rol] = None
     sexo: Optional[Sexo] = None
     genero: Optional[Genero] = None
     edad: Optional[int] = None
@@ -196,8 +286,7 @@ class PersonaOut(PersonaInDB):
         try:
             # Obtener datos básicos de la persona
             data = {
-                'id': persona.id,
-                'tipo_persona': persona.tipo_persona,
+                'id': persona.id,                
                 'sexo': persona.sexo,
                 'genero': persona.genero,
                 'edad': persona.edad,

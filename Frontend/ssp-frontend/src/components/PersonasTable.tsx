@@ -18,7 +18,6 @@ import {
 import {
   Edit as EditIcon,
   Delete as DeleteIcon,
-  Visibility as ViewIcon,
   Psychology as PsychologyIcon,
   Assessment as AssessmentIcon
 } from '@mui/icons-material';
@@ -29,7 +28,6 @@ interface PersonasTableProps {
   loading?: boolean;
   onEdit: (persona: Persona) => void;
   onDelete: (persona: Persona) => void;
-  onView: (persona: Persona) => void;
   onBulkDelete: (ids: number[]) => void;
   onCuestionario?: (persona: Persona) => void;
   onVerReporte?: (persona: Persona) => void;
@@ -41,7 +39,6 @@ const PersonasTable = ({
   loading = false,
   onEdit,
   onDelete,
-  onView,
   onBulkDelete,
   onCuestionario,
   onVerReporte,
@@ -133,7 +130,6 @@ const PersonasTable = ({
               <TableCell>ID</TableCell>
               <TableCell>Correo Institucional</TableCell>
               <TableCell>Matrícula</TableCell>
-              <TableCell>Tipo</TableCell>
               <TableCell>Rol</TableCell>
               <TableCell>Estado</TableCell>
               <TableCell>Acciones</TableCell>
@@ -163,7 +159,6 @@ const PersonasTable = ({
                     <TableCell>{persona.id}</TableCell>
                     <TableCell>{persona.correo_institucional}</TableCell>
                     <TableCell>{persona.matricula || 'N/A'}</TableCell>
-                    <TableCell>{persona.tipo_persona}</TableCell>
                     <TableCell>
                       <Chip
                         label={persona.rol}
@@ -179,17 +174,6 @@ const PersonasTable = ({
                       />
                     </TableCell>
                     <TableCell>
-                      <Tooltip title="Ver">
-                        <IconButton
-                          size="small"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onView(persona);
-                          }}
-                        >
-                          <ViewIcon />
-                        </IconButton>
-                      </Tooltip>
                       <Tooltip title="Editar">
                         <IconButton
                           size="small"
@@ -213,8 +197,8 @@ const PersonasTable = ({
                         </IconButton>
                       </Tooltip>
 
-                      {/* Botón de cuestionario para estudiantes */}
-                      {persona.tipo_persona === 'estudiante' && onCuestionario && (
+                      {/* Botón de cuestionario para alumnos */}
+                      {persona.rol === 'alumno' && onCuestionario && (
                         <Tooltip title="Cuestionario Psicopedagógico">
                           <IconButton
                             size="small"
@@ -230,7 +214,7 @@ const PersonasTable = ({
                       )}
 
                       {/* Botón de reporte para admin/personal */}
-                      {persona.tipo_persona === 'estudiante' &&
+                      {persona.rol === 'alumno' &&
                        onVerReporte &&
                        (currentUserRole === 'admin' || currentUserRole === 'personal') && (
                         <Tooltip title="Ver Reporte Psicopedagógico">
@@ -252,7 +236,7 @@ const PersonasTable = ({
               })}
             {emptyRows > 0 && (
               <TableRow style={{ height: 53 * emptyRows }}>
-                <TableCell colSpan={8} />
+                <TableCell colSpan={7} />
               </TableRow>
             )}
           </TableBody>

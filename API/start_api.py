@@ -62,7 +62,6 @@ def create_admin():
             # Crear usuario administrador por defecto
             admin_password = "admin123"  # Cambiar en producción
             admin = Persona(
-                tipo_persona=TipoPersona.ADMINISTRATIVO,
                 sexo=Sexo.OTRO,
                 genero=Genero.OTRO,
                 edad=30,

@@ -1,3 +1,6 @@
+// Re-export notification types
+export * from './notifications';
+
 export interface LoginCredentials {
   username: string;
   password: string;
@@ -37,7 +40,6 @@ export interface Cohorte {
 
 export interface Persona {
   id: number;
-  tipo_persona: string;
   sexo?: string;
   genero?: string;
   edad?: number;
@@ -57,15 +59,13 @@ export interface Persona {
   grupo_etnico?: string;
   rol: 'admin' | 'personal' | 'docente' | 'alumno';
   is_active: boolean;
-  cohorte_ano?: number;
-  cohorte_periodo?: number;
+  cohorte_id?: number;
   programas?: any[];
   grupos?: any[];
   cohorte?: Cohorte;
 }
 
 export interface PersonaCreate {
-  tipo_persona: 'alumno' | 'docente' | 'administrativo' | 'otro';
   sexo: 'no_decir' | 'masculino' | 'femenino' | 'otro';
   genero: 'no_decir' | 'masculino' | 'femenino' | 'no_binario' | 'otro';
   edad: number;
@@ -296,62 +296,4 @@ export interface ElementosPendientes {
 export interface ElementoPersonalizado {
   titulo: string;
   tipo_catalogo: 'religion' | 'grupo_etnico' | 'discapacidad';
-}
-
-// Tipos para notificaciones de registro
-export type TipoNotificacionRegistro = 'registro_personal_pendiente' | 'registro_docente_pendiente';
-
-export interface NotificacionRegistro {
-  id: number;
-  tipo_notificacion: TipoNotificacionRegistro;
-  mensaje: string;
-  usuario_solicitante_id: number;
-  usuario_destinatario_id?: number;
-  leida: boolean;
-  procesada: boolean;
-  aprobada?: boolean;
-  observaciones_admin?: string;
-  fecha_creacion: string;
-  fecha_leida?: string;
-  fecha_procesada?: string;
-
-  // Información del usuario solicitante
-  usuario_solicitante_nombre?: string;
-  usuario_solicitante_email?: string;
-  usuario_solicitante_matricula?: string;
-  usuario_solicitante_tipo_persona?: string;
-}
-
-export interface NotificacionRegistroCreate {
-  tipo_notificacion: TipoNotificacionRegistro;
-  mensaje: string;
-  usuario_solicitante_id: number;
-  usuario_destinatario_id?: number;
-}
-
-export interface NotificacionRegistroUpdate {
-  leida?: boolean;
-  procesada?: boolean;
-  aprobada?: boolean;
-  observaciones_admin?: string;
-}
-
-export interface NotificacionRegistroProcesar {
-  aprobada: boolean;
-  observaciones_admin?: string;
-}
-
-export interface EstadisticasNotificaciones {
-  total_pendientes: number;
-  total_procesadas: number;
-  total_aprobadas: number;
-  total_rechazadas: number;
-  por_tipo: Record<string, number>;
-}
-
-export interface NotificacionesResponse {
-  notificaciones: NotificacionRegistro[];
-  total: number;
-  pendientes: number;
-  procesadas: number;
 }

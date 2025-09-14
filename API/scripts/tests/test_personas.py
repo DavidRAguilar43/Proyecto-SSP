@@ -26,7 +26,6 @@ def main():
             print(f"ID: {persona.id}")
             print(f"Correo: {persona.correo_institucional}")
             print(f"Rol: {persona.rol}")
-            print(f"Tipo: {persona.tipo_persona}")
             print(f"Estado Civil: {persona.estado_civil}")
             print(f"Activo: {persona.is_active}")
             print("-" * 30)

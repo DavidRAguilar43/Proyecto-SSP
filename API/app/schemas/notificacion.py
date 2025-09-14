@@ -53,7 +53,7 @@ class NotificacionRegistroOut(NotificacionRegistroBase):
     usuario_solicitante_nombre: Optional[str] = None
     usuario_solicitante_email: Optional[str] = None
     usuario_solicitante_matricula: Optional[str] = None
-    usuario_solicitante_tipo_persona: Optional[str] = None
+    usuario_solicitante_rol: Optional[str] = None
 
 
 # Esquema para estadísticas de notificaciones

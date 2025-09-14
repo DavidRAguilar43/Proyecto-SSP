@@ -93,7 +93,6 @@ def create_test_data():
         existing_admin = db.query(Persona).filter(Persona.correo_institucional == admin_email).first()
         if not existing_admin:
             admin = Persona(
-                tipo_persona="administrativo",
                 sexo="masculino",
                 genero="masculino",
                 edad=35,
@@ -120,7 +119,7 @@ def create_test_data():
             grupo_sistemas = db.query(Grupo).filter(Grupo.nombre_grupo == "SIS-A").first()
             
             alumno = Persona(
-                tipo_persona="alumno",
+                rol="alumno",
                 sexo="masculino",
                 genero="masculino",
                 edad=20,
@@ -161,7 +160,7 @@ def create_test_data():
         existing_personal = db.query(Persona).filter(Persona.correo_institucional == personal_email).first()
         if not existing_personal:
             personal = Persona(
-                tipo_persona="administrativo",
+                rol="administrativo",
                 sexo="femenino",
                 genero="femenino",
                 edad=28,

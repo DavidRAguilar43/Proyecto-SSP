@@ -31,7 +31,7 @@ import ConfirmDialog from '@/components/ConfirmDialog';
 import CuestionarioPsicopedagogico from '@/components/CuestionarioPsicopedagogico';
 import ReportePsicopedagogico from '@/components/ReportePsicopedagogico';
 import NotificacionesRegistrosPendientes from '@/components/admin/NotificacionesRegistrosPendientes';
-import type { Persona, PersonaCreate } from '@/types';
+import type { Persona, PersonaCreateAdmin } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 
 const PersonasPage = () => {
@@ -40,7 +40,6 @@ const PersonasPage = () => {
   const [personas, setPersonas] = useState<Persona[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterTipo, setFilterTipo] = useState('');
   const [filterRol, setFilterRol] = useState('');
 
   // Estados para modales
@@ -70,7 +69,6 @@ const PersonasPage = () => {
     try {
       setLoading(true);
       const data = await personasService.getAll({
-        tipo_persona: filterTipo || undefined,
         rol: filterRol || undefined
       });
       setPersonas(data);
@@ -101,13 +99,6 @@ const PersonasPage = () => {
     setFormOpen(true);
   };
 
-  const handleView = (persona: Persona) => {
-    // Por ahora, usar el mismo formulario pero en modo solo lectura
-    // En el futuro se puede crear un componente específico para ver detalles
-    setSelectedPersona(persona);
-    setFormOpen(true);
-  };
-
   const handleDelete = (persona: Persona) => {
     setPersonaToDelete(persona);
     setConfirmOpen(true);
@@ -118,7 +109,7 @@ const PersonasPage = () => {
     console.log('Bulk delete:', ids);
   };
 
-  const handleFormSubmit = async (personaData: PersonaCreate) => {
+  const handleFormSubmit = async (personaData: PersonaCreateAdmin) => {
     try {
       setLoading(true);
 
@@ -145,7 +136,6 @@ const PersonasPage = () => {
 
       // Limpiar filtros de búsqueda para mostrar la nueva persona
       setSearchQuery('');
-      setFilterTipo('');
       setFilterRol('');
 
     } catch (error: any) {
@@ -248,10 +238,9 @@ const PersonasPage = () => {
       persona.matricula?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       persona.celular?.includes(searchQuery);
 
-    const matchesTipo = !filterTipo || persona.tipo_persona === filterTipo;
     const matchesRol = !filterRol || persona.rol === filterRol;
 
-    return matchesSearch && matchesTipo && matchesRol;
+    return matchesSearch && matchesRol;
   });
 
   return (
@@ -288,20 +277,6 @@ const PersonasPage = () => {
               }}
               sx={{ minWidth: 300 }}
             />
-
-            <FormControl size="small" sx={{ minWidth: 150 }}>
-              <InputLabel>Tipo</InputLabel>
-              <Select
-                value={filterTipo}
-                onChange={(e) => setFilterTipo(e.target.value)}
-                label="Tipo"
-              >
-                <MenuItem value="">Todos</MenuItem>
-                <MenuItem value="estudiante">Estudiante</MenuItem>
-                <MenuItem value="docente">Docente</MenuItem>
-                <MenuItem value="administrativo">Administrativo</MenuItem>
-              </Select>
-            </FormControl>
 
             <FormControl size="small" sx={{ minWidth: 150 }}>
               <InputLabel>Rol</InputLabel>
@@ -348,7 +323,6 @@ const PersonasPage = () => {
         loading={loading}
         onEdit={handleEdit}
         onDelete={handleDelete}
-        onView={handleView}
         onBulkDelete={handleBulkDelete}
         onCuestionario={handleCuestionario}
         onVerReporte={handleVerReporte}

@@ -37,7 +37,6 @@ def test_cohorte_validation():
         try:
             # Crear datos de prueba
             persona_data = {
-                'tipo_persona': 'alumno',
                 'sexo': 'masculino',
                 'genero': 'masculino',
                 'edad': 20,
@@ -118,7 +117,6 @@ def test_database_operations():
             persona = Persona(
                 correo_institucional=test_data['email'],
                 hashed_password="test_password",
-                tipo_persona="alumno",
                 sexo="masculino",
                 genero="masculino",
                 edad=20,
@@ -232,7 +230,6 @@ def test_edge_cases():
     for case in edge_cases:
         try:
             persona_data = {
-                'tipo_persona': 'alumno',
                 'sexo': 'masculino',
                 'genero': 'masculino',
                 'edad': 20,

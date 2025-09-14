@@ -4,11 +4,9 @@ from sqlalchemy.exc import OperationalError
 
 from app.core.config import settings
 from app.db.database import engine, Base
-from app.routes import auth_router, persona_router, atencion_router, grupo_router, personal_router, contacto_emergencia_router, programa_educativo_router, cuestionario_router, cuestionario_psicopedagogico_router
+from app.routes import auth_router, persona_router, atencion_router, grupo_router, personal_router, contacto_emergencia_router, programa_educativo_router, unidad_router, cuestionario_router, cuestionario_psicopedagogico_router, citas_router
 # cohorte_router comentado temporalmente debido a simplificación del sistema
 from app.routes.catalogos import router as catalogos_router
-from app.routes.notificaciones import router as notificaciones_router
-from app.routes.citas import router as citas_router
 
 # Crear tablas en la base de datos
 try:
@@ -38,12 +36,12 @@ app.include_router(grupo_router, prefix=settings.API_V1_STR)
 app.include_router(personal_router, prefix=settings.API_V1_STR)
 app.include_router(contacto_emergencia_router, prefix=settings.API_V1_STR)
 app.include_router(programa_educativo_router, prefix=settings.API_V1_STR)
+app.include_router(unidad_router, prefix=settings.API_V1_STR)
 app.include_router(cuestionario_router, prefix=settings.API_V1_STR)
 app.include_router(cuestionario_psicopedagogico_router, prefix=f"{settings.API_V1_STR}/cuestionario-psicopedagogico")
+app.include_router(citas_router, prefix=f"{settings.API_V1_STR}/citas")
 # app.include_router(cohorte_router, prefix=settings.API_V1_STR)  # Comentado temporalmente
 app.include_router(catalogos_router, prefix=settings.API_V1_STR)
-app.include_router(notificaciones_router, prefix=settings.API_V1_STR)
-app.include_router(citas_router, prefix=settings.API_V1_STR)
 
 
 @app.get("/")

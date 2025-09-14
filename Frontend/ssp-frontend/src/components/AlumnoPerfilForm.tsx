@@ -20,6 +20,7 @@ import {
 } from '@mui/material';
 import type { Persona, PersonaCreate, Cohorte } from '../types/index';
 import { cohortesApi } from '@/services/api';
+import { useNotification } from '@/hooks/useNotification';
 
 interface AlumnoPerfilFormProps {
   open: boolean;
@@ -30,11 +31,22 @@ interface AlumnoPerfilFormProps {
 }
 
 const AlumnoPerfilForm = ({ open, onClose, onSubmit, persona, loading = false }: AlumnoPerfilFormProps) => {
+  // Hook para notificaciones
+  const { notifyValidationError } = useNotification();
+
   const [formData, setFormData] = useState<Partial<PersonaCreate>>({});
   
   // Estados para cohortes
   const [cohortes, setCohortes] = useState<Cohorte[]>([]);
   const [selectedCohorte, setSelectedCohorte] = useState<Cohorte | null>(null);
+
+  // Estados para campos de cohorte simplificados
+  const [cohorteAno, setCohorteAno] = useState<number | ''>('');
+  const [cohortePeriodo, setCohortePeriodo] = useState<number>(1);
+
+  // Estado para confirmación de contraseña
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordError, setPasswordError] = useState('');
 
   // Cargar cohortes cuando se abra el formulario
   useEffect(() => {
@@ -56,6 +68,14 @@ const AlumnoPerfilForm = ({ open, onClose, onSubmit, persona, loading = false }:
   // Inicializar formulario con datos del usuario
   useEffect(() => {
     if (persona && open) {
+      // Limpiar confirmación de contraseña
+      setConfirmPassword('');
+      setPasswordError('');
+
+      // Inicializar campos de cohorte
+      setCohorteAno(persona.cohorte_ano || '');
+      setCohortePeriodo(persona.cohorte_periodo || 1);
+
       setFormData({
         sexo: persona.sexo || 'masculino',
         genero: persona.genero || 'masculino',
@@ -74,6 +94,8 @@ const AlumnoPerfilForm = ({ open, onClose, onSubmit, persona, loading = false }:
         numero_hijos: persona.numero_hijos || 0,
         grupo_etnico: persona.grupo_etnico || '',
         cohorte_id: persona.cohorte_id || null,
+        cohorte_ano: persona.cohorte_ano || undefined,
+        cohorte_periodo: persona.cohorte_periodo || 1,
         password: '', // Siempre vacío para edición
       });
 
@@ -99,6 +121,37 @@ const AlumnoPerfilForm = ({ open, onClose, onSubmit, persona, loading = false }:
     }));
   };
 
+  // Funciones para manejar cambios en cohorte
+  const handleCohorteAnoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value === '' ? '' : parseInt(event.target.value);
+    setCohorteAno(value);
+    setFormData(prev => ({
+      ...prev,
+      cohorte_ano: value === '' ? undefined : value
+    }));
+  };
+
+  const handleCohortePeriodoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parseInt(event.target.value);
+    setCohortePeriodo(value);
+    setFormData(prev => ({
+      ...prev,
+      cohorte_periodo: value
+    }));
+  };
+
+  // Función para manejar confirmación de contraseña
+  const handleConfirmPasswordChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value;
+    setConfirmPassword(value);
+
+    if (value && formData.password && value !== formData.password) {
+      setPasswordError('Las contraseñas no coinciden');
+    } else {
+      setPasswordError('');
+    }
+  };
+
   // Manejar selección de cohorte
   const handleCohorteChange = (event: any, newValue: Cohorte | null) => {
     setSelectedCohorte(newValue);
@@ -113,14 +166,21 @@ const AlumnoPerfilForm = ({ open, onClose, onSubmit, persona, loading = false }:
 
     // Validación básica
     if (!formData.celular || !formData.lugar_origen || !formData.colonia_residencia_actual) {
-      alert('Por favor, complete todos los campos requeridos.');
+      notifyValidationError('Por favor, complete todos los campos requeridos.');
       return;
     }
 
     // Validación de contraseña si se proporciona
-    if (formData.password && formData.password.length < 6) {
-      alert('La contraseña debe tener al menos 6 caracteres.');
-      return;
+    if (formData.password) {
+      if (formData.password.length < 8) {
+        notifyValidationError('La contraseña debe tener al menos 8 caracteres.');
+        return;
+      }
+
+      if (formData.password !== confirmPassword) {
+        notifyValidationError('Las contraseñas no coinciden.');
+        return;
+      }
     }
 
     // Filtrar campos vacíos y asegurar tipos correctos
@@ -142,10 +202,21 @@ const AlumnoPerfilForm = ({ open, onClose, onSubmit, persona, loading = false }:
   };
 
   const isFormValid = () => {
-    return formData.celular && 
-           formData.lugar_origen && 
-           formData.colonia_residencia_actual &&
-           (!formData.password || formData.password.length >= 6);
+    const basicFieldsValid = formData.celular &&
+                            formData.lugar_origen &&
+                            formData.colonia_residencia_actual;
+
+    // Si se está cambiando la contraseña, validar que coincidan
+    if (formData.password) {
+      return basicFieldsValid &&
+             formData.password.length >= 8 &&
+             confirmPassword &&
+             formData.password === confirmPassword &&
+             !passwordError;
+    }
+
+    // Si no se está cambiando la contraseña, solo validar campos básicos
+    return basicFieldsValid;
   };
 
   return (
@@ -193,7 +264,20 @@ const AlumnoPerfilForm = ({ open, onClose, onSubmit, persona, loading = false }:
                 type="password"
                 value={formData.password || ''}
                 onChange={handleChange('password')}
-                helperText="Dejar vacío para mantener la actual"
+                helperText="Dejar vacío para mantener la actual. Mínimo 8 caracteres"
+              />
+            </Grid>
+
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField
+                fullWidth
+                label="Confirmar Nueva Contraseña"
+                type="password"
+                value={confirmPassword}
+                onChange={handleConfirmPasswordChange}
+                error={!!passwordError}
+                helperText={passwordError || "Solo si cambió la contraseña arriba"}
+                disabled={!formData.password}
               />
             </Grid>
 
@@ -203,6 +287,8 @@ const AlumnoPerfilForm = ({ open, onClose, onSubmit, persona, loading = false }:
                 label="Matrícula"
                 value={formData.matricula || ''}
                 onChange={handleChange('matricula')}
+                helperText="Este campo no se puede modificar"
+                disabled
               />
             </Grid>
 
@@ -329,6 +415,40 @@ const AlumnoPerfilForm = ({ open, onClose, onSubmit, persona, loading = false }:
                 )}
                 noOptionsText="No hay cohortes disponibles"
               />
+            </Grid>
+
+            {/* Campos de Cohorte Simplificados */}
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField
+                fullWidth
+                label="Año de Cohorte (Opcional)"
+                type="number"
+                value={cohorteAno === '' ? '' : cohorteAno}
+                onChange={handleCohorteAnoChange}
+                slotProps={{
+                  htmlInput: {
+                    min: 1000,
+                    max: 9999,
+                    step: 1
+                  }
+                }}
+                helperText="Año académico de 4 dígitos (ej: 2024, 2025)"
+                placeholder="2024"
+              />
+            </Grid>
+
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField
+                fullWidth
+                select
+                label="Período de Cohorte"
+                value={cohortePeriodo}
+                onChange={handleCohortePeriodoChange}
+                helperText="Período académico (por defecto: 1)"
+              >
+                <MenuItem value={1}>Período 1</MenuItem>
+                <MenuItem value={2}>Período 2</MenuItem>
+              </TextField>
             </Grid>
 
             {/* Información Adicional */}

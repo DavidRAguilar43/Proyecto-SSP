@@ -11,6 +11,7 @@ import {
   Typography,
 } from '@mui/material';
 import type { ProgramaEducativo } from '../types/index';
+import { useNotification } from '@/hooks/useNotification';
 
 interface ProgramaEducativoFormProps {
   open: boolean;
@@ -27,6 +28,9 @@ export const ProgramaEducativoForm: React.FC<ProgramaEducativoFormProps> = ({
   programa,
   loading = false,
 }) => {
+  // Hook para notificaciones
+  const { notifyValidationError } = useNotification();
+
   const [formData, setFormData] = useState({
     nombre_programa: '',
     clave_programa: '',
@@ -59,7 +63,7 @@ export const ProgramaEducativoForm: React.FC<ProgramaEducativoFormProps> = ({
 
     // Validación básica
     if (!formData.nombre_programa || !formData.clave_programa) {
-      alert('Por favor, complete todos los campos requeridos.');
+      notifyValidationError('Por favor, complete todos los campos requeridos.');
       return;
     }
 

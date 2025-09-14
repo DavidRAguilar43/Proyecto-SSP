@@ -84,7 +84,6 @@ def get_notificaciones_registros(
                 "usuario_solicitante_nombre": notif.usuario_solicitante.correo_institucional.split('@')[0],
                 "usuario_solicitante_email": notif.usuario_solicitante.correo_institucional,
                 "usuario_solicitante_matricula": notif.usuario_solicitante.matricula,
-                "usuario_solicitante_tipo_persona": notif.usuario_solicitante.tipo_persona,
             })
         
         notificaciones_out.append(NotificacionRegistroOut(**notif_dict))

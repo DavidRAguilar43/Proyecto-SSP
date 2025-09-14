@@ -12,7 +12,6 @@ def test_registro_alumno():
     
     # Datos del nuevo alumno (con todos los campos requeridos)
     alumno_data = {
-        "tipo_persona": "alumno",
         "sexo": "masculino",
         "genero": "masculino",
         "edad": 19,

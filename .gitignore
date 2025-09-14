@@ -4,6 +4,22 @@
 *.sqlite3
 ssp.db
 API/ssp.db
+*.sql
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Virtual environment
+venv/# Database files
+*.db
+*.sqlite
+*.sqlite3
+ssp.db
+API/ssp.db
 
 # Python cache
 __pycache__/
@@ -14,3 +30,35 @@ __pycache__/
 
 # Virtual environment
 venv/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db# Database files
+*.db
+*.sqlite
+*.sqlite3
+ssp.db
+API/ssp.db
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Virtual environment
+venv/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+*.log

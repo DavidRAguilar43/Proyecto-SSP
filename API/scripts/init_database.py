@@ -67,7 +67,7 @@ def create_admin_user(db: Session):
         
         # Crear usuario admin
         admin_user = Persona(
-            tipo_persona="administrativo",
+            rol="administrativo",
             sexo="no_decir",
             genero="no_decir",
             edad=30,

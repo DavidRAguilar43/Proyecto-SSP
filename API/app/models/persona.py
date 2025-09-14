@@ -8,8 +8,8 @@ class Persona(Base):
     __tablename__ = "personas"
 
     id = Column(Integer, primary_key=True, index=True)
-    tipo_persona = Column(String, nullable=False)  # alumno, docente, administrativo, otro
-    sexo = Column(String, nullable=False)  # masculino, femenino, otro
+    # SEGURIDAD: Eliminamos tipo_persona, usamos solo rol para simplificar y mejorar seguridad
+    sexo = Column(String, nullable=False)  # masculino, femenino, no_decir, otro
     genero = Column(String, nullable=False)  # masculino, femenino, no_binario, otro
     edad = Column(Integer, nullable=False)
     estado_civil = Column(String, nullable=False)  # soltero, casado, etc.
@@ -26,7 +26,7 @@ class Persona(Base):
     semestre = Column(Integer, nullable=True)
     numero_hijos = Column(Integer, default=0)
     grupo_etnico = Column(String, nullable=True)
-    rol = Column(String, nullable=False, default="alumno")  # admin, personal, docente, alumno
+    rol = Column(String, nullable=False, default="alumno")  # SEGURIDAD: admin, personal, docente, alumno
     is_active = Column(Boolean, default=True)
     hashed_password = Column(String, nullable=False)
     fecha_creacion = Column(DateTime, server_default=func.now())

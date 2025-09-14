@@ -97,7 +97,7 @@ def completar_cuestionario(
         "edad": persona.edad,
         "semestre": persona.semestre,
         "genero": persona.genero,
-        "tipo_persona": persona.tipo_persona
+        "rol": persona.rol
     }
     
     # Generar reporte con IA

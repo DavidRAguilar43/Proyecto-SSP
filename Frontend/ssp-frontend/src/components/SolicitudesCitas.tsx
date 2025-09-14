@@ -48,12 +48,17 @@ import { es } from 'date-fns/locale';
 import { format } from 'date-fns';
 import { citasApi } from '@/services/api';
 import type { SolicitudCita, CitaUpdate, EstadoCita, TipoCita } from '../types/index';
+import { useNotification } from '@/hooks/useNotification';
+import ConfirmDialog from './ConfirmDialog';
 
 interface SolicitudesCitasProps {
   onBadgeUpdate?: (count: number) => void;
 }
 
 const SolicitudesCitas: React.FC<SolicitudesCitasProps> = ({ onBadgeUpdate }) => {
+  // Hook para notificaciones
+  const { notifySuccess, notifyError } = useNotification();
+
   const [solicitudes, setSolicitudes] = useState<SolicitudCita[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -66,6 +71,10 @@ const SolicitudesCitas: React.FC<SolicitudesCitasProps> = ({ onBadgeUpdate }) =>
     ubicacion: ''
   });
   const [confirmLoading, setConfirmLoading] = useState(false);
+
+  // Estados para diálogo de confirmación de cancelación
+  const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
+  const [solicitudToCancel, setSolicitudToCancel] = useState<SolicitudCita | null>(null);
 
   useEffect(() => {
     loadSolicitudes();
@@ -102,25 +111,30 @@ const SolicitudesCitas: React.FC<SolicitudesCitasProps> = ({ onBadgeUpdate }) =>
     setConfirmDialogOpen(true);
   };
 
-  const handleCancelarCita = async (solicitud: SolicitudCita) => {
-    if (!window.confirm('¿Estás seguro de que deseas cancelar esta cita?')) {
-      return;
-    }
+  const handleCancelarCita = (solicitud: SolicitudCita) => {
+    setSolicitudToCancel(solicitud);
+    setCancelConfirmOpen(true);
+  };
+
+  const confirmCancelCita = async () => {
+    if (!solicitudToCancel) return;
 
     try {
       setLoading(true);
-      await citasApi.confirmar(solicitud.id_cita, {
+      await citasApi.confirmar(solicitudToCancel.id_cita, {
         estado: 'cancelada',
         observaciones_personal: 'Cita cancelada por el personal'
       });
-      
+
       await loadSolicitudes();
-      alert('Cita cancelada exitosamente');
+      notifySuccess('Cita cancelada exitosamente');
     } catch (error: any) {
       console.error('Error cancelando cita:', error);
-      alert(error.response?.data?.detail || 'Error al cancelar la cita');
+      notifyError(error.response?.data?.detail || 'Error al cancelar la cita');
     } finally {
       setLoading(false);
+      setCancelConfirmOpen(false);
+      setSolicitudToCancel(null);
     }
   };
 
@@ -139,10 +153,10 @@ const SolicitudesCitas: React.FC<SolicitudesCitasProps> = ({ onBadgeUpdate }) =>
       setConfirmDialogOpen(false);
       setSelectedSolicitud(null);
       await loadSolicitudes();
-      alert('Cita confirmada exitosamente');
+      notifySuccess('Cita confirmada exitosamente');
     } catch (error: any) {
       console.error('Error confirmando cita:', error);
-      alert(error.response?.data?.detail || 'Error al confirmar la cita');
+      notifyError(error.response?.data?.detail || 'Error al confirmar la cita');
     } finally {
       setConfirmLoading(false);
     }
@@ -488,6 +502,22 @@ const SolicitudesCitas: React.FC<SolicitudesCitasProps> = ({ onBadgeUpdate }) =>
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Diálogo de confirmación para cancelar cita */}
+      <ConfirmDialog
+        open={cancelConfirmOpen}
+        title="Confirmar cancelación"
+        message="¿Estás seguro de que deseas cancelar esta cita? Esta acción no se puede deshacer."
+        onConfirm={confirmCancelCita}
+        onCancel={() => {
+          setCancelConfirmOpen(false);
+          setSolicitudToCancel(null);
+        }}
+        confirmText="Sí, Cancelar"
+        cancelText="No, Mantener"
+        severity="warning"
+        loading={loading}
+      />
     </Box>
   );
 };

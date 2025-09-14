@@ -40,6 +40,7 @@ import MisCitas from './MisCitas';
 import NotificacionesCitas from './NotificacionesCitas';
 import AppointmentRequestModal from './AppointmentRequestModal';
 import { api, citasApi } from '@/services/api';
+import { useNotification } from '@/hooks/useNotification';
 
 interface AlumnoDashboardProps {
   user: Persona;
@@ -47,6 +48,7 @@ interface AlumnoDashboardProps {
 }
 
 const AlumnoDashboard = ({ user, onEditProfile }: AlumnoDashboardProps) => {
+  const { notifySuccess, notifyError, notifyWarning } = useNotification();
   const [loading, setLoading] = useState(false);
   const [cuestionarioOpen, setCuestionarioOpen] = useState(false);
   const [cuestionarioCompletado, setCuestionarioCompletado] = useState(false);
@@ -113,12 +115,16 @@ const AlumnoDashboard = ({ user, onEditProfile }: AlumnoDashboardProps) => {
       setLoadingCita(true);
       await citasApi.solicitar(citaData);
       setSolicitudCitaOpen(false);
-      // TODO: Replace with proper snackbar notification system
-      alert('¡Solicitud de cita enviada exitosamente! El personal revisará tu solicitud y te contactará pronto.');
+      notifySuccess(
+        '¡Solicitud de cita enviada exitosamente!',
+        'El personal revisará tu solicitud y te contactará pronto.'
+      );
     } catch (error: any) {
       console.error('Error solicitando cita:', error);
-      // TODO: Replace with proper snackbar notification system
-      alert(error.response?.data?.detail || 'Error al solicitar la cita');
+      notifyError(
+        'Error al solicitar la cita',
+        error.response?.data?.detail || 'Por favor, inténtalo de nuevo más tarde.'
+      );
     } finally {
       setLoadingCita(false);
     }

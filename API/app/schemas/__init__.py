@@ -1,5 +1,5 @@
 # Importar todos los esquemas aquí
-from app.schemas.persona import PersonaCreate, PersonaUpdate, PersonaInDB, PersonaOut
+from app.schemas.persona import PersonaCreate, PersonaUpdate, PersonaInDB, PersonaOut, PersonaRegistro
 from app.schemas.token import Token, TokenPayload
 from app.schemas.atencion import AtencionCreate, AtencionUpdate, AtencionInDB, AtencionOut
 from app.schemas.grupo import GrupoCreate, GrupoUpdate, GrupoInDB, GrupoOut

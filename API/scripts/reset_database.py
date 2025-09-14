@@ -54,7 +54,6 @@ def create_initial_data():
     try:
         # Usuario admin
         admin_user = Persona(
-            tipo_persona="administrativo",
             sexo="no_decir",
             genero="no_decir",
             edad=30,

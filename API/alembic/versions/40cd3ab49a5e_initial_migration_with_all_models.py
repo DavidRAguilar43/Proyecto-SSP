@@ -35,7 +35,6 @@ def upgrade() -> None:
     op.create_index(op.f('ix_cohorte_nombre'), 'cohorte', ['nombre'], unique=True)
     op.create_table('personas',
     sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('tipo_persona', sa.String(), nullable=False),
     sa.Column('sexo', sa.String(), nullable=False),
     sa.Column('genero', sa.String(), nullable=False),
     sa.Column('edad', sa.Integer(), nullable=False),
@@ -68,7 +67,6 @@ def upgrade() -> None:
     op.drop_index(op.f('ix_persona_correo_institucional'), table_name='persona')
     op.drop_index(op.f('ix_persona_id'), table_name='persona')
     op.drop_index(op.f('ix_persona_matricula'), table_name='persona')
-    op.drop_index(op.f('ix_persona_tipo_persona'), table_name='persona')
     op.drop_table('persona')
     op.drop_constraint(None, 'atencion', type_='foreignkey')
     op.create_foreign_key(None, 'atencion', 'personas', ['id_persona'], ['id'])
@@ -128,7 +126,7 @@ def downgrade() -> None:
     op.create_foreign_key(None, 'atencion', 'persona', ['id_persona'], ['id'])
     op.create_table('persona',
     sa.Column('id', sa.INTEGER(), nullable=False),
-    sa.Column('tipo_persona', sa.VARCHAR(length=14), nullable=True),
+    sa.Column('', sa.VARCHAR(length=14), nullable=True),
     sa.Column('sexo', sa.VARCHAR(length=9), nullable=True),
     sa.Column('genero', sa.VARCHAR(length=10), nullable=True),
     sa.Column('edad', sa.INTEGER(), nullable=True),
@@ -151,7 +149,6 @@ def downgrade() -> None:
     sa.Column('is_active', sa.BOOLEAN(), nullable=True),
     sa.PrimaryKeyConstraint('id')
     )
-    op.create_index(op.f('ix_persona_tipo_persona'), 'persona', ['tipo_persona'], unique=False)
     op.create_index(op.f('ix_persona_matricula'), 'persona', ['matricula'], unique=1)
     op.create_index(op.f('ix_persona_id'), 'persona', ['id'], unique=False)
     op.create_index(op.f('ix_persona_correo_institucional'), 'persona', ['correo_institucional'], unique=1)

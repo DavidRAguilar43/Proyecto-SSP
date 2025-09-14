@@ -37,7 +37,6 @@ def test_cohorte_format():
             persona_test = Persona(
                 correo_institucional=f"test_{cohorte_format.replace('-', '_')}@uabc.edu.mx",
                 hashed_password="test_password",
-                tipo_persona="alumno",
                 sexo="masculino",
                 genero="masculino",
                 edad=20,

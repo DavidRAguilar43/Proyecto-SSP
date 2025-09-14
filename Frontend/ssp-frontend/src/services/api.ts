@@ -52,7 +52,7 @@ export const authService = {
 // Servicio de personas
 export const personasService = {
   // Obtener todas las personas
-  getAll: async (params?: { skip?: number; limit?: number; tipo_persona?: string; rol?: string }) => {
+  getAll: async (params?: { skip?: number; limit?: number; rol?: string }) => {
     const response = await api.get('/personas', { params });
     return response.data;
   },
@@ -363,6 +363,45 @@ export const programasEducativosApi = {
   // Eliminar un programa educativo
   delete: async (id: number) => {
     const response = await api.delete(`/programas-educativos/${id}`);
+    return response.data;
+  },
+};
+
+// API para Unidades
+export const unidadesApi = {
+  // Obtener todas las unidades
+  getAll: async () => {
+    const response = await api.get('/unidades/');
+    return response.data;
+  },
+
+  // Obtener una unidad por ID
+  getById: async (id: number) => {
+    const response = await api.get(`/unidades/${id}`);
+    return response.data;
+  },
+
+  // Crear una nueva unidad
+  create: async (unidad: any) => {
+    const response = await api.post('/unidades/', unidad);
+    return response.data;
+  },
+
+  // Actualizar una unidad
+  update: async (id: number, unidad: any) => {
+    const cleanData = Object.fromEntries(
+      Object.entries(unidad).filter(([key, value]) =>
+        value !== '' && value !== null && value !== undefined
+      )
+    );
+
+    const response = await api.put(`/unidades/${id}`, cleanData);
+    return response.data;
+  },
+
+  // Eliminar una unidad
+  delete: async (id: number) => {
+    const response = await api.delete(`/unidades/${id}`);
     return response.data;
   },
 };

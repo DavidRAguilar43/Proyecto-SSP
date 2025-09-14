@@ -17,6 +17,7 @@ import {
 import type { PersonaCreate } from '../types/index';
 import { personasApi, catalogosApi } from '@/services/api';
 import CatalogoSelector from './CatalogoSelector';
+import { useNotification } from '@/hooks/useNotification';
 
 interface RegistroUsuarioFormProps {
   open: boolean;
@@ -26,13 +27,16 @@ interface RegistroUsuarioFormProps {
 }
 
 const RegistroUsuarioForm = ({ open, onClose, onSubmit, loading = false }: RegistroUsuarioFormProps) => {
-  // Estado para el tipo de usuario seleccionado
-  const [tipoUsuario, setTipoUsuario] = useState<'alumno' | 'docente' | 'administrativo'>('alumno');
+  // Hook para notificaciones
+  const { notifyError, notifyValidationError } = useNotification();
+
+  // Estado para el rol de usuario seleccionado (SEGURIDAD: sin admin)
+  const [tipoUsuario, setTipoUsuario] = useState<'alumno' | 'docente' | 'personal'>('alumno');
 
   const [formData, setFormData] = useState<PersonaCreate>({
-    tipo_persona: 'alumno',
-    correo_institucional: '',
+    // SEGURIDAD: Eliminamos tipo_persona, usamos solo rol
     rol: 'alumno',
+    correo_institucional: '',
     password: '',
     sexo: 'no_decir',
     genero: 'no_decir',
@@ -72,16 +76,15 @@ const RegistroUsuarioForm = ({ open, onClose, onSubmit, loading = false }: Regis
 
 
 
-  // Función para manejar cambio de tipo de usuario
-  const handleTipoUsuarioChange = (tipo: 'alumno' | 'docente' | 'administrativo') => {
+  // Función para manejar cambio de rol de usuario (SEGURIDAD: sin admin)
+  const handleTipoUsuarioChange = (tipo: 'alumno' | 'docente' | 'personal') => {
     setTipoUsuario(tipo);
 
-    // Actualizar formData según el tipo seleccionado
-    const nuevoRol = tipo === 'administrativo' ? 'personal' : tipo;
+    // Actualizar formData según el rol seleccionado
+    // SEGURIDAD: Usar rol directamente (ya no hay mapeo de administrativo)
     setFormData(prev => ({
       ...prev,
-      tipo_persona: tipo,
-      rol: nuevoRol,
+      rol: tipo,
       // Solo limpiar semestre si no es alumno, mantener matrícula para todos
       semestre: tipo === 'alumno' ? prev.semestre : undefined,
     }));
@@ -92,12 +95,12 @@ const RegistroUsuarioForm = ({ open, onClose, onSubmit, loading = false }: Regis
     if (!open) {
       setTipoUsuario('alumno');
       setFormData({
-        tipo_persona: 'alumno',
-        correo_institucional: '',
+        // SEGURIDAD: Solo rol, sin tipo_persona
         rol: 'alumno',
+        correo_institucional: '',
         password: '',
-        sexo: 'masculino',
-        genero: 'masculino',
+        sexo: 'no_decir',
+        genero: 'no_decir',
         edad: 18,
         estado_civil: 'soltero',
         religion: '',
@@ -253,36 +256,37 @@ const RegistroUsuarioForm = ({ open, onClose, onSubmit, loading = false }: Regis
 
     // Validación básica común
     if (!formData.correo_institucional || !formData.celular ||
-        !formData.lugar_origen || !formData.password || !formData.matricula) {
-      alert('Por favor, complete todos los campos requeridos.');
+        !formData.lugar_origen || !formData.password || !formData.matricula ||
+        !formData.colonia_residencia_actual) {
+      notifyValidationError('Por favor, complete todos los campos requeridos.');
       return;
     }
 
     // Validación de contraseña
-    if (formData.password.length < 6) {
-      alert('La contraseña debe tener al menos 6 caracteres.');
+    if (formData.password.length < 8) {
+      notifyValidationError('La contraseña debe tener al menos 8 caracteres.');
       return;
     }
 
     // Validación de confirmación de contraseña
     if (!confirmPassword) {
-      alert('Por favor, confirme su contraseña.');
+      notifyValidationError('Por favor, confirme su contraseña.');
       return;
     }
 
     if (formData.password !== confirmPassword) {
-      alert('Las contraseñas no coinciden.');
+      notifyValidationError('Las contraseñas no coinciden.');
       return;
     }
 
     // Validación de duplicados
     if (emailError) {
-      alert('El correo electrónico ya está registrado.');
+      notifyError('El correo electrónico ya está registrado.');
       return;
     }
 
     if (matriculaError) {
-      alert('La matrícula ya está registrada.');
+      notifyError('La matrícula ya está registrada.');
       return;
     }
 
@@ -296,7 +300,8 @@ const RegistroUsuarioForm = ({ open, onClose, onSubmit, loading = false }: Regis
       observaciones: formData.observaciones || '',
       matricula: formData.matricula || '',
       grupo_etnico: formData.grupo_etnico || '',
-      colonia_residencia_actual: formData.colonia_residencia_actual || '',
+      // colonia_residencia_actual es requerido, no usar valor por defecto
+      colonia_residencia_actual: formData.colonia_residencia_actual,
       // Asegurar que los arrays no sean null/undefined
       programas_ids: formData.programas_ids || [],
       grupos_ids: formData.grupos_ids || [],
@@ -324,8 +329,9 @@ const RegistroUsuarioForm = ({ open, onClose, onSubmit, loading = false }: Regis
     return formData.correo_institucional &&
            formData.celular &&
            formData.lugar_origen &&
+           formData.colonia_residencia_actual &&
            formData.password &&
-           formData.password.length >= 6 &&
+           formData.password.length >= 8 &&
            formData.matricula &&
            confirmPassword &&
            formData.password === confirmPassword &&
@@ -349,12 +355,12 @@ const RegistroUsuarioForm = ({ open, onClose, onSubmit, loading = false }: Regis
                 <InputLabel>¿Qué tipo de usuario eres?</InputLabel>
                 <Select
                   value={tipoUsuario}
-                  onChange={(e) => handleTipoUsuarioChange(e.target.value as 'alumno' | 'docente' | 'administrativo')}
+                  onChange={(e) => handleTipoUsuarioChange(e.target.value as 'alumno' | 'docente' | 'personal')}
                   label="¿Qué tipo de usuario eres?"
                 >
                   <MenuItem value="alumno">Estudiante</MenuItem>
                   <MenuItem value="docente">Docente</MenuItem>
-                  <MenuItem value="administrativo">Personal Administrativo</MenuItem>
+                  <MenuItem value="personal">Personal Administrativo</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
@@ -365,7 +371,7 @@ const RegistroUsuarioForm = ({ open, onClose, onSubmit, loading = false }: Regis
                 <Alert severity="info">
                   <strong>Información importante:</strong> Los programas educativos y grupos serán asignados por el personal administrativo después del registro.
                 </Alert>
-              ) : tipoUsuario === 'administrativo' ? (
+              ) : tipoUsuario === 'personal' ? (
                 <Alert severity="warning">
                   <strong>Registro de Personal:</strong> Tu registro será revisado por un administrador antes de ser activado. Recibirás una confirmación por correo electrónico.
                 </Alert>
@@ -404,7 +410,7 @@ const RegistroUsuarioForm = ({ open, onClose, onSubmit, loading = false }: Regis
                 type="password"
                 value={formData.password}
                 onChange={handleChange('password')}
-                helperText="Mínimo 6 caracteres"
+                helperText="Mínimo 8 caracteres"
               />
             </Grid>
 
@@ -484,11 +490,13 @@ const RegistroUsuarioForm = ({ open, onClose, onSubmit, loading = false }: Regis
             <Grid size={{ xs: 12, sm: 6 }}>
               <TextField
                 fullWidth
+                required
                 label="Edad"
                 type="number"
                 value={formData.edad}
                 onChange={handleChange('edad')}
                 slotProps={{ htmlInput: { min: 15, max: 100 } }}
+                helperText="Edad entre 15 y 100 años"
               />
             </Grid>
 
@@ -523,9 +531,11 @@ const RegistroUsuarioForm = ({ open, onClose, onSubmit, loading = false }: Regis
             <Grid size={{ xs: 12, sm: 6 }}>
               <TextField
                 fullWidth
+                required
                 label="Colonia de Residencia Actual"
                 value={formData.colonia_residencia_actual}
                 onChange={handleChange('colonia_residencia_actual')}
+                helperText="Campo obligatorio para el registro"
               />
             </Grid>
 

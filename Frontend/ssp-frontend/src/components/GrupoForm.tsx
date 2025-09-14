@@ -15,6 +15,7 @@ import {
   MenuItem,
 } from '@mui/material';
 import type { Grupo } from '../types/index';
+import { useNotification } from '@/hooks/useNotification';
 
 interface GrupoFormProps {
   open: boolean;
@@ -31,6 +32,9 @@ export const GrupoForm: React.FC<GrupoFormProps> = ({
   grupo,
   loading = false,
 }) => {
+  // Hook para notificaciones
+  const { notifyValidationError } = useNotification();
+
   const [formData, setFormData] = useState({
     nombre_grupo: '',
     tipo_grupo: '',
@@ -69,7 +73,7 @@ export const GrupoForm: React.FC<GrupoFormProps> = ({
 
     // Validación básica
     if (!formData.nombre_grupo || !formData.tipo_grupo) {
-      alert('Por favor, complete todos los campos requeridos.');
+      notifyValidationError('Por favor, complete todos los campos requeridos.');
       return;
     }
 

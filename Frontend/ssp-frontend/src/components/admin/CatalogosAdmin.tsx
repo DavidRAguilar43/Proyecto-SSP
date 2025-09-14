@@ -28,6 +28,7 @@ import {
   Visibility as VisibilityIcon,
   CheckCircle as CheckCircleIcon
 } from '@mui/icons-material';
+import ConfirmDialog from '../ConfirmDialog';
 import { catalogosApi } from '../../services/api';
 import type { Religion, GrupoEtnico, Discapacidad, ElementosPendientes, CatalogoCreate, CatalogoUpdate } from '../../types';
 
@@ -64,6 +65,10 @@ const CatalogosAdmin: React.FC = () => {
   const [dialogMode, setDialogMode] = useState<'create' | 'edit'>('create');
   const [currentCatalogo, setCurrentCatalogo] = useState<'religiones' | 'grupos-etnicos' | 'discapacidades'>('religiones');
   const [editingItem, setEditingItem] = useState<any>(null);
+
+  // Estados para diálogo de confirmación
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<{item: any, catalogo: 'religiones' | 'grupos-etnicos' | 'discapacidades'} | null>(null);
   
   // Estados para formulario
   const [formData, setFormData] = useState<CatalogoCreate>({ titulo: '', activo: true });
@@ -157,26 +162,33 @@ const CatalogosAdmin: React.FC = () => {
     }
   };
 
-  const handleDelete = async (item: any, catalogo: 'religiones' | 'grupos-etnicos' | 'discapacidades') => {
-    if (!confirm('¿Está seguro de que desea eliminar este elemento?')) return;
-    
+  const handleDelete = (item: any, catalogo: 'religiones' | 'grupos-etnicos' | 'discapacidades') => {
+    setItemToDelete({ item, catalogo });
+    setConfirmOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!itemToDelete) return;
+
     try {
       setLoading(true);
-      
-      if (catalogo === 'religiones') {
-        await catalogosApi.religiones.delete(item.id);
-      } else if (catalogo === 'grupos-etnicos') {
-        await catalogosApi.gruposEtnicos.delete(item.id);
-      } else if (catalogo === 'discapacidades') {
-        await catalogosApi.discapacidades.delete(item.id);
+
+      if (itemToDelete.catalogo === 'religiones') {
+        await catalogosApi.religiones.delete(itemToDelete.item.id);
+      } else if (itemToDelete.catalogo === 'grupos-etnicos') {
+        await catalogosApi.gruposEtnicos.delete(itemToDelete.item.id);
+      } else if (itemToDelete.catalogo === 'discapacidades') {
+        await catalogosApi.discapacidades.delete(itemToDelete.item.id);
       }
-      
+
       showSnackbar('Elemento eliminado exitosamente', 'success');
       loadData();
     } catch (error: any) {
       showSnackbar(error.response?.data?.detail || 'Error al eliminar', 'error');
     } finally {
       setLoading(false);
+      setConfirmOpen(false);
+      setItemToDelete(null);
     }
   };
 
@@ -378,6 +390,22 @@ const CatalogosAdmin: React.FC = () => {
           {snackbar.message}
         </Alert>
       </Snackbar>
+
+      {/* Diálogo de confirmación para eliminar */}
+      <ConfirmDialog
+        open={confirmOpen}
+        title="Confirmar eliminación"
+        message={`¿Está seguro de que desea eliminar este elemento? Esta acción no se puede deshacer.`}
+        onConfirm={confirmDelete}
+        onCancel={() => {
+          setConfirmOpen(false);
+          setItemToDelete(null);
+        }}
+        confirmText="Sí, Eliminar"
+        cancelText="Cancelar"
+        severity="error"
+        loading={loading}
+      />
     </Box>
   );
 };

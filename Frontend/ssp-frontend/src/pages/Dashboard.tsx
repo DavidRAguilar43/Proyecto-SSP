@@ -19,14 +19,12 @@ import {
   Group as GroupIcon,
   School as SchoolIcon,
   Category as CategoryIcon,
-  Psychology as PsychologyIcon
+  Business as BusinessIcon
 } from '@mui/icons-material';
 import { AuthContext } from '@/contexts/AuthContext';
 import AlumnoPage from './AlumnoPage';
 import EstudiantesCuestionarios from '@/components/EstudiantesCuestionarios';
 import SolicitudesCitas from '@/components/SolicitudesCitas';
-import NotificacionesPendientes from '@/components/admin/NotificacionesPendientes';
-import NotificacionesRegistrosPendientes from '@/components/admin/NotificacionesRegistrosPendientes';
 
 const Dashboard = () => {
   const { user, logout } = useContext(AuthContext);
@@ -75,18 +73,18 @@ const Dashboard = () => {
       roles: ['admin', 'personal']
     },
     {
+      title: 'Unidades',
+      description: 'Gestionar unidades organizacionales',
+      icon: <BusinessIcon sx={{ fontSize: 40 }} />,
+      path: '/unidades',
+      roles: ['admin', 'personal']
+    },
+    {
       title: 'Catálogos',
       description: 'Administrar catálogos de religiones, grupos étnicos y discapacidades',
       icon: <CategoryIcon sx={{ fontSize: 40 }} />,
       path: '/catalogos',
       roles: ['admin']
-    },
-    {
-      title: 'Cuestionarios Completados',
-      description: 'Ver y gestionar cuestionarios psicopedagógicos completados',
-      icon: <PsychologyIcon sx={{ fontSize: 40 }} />,
-      path: '/cuestionarios-completados',
-      roles: ['admin', 'personal']
     }
   ];
 
@@ -101,19 +99,6 @@ const Dashboard = () => {
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
             Sistema de Seguimiento Psicopedagógico
           </Typography>
-
-          {/* Notificaciones para administradores */}
-          {user?.rol === 'admin' && (
-            <Box sx={{ display: 'flex', mr: 2 }}>
-              <NotificacionesRegistrosPendientes
-                onNavigateToPersonas={() => navigate('/personas')}
-              />
-              <NotificacionesPendientes
-                onNavigateToCatalogos={() => navigate('/catalogos')}
-              />
-            </Box>
-          )}
-
           <Button color="inherit" onClick={logout}>
             Cerrar Sesión
           </Button>

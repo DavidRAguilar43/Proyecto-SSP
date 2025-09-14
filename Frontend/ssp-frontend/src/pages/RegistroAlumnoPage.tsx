@@ -9,8 +9,7 @@ import {
   Snackbar,
   Alert,
   AppBar,
-  Toolbar,
-  IconButton
+  Toolbar
 } from '@mui/material';
 import {
   School as SchoolIcon,
@@ -39,31 +38,39 @@ const RegistroAlumnoPage = () => {
     try {
       setLoading(true);
       await personasApi.registroAlumno(userData);
+      showSnackbar('Registro exitoso. Redirigiendo al login...', 'success');
 
-      // Mensaje diferente según el tipo de usuario
-      if (userData.tipo_persona === 'alumno') {
-        showSnackbar(
-          '¡Registro exitoso! Ya puedes iniciar sesión con tus credenciales.',
-          'success'
-        );
-        // Redirigir al login después de 2 segundos
-        setTimeout(() => {
-          navigate('/login');
-        }, 2000);
-      } else {
-        showSnackbar(
-          '¡Solicitud enviada! Tu registro será revisado por un administrador. Recibirás una confirmación por correo electrónico.',
-          'info'
-        );
-        // Redirigir al login después de 3 segundos
-        setTimeout(() => {
-          navigate('/login');
-        }, 3000);
-      }
+      // Redirigir al login después de 3 segundos
+      setTimeout(() => {
+        navigate('/login');
+      }, 3000);
 
     } catch (error: any) {
       console.error('Error en registro:', error);
-      const errorMessage = error.response?.data?.detail || 'Error al procesar el registro';
+
+      let errorMessage = 'Error al procesar el registro';
+
+      if (error.response?.data) {
+        const errorData = error.response.data;
+
+        // Si es un error de validación (422), formatear los errores
+        if (error.response.status === 422 && Array.isArray(errorData.detail)) {
+          const validationErrors = errorData.detail.map((err: any) => {
+            const field = err.loc ? err.loc.join('.') : 'campo';
+            return `${field}: ${err.msg}`;
+          }).join(', ');
+          errorMessage = `Errores de validación: ${validationErrors}`;
+        }
+        // Si es un error con detail string
+        else if (typeof errorData.detail === 'string') {
+          errorMessage = errorData.detail;
+        }
+        // Si es un error con message
+        else if (typeof errorData.message === 'string') {
+          errorMessage = errorData.message;
+        }
+      }
+
       showSnackbar(errorMessage, 'error');
     } finally {
       setLoading(false);
