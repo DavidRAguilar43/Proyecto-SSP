@@ -19,7 +19,9 @@ import {
   Group as GroupIcon,
   School as SchoolIcon,
   Category as CategoryIcon,
-  Business as BusinessIcon
+  Business as BusinessIcon,
+  Schedule as ScheduleIcon,
+  Psychology as PsychologyIcon
 } from '@mui/icons-material';
 import { AuthContext } from '@/contexts/AuthContext';
 import AlumnoPage from './AlumnoPage';
@@ -49,42 +51,56 @@ const Dashboard = () => {
       description: 'Administrar estudiantes, docentes y personal',
       icon: <PeopleIcon sx={{ fontSize: 40 }} />,
       path: '/personas',
-      roles: ['admin', 'personal']
+      roles: ['admin', 'coordinador']
     },
     {
       title: 'Atenciones',
       description: 'Registrar y gestionar atenciones psicopedagógicas',
       icon: <AssignmentIcon sx={{ fontSize: 40 }} />,
       path: '/atenciones',
-      roles: ['admin', 'personal', 'docente']
+      roles: ['admin', 'coordinador']
     },
     {
       title: 'Grupos',
       description: 'Administrar grupos y cohortes',
       icon: <GroupIcon sx={{ fontSize: 40 }} />,
       path: '/grupos',
-      roles: ['admin', 'personal']
+      roles: ['admin', 'coordinador']
     },
     {
       title: 'Programas Educativos',
       description: 'Gestionar programas educativos',
       icon: <SchoolIcon sx={{ fontSize: 40 }} />,
       path: '/programas-educativos',
-      roles: ['admin', 'personal']
+      roles: ['admin', 'coordinador']
     },
     {
       title: 'Unidades',
       description: 'Gestionar unidades organizacionales',
       icon: <BusinessIcon sx={{ fontSize: 40 }} />,
       path: '/unidades',
-      roles: ['admin', 'personal']
+      roles: ['admin', 'coordinador']
+    },
+    {
+      title: 'Gestión de Solicitudes',
+      description: 'Ver, editar y eliminar solicitudes de citas',
+      icon: <ScheduleIcon sx={{ fontSize: 40 }} />,
+      path: '/solicitudes-pendientes',
+      roles: ['admin', 'coordinador']
+    },
+    {
+      title: 'Cuestionarios Pendientes',
+      description: 'Ver, revisar y gestionar cuestionarios nuevos',
+      icon: <PsychologyIcon sx={{ fontSize: 40 }} />,
+      path: '/cuestionarios-pendientes',
+      roles: ['admin', 'coordinador']
     },
     {
       title: 'Catálogos',
       description: 'Administrar catálogos de religiones, grupos étnicos y discapacidades',
       icon: <CategoryIcon sx={{ fontSize: 40 }} />,
       path: '/catalogos',
-      roles: ['admin']
+      roles: ['admin', 'coordinador']
     }
   ];
 

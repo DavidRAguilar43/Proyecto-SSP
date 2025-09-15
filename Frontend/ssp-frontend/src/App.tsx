@@ -14,6 +14,8 @@ import { AtencionesPage } from '@/pages/AtencionesPage';
 import AlumnoPage from '@/pages/AlumnoPage';
 import CatalogosPage from '@/pages/CatalogosPage';
 import CuestionariosCompletadosPage from '@/pages/CuestionariosCompletadosPage';
+import SolicitudesPendientesPage from '@/pages/SolicitudesPendientesPage';
+import CuestionariosPendientesPage from '@/pages/CuestionariosPendientesPage';
 import ProtectedRoute from '@/components/ProtectedRoute';
 
 function App() {
@@ -77,7 +79,7 @@ function App() {
           <Route
             path="/catalogos"
             element={
-              <ProtectedRoute allowedRoles={['admin']}>
+              <ProtectedRoute allowedRoles={['admin', 'coordinador']}>
                 <CatalogosPage />
               </ProtectedRoute>
             }
@@ -85,8 +87,24 @@ function App() {
           <Route
             path="/cuestionarios-completados"
             element={
-              <ProtectedRoute allowedRoles={['admin', 'personal']}>
+              <ProtectedRoute allowedRoles={['admin', 'coordinador']}>
                 <CuestionariosCompletadosPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/solicitudes-pendientes"
+            element={
+              <ProtectedRoute allowedRoles={['admin', 'coordinador']}>
+                <SolicitudesPendientesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/cuestionarios-pendientes"
+            element={
+              <ProtectedRoute allowedRoles={['admin', 'coordinador']}>
+                <CuestionariosPendientesPage />
               </ProtectedRoute>
             }
           />

@@ -10,14 +10,17 @@ from app.models.grupo_etnico import GrupoEtnico
 from app.models.discapacidad import Discapacidad
 from app.models.persona import Persona
 from app.schemas.catalogos import (
-    ReligionCreate, ReligionUpdate, ReligionOut,
-    GrupoEtnicoCreate, GrupoEtnicoUpdate, GrupoEtnicoOut,
-    DiscapacidadCreate, DiscapacidadUpdate, DiscapacidadOut,
+    ReligionCreate, ReligionUpdate, ReligionOut, ReligionBulkDelete,
+    GrupoEtnicoCreate, GrupoEtnicoUpdate, GrupoEtnicoOut, GrupoEtnicoBulkDelete,
+    DiscapacidadCreate, DiscapacidadUpdate, DiscapacidadOut, DiscapacidadBulkDelete,
     ElementosPendientes, ElementoPersonalizado
 )
 from app.utils.deps import (
     get_current_active_user,
     check_admin_role,
+    check_coordinador_role,
+    check_admin_or_coordinador_role,
+    check_deletion_permission,
     check_personal_role
 )
 
@@ -31,10 +34,10 @@ def create_religion(
     *,
     db: Session = Depends(get_db),
     religion_in: ReligionCreate,
-    current_user: Persona = Depends(check_admin_role)
+    current_user: Persona = Depends(check_admin_or_coordinador_role)
 ) -> Any:
     """
-    Crear una nueva religión (solo administradores).
+    Crear una nueva religión (administradores y coordinadores).
     """
     # Verificar si ya existe
     db_religion = db.query(Religion).filter(Religion.titulo == religion_in.titulo).first()
@@ -84,10 +87,10 @@ def update_religion(
     db: Session = Depends(get_db),
     religion_id: int,
     religion_in: ReligionUpdate,
-    current_user: Persona = Depends(check_admin_role)
+    current_user: Persona = Depends(check_admin_or_coordinador_role)
 ) -> Any:
     """
-    Actualizar una religión (solo administradores).
+    Actualizar una religión (administradores y coordinadores).
     """
     religion = db.query(Religion).filter(Religion.id == religion_id).first()
     if not religion:
@@ -113,10 +116,10 @@ def delete_religion(
     *,
     db: Session = Depends(get_db),
     religion_id: int,
-    current_user: Persona = Depends(check_admin_role)
+    current_user: Persona = Depends(check_deletion_permission)
 ) -> Any:
     """
-    Eliminar una religión (solo administradores).
+    Eliminar una religión (solo administradores - coordinadores NO pueden eliminar).
     """
     religion = db.query(Religion).filter(Religion.id == religion_id).first()
     if not religion:
@@ -134,10 +137,10 @@ def create_grupo_etnico(
     *,
     db: Session = Depends(get_db),
     grupo_etnico_in: GrupoEtnicoCreate,
-    current_user: Persona = Depends(check_admin_role)
+    current_user: Persona = Depends(check_admin_or_coordinador_role)
 ) -> Any:
     """
-    Crear un nuevo grupo étnico (solo administradores).
+    Crear un nuevo grupo étnico (administradores y coordinadores).
     """
     # Verificar si ya existe
     db_grupo = db.query(GrupoEtnico).filter(GrupoEtnico.titulo == grupo_etnico_in.titulo).first()
@@ -187,10 +190,10 @@ def update_grupo_etnico(
     db: Session = Depends(get_db),
     grupo_id: int,
     grupo_etnico_in: GrupoEtnicoUpdate,
-    current_user: Persona = Depends(check_admin_role)
+    current_user: Persona = Depends(check_admin_or_coordinador_role)
 ) -> Any:
     """
-    Actualizar un grupo étnico (solo administradores).
+    Actualizar un grupo étnico (administradores y coordinadores).
     """
     grupo = db.query(GrupoEtnico).filter(GrupoEtnico.id == grupo_id).first()
     if not grupo:
@@ -216,10 +219,10 @@ def delete_grupo_etnico(
     *,
     db: Session = Depends(get_db),
     grupo_id: int,
-    current_user: Persona = Depends(check_admin_role)
+    current_user: Persona = Depends(check_deletion_permission)
 ) -> Any:
     """
-    Eliminar un grupo étnico (solo administradores).
+    Eliminar un grupo étnico (solo administradores - coordinadores NO pueden eliminar).
     """
     grupo = db.query(GrupoEtnico).filter(GrupoEtnico.id == grupo_id).first()
     if not grupo:
@@ -237,10 +240,10 @@ def create_discapacidad(
     *,
     db: Session = Depends(get_db),
     discapacidad_in: DiscapacidadCreate,
-    current_user: Persona = Depends(check_admin_role)
+    current_user: Persona = Depends(check_admin_or_coordinador_role)
 ) -> Any:
     """
-    Crear una nueva discapacidad (solo administradores).
+    Crear una nueva discapacidad (administradores y coordinadores).
     """
     # Verificar si ya existe
     db_discapacidad = db.query(Discapacidad).filter(Discapacidad.titulo == discapacidad_in.titulo).first()
@@ -290,10 +293,10 @@ def update_discapacidad(
     db: Session = Depends(get_db),
     discapacidad_id: int,
     discapacidad_in: DiscapacidadUpdate,
-    current_user: Persona = Depends(check_admin_role)
+    current_user: Persona = Depends(check_admin_or_coordinador_role)
 ) -> Any:
     """
-    Actualizar una discapacidad (solo administradores).
+    Actualizar una discapacidad (administradores y coordinadores).
     """
     discapacidad = db.query(Discapacidad).filter(Discapacidad.id == discapacidad_id).first()
     if not discapacidad:
@@ -319,10 +322,10 @@ def delete_discapacidad(
     *,
     db: Session = Depends(get_db),
     discapacidad_id: int,
-    current_user: Persona = Depends(check_admin_role)
+    current_user: Persona = Depends(check_deletion_permission)
 ) -> Any:
     """
-    Eliminar una discapacidad (solo administradores).
+    Eliminar una discapacidad (solo administradores - coordinadores NO pueden eliminar).
     """
     discapacidad = db.query(Discapacidad).filter(Discapacidad.id == discapacidad_id).first()
     if not discapacidad:
@@ -338,10 +341,10 @@ def delete_discapacidad(
 @router.get("/pendientes/", response_model=ElementosPendientes)
 def get_elementos_pendientes(
     db: Session = Depends(get_db),
-    current_user: Persona = Depends(check_admin_role)
+    current_user: Persona = Depends(check_admin_or_coordinador_role)
 ) -> Any:
     """
-    Obtener todos los elementos pendientes de activación (solo administradores).
+    Obtener todos los elementos pendientes de activación (administradores y coordinadores).
     """
     religiones_pendientes = db.query(Religion).filter(Religion.activo == False).all()
     grupos_pendientes = db.query(GrupoEtnico).filter(GrupoEtnico.activo == False).all()
@@ -453,10 +456,10 @@ def activar_elementos_multiples(
     *,
     db: Session = Depends(get_db),
     elementos: dict,  # {"religiones": [1,2], "grupos_etnicos": [3,4], "discapacidades": [5,6]}
-    current_user: Persona = Depends(check_admin_role)
+    current_user: Persona = Depends(check_admin_or_coordinador_role)
 ) -> Any:
     """
-    Activar múltiples elementos de diferentes catálogos (solo administradores).
+    Activar múltiples elementos de diferentes catálogos (administradores y coordinadores).
     """
     activados = {"religiones": 0, "grupos_etnicos": 0, "discapacidades": 0}
 
@@ -493,3 +496,71 @@ def activar_elementos_multiples(
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Error al activar elementos: {str(e)}")
+
+
+# ==================== BULK DELETE ENDPOINTS ====================
+
+@router.post("/religiones/bulk-delete", response_model=List[int])
+def bulk_delete_religiones(
+    *,
+    db: Session = Depends(get_db),
+    bulk_delete: ReligionBulkDelete,
+    current_user: Persona = Depends(check_admin_role)
+) -> Any:
+    """
+    Eliminar múltiples religiones en una sola operación (solo administradores).
+    """
+    deleted_ids = []
+
+    for religion_id in bulk_delete.ids:
+        religion = db.query(Religion).filter(Religion.id == religion_id).first()
+        if religion:
+            db.delete(religion)
+            deleted_ids.append(religion_id)
+
+    db.commit()
+    return deleted_ids
+
+
+@router.post("/grupos-etnicos/bulk-delete", response_model=List[int])
+def bulk_delete_grupos_etnicos(
+    *,
+    db: Session = Depends(get_db),
+    bulk_delete: GrupoEtnicoBulkDelete,
+    current_user: Persona = Depends(check_admin_role)
+) -> Any:
+    """
+    Eliminar múltiples grupos étnicos en una sola operación (solo administradores).
+    """
+    deleted_ids = []
+
+    for grupo_id in bulk_delete.ids:
+        grupo = db.query(GrupoEtnico).filter(GrupoEtnico.id == grupo_id).first()
+        if grupo:
+            db.delete(grupo)
+            deleted_ids.append(grupo_id)
+
+    db.commit()
+    return deleted_ids
+
+
+@router.post("/discapacidades/bulk-delete", response_model=List[int])
+def bulk_delete_discapacidades(
+    *,
+    db: Session = Depends(get_db),
+    bulk_delete: DiscapacidadBulkDelete,
+    current_user: Persona = Depends(check_admin_role)
+) -> Any:
+    """
+    Eliminar múltiples discapacidades en una sola operación (solo administradores).
+    """
+    deleted_ids = []
+
+    for discapacidad_id in bulk_delete.ids:
+        discapacidad = db.query(Discapacidad).filter(Discapacidad.id == discapacidad_id).first()
+        if discapacidad:
+            db.delete(discapacidad)
+            deleted_ids.append(discapacidad_id)
+
+    db.commit()
+    return deleted_ids

@@ -17,6 +17,8 @@ from app.schemas.cuestionario import (
 from app.utils.deps import (
     get_current_active_user,
     check_admin_role,
+    check_admin_or_coordinador_role,
+    check_deletion_permission,
     check_personal_role
 )
 
@@ -108,10 +110,10 @@ def delete_cuestionario(
     *,
     db: Session = Depends(get_db),
     cuestionario_id: int,
-    current_user = Depends(check_admin_role)
+    current_user = Depends(check_deletion_permission)
 ) -> Any:
     """
-    Eliminar un cuestionario.
+    Eliminar un cuestionario (solo administradores - coordinadores NO pueden eliminar).
     """
     cuestionario = db.query(Cuestionario).filter(Cuestionario.id_cuestionario == cuestionario_id).first()
     if not cuestionario:

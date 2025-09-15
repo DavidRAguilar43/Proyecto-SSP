@@ -22,6 +22,9 @@ const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
       // Redirigir según el rol del usuario
       if (user?.rol === 'alumno') {
         return <Navigate to="/alumno" replace />;
+      } else if (user?.rol === 'personal' || user?.rol === 'docente') {
+        // Roles restringidos van a una página de acceso limitado
+        return <Navigate to="/dashboard" replace />;
       } else {
         return <Navigate to="/dashboard" replace />;
       }

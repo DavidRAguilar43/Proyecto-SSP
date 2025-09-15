@@ -104,9 +104,28 @@ const PersonasPage = () => {
     setConfirmOpen(true);
   };
 
-  const handleBulkDelete = (ids: number[]) => {
-    // Implementar eliminación masiva
-    console.log('Bulk delete:', ids);
+  const handleBulkDelete = async (ids: number[]) => {
+    try {
+      setLoading(true);
+      await personasService.bulkDelete(ids);
+
+      // Actualizar la lista de personas
+      setPersonas(prev => prev.filter(persona => !ids.includes(persona.id)));
+      showSnackbar(`${ids.length} persona(s) eliminada(s) exitosamente`, 'success');
+    } catch (error: any) {
+      console.error('Error en bulk delete:', error);
+      let message = 'Error al eliminar las personas seleccionadas';
+
+      if (error.response?.status === 403) {
+        message = 'No tiene permisos para eliminar personas';
+      } else if (error.response?.data?.detail) {
+        message = error.response.data.detail;
+      }
+
+      showSnackbar(message, 'error');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleFormSubmit = async (personaData: PersonaCreateAdmin) => {
@@ -287,6 +306,7 @@ const PersonasPage = () => {
               >
                 <MenuItem value="">Todos</MenuItem>
                 <MenuItem value="admin">Admin</MenuItem>
+                <MenuItem value="coordinador">Coordinador</MenuItem>
                 <MenuItem value="personal">Personal</MenuItem>
                 <MenuItem value="docente">Docente</MenuItem>
                 <MenuItem value="alumno">Alumno</MenuItem>

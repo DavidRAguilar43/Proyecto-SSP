@@ -1,4 +1,8 @@
 import React, { useState, useEffect } from 'react';
+
+interface CatalogosAdminProps {
+  canDelete?: boolean;
+}
 import {
   Box,
   Typography,
@@ -53,7 +57,7 @@ function TabPanel(props: TabPanelProps) {
   );
 }
 
-const CatalogosAdmin: React.FC = () => {
+const CatalogosAdmin: React.FC<CatalogosAdminProps> = ({ canDelete = true }) => {
   const [tabValue, setTabValue] = useState(0);
   const [religiones, setReligiones] = useState<Religion[]>([]);
   const [gruposEtnicos, setGruposEtnicos] = useState<GrupoEtnico[]>([]);
@@ -249,13 +253,15 @@ const CatalogosAdmin: React.FC = () => {
                     >
                       <EditIcon fontSize="small" />
                     </IconButton>
-                    <IconButton 
-                      size="small" 
-                      onClick={() => handleDelete(item, catalogoType)}
-                      title="Eliminar"
-                    >
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
+                    {canDelete && (
+                      <IconButton
+                        size="small"
+                        onClick={() => handleDelete(item, catalogoType)}
+                        title="Eliminar"
+                      >
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    )}
                     {!item.activo && (
                       <IconButton 
                         size="small" 

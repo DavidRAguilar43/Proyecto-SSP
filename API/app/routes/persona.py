@@ -23,6 +23,8 @@ from app.schemas.persona import (
 from app.utils.deps import (
     get_current_active_user,
     check_admin_role,
+    check_admin_or_coordinador_role,
+    check_deletion_permission,
     check_personal_role
 )
 from app.middleware.rate_limit import registro_rate_limiter
@@ -75,13 +77,13 @@ def registro_usuario(
     # SEGURIDAD: Rate limiting para prevenir spam de registros
     registro_rate_limiter.check_rate_limit(request, "registro")
 
-    # SEGURIDAD: Validar que el rol no sea admin (ya validado en schema, pero doble verificación)
-    if persona_in.rol == "admin":
+    # SEGURIDAD: Validar que el rol no sea admin ni coordinador (ya validado en schema, pero doble verificación)
+    if persona_in.rol in ["admin", "coordinador"]:
         security_logger.warning(
             f"INTENTO DE ESCALACIÓN DE PRIVILEGIOS: IP {request.client.host} "
-            f"intentó registrarse como admin con email {persona_in.correo_institucional}"
+            f"intentó registrarse como {persona_in.rol} con email {persona_in.correo_institucional}"
         )
-        raise HTTPException(status_code=403, detail="No autorizado para crear administradores")
+        raise HTTPException(status_code=403, detail="No autorizado para crear administradores o coordinadores")
 
     # SEGURIDAD: Validar roles permitidos
     roles_permitidos = ["alumno", "docente", "personal"]
@@ -432,10 +434,10 @@ def delete_persona(
     *,
     db: Session = Depends(get_db),
     persona_id: int,
-    current_user: Persona = Depends(check_personal_role)
+    current_user: Persona = Depends(check_deletion_permission)
 ) -> Any:
     """
-    Eliminar una persona.
+    Eliminar una persona (solo administradores - coordinadores NO pueden eliminar).
     """
     persona = db.query(Persona).filter(Persona.id == persona_id).first()
     if not persona:

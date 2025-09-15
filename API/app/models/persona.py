@@ -26,7 +26,7 @@ class Persona(Base):
     semestre = Column(Integer, nullable=True)
     numero_hijos = Column(Integer, default=0)
     grupo_etnico = Column(String, nullable=True)
-    rol = Column(String, nullable=False, default="alumno")  # SEGURIDAD: admin, personal, docente, alumno
+    rol = Column(String, nullable=False, default="alumno")  # SEGURIDAD: admin, coordinador, personal, docente, alumno
     is_active = Column(Boolean, default=True)
     hashed_password = Column(String, nullable=False)
     fecha_creacion = Column(DateTime, server_default=func.now())

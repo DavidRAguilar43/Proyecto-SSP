@@ -6,7 +6,7 @@ from enum import Enum
 
 # Enums para validación
 
-# SEGURIDAD: Enum para roles permitidos en auto-registro (SIN admin)
+# SEGURIDAD: Enum para roles permitidos en auto-registro (SIN admin ni coordinador)
 class RolRegistro(str, Enum):
     ALUMNO = "alumno"
     DOCENTE = "docente"
@@ -43,6 +43,7 @@ class EstadoCivil(str, Enum):
 
 class Rol(str, Enum):
     ADMIN = "admin"
+    COORDINADOR = "coordinador"  # Nuevo rol con privilegios de admin excepto eliminación
     PERSONAL = "personal"
     DOCENTE = "docente"
     ALUMNO = "alumno"
@@ -162,8 +163,8 @@ class PersonaRegistro(BaseModel):
     @classmethod
     def validate_rol_registro(cls, v):
         """SEGURIDAD: Prevenir escalación de privilegios."""
-        if v == "admin":
-            raise ValueError('No se puede auto-registrar como administrador')
+        if v in ["admin", "coordinador"]:
+            raise ValueError('No se puede auto-registrar como administrador o coordinador')
         return v
 
     @field_validator('correo_institucional')

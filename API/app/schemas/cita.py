@@ -101,6 +101,19 @@ class EstadisticasCitas(BaseModel):
     canceladas: int
     completadas: int
     por_tipo: dict
-    
+
     class Config:
         from_attributes = True
+
+
+# Esquemas para operaciones por lotes
+class CitaBulkDelete(BaseModel):
+    ids: List[int]
+
+
+class CitaBulkCreate(BaseModel):
+    items: List[CitaCreate]
+
+
+class CitaBulkUpdate(BaseModel):
+    items: List[dict]  # Lista de diccionarios con id y campos a actualizar

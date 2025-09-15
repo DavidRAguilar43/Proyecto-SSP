@@ -18,6 +18,7 @@ from app.schemas.personal import (
 from app.utils.deps import (
     get_current_active_user,
     check_admin_role,
+    check_admin_or_coordinador_role,
     check_personal_role
 )
 
@@ -29,10 +30,10 @@ def create_personal(
     *,
     db: Session = Depends(get_db),
     personal_in: PersonalCreate,
-    current_user = Depends(check_admin_role)
+    current_user = Depends(check_admin_or_coordinador_role)
 ) -> Any:
     """
-    Crear un nuevo personal.
+    Crear un nuevo personal (administradores y coordinadores).
     """
     # Verificar si la persona existe
     persona = db.query(Persona).filter(Persona.id == personal_in.id_persona).first()
@@ -116,10 +117,10 @@ def update_personal(
     db: Session = Depends(get_db),
     personal_id: int,
     personal_in: PersonalUpdate,
-    current_user = Depends(check_admin_role)
+    current_user = Depends(check_admin_or_coordinador_role)
 ) -> Any:
     """
-    Actualizar un personal.
+    Actualizar un personal (administradores y coordinadores).
     """
     personal = db.query(Personal).filter(Personal.id == personal_id).first()
     if not personal:
@@ -186,10 +187,10 @@ def bulk_create_personal(
     *,
     db: Session = Depends(get_db),
     bulk_personal: PersonalBulkCreate,
-    current_user = Depends(check_admin_role)
+    current_user = Depends(check_admin_or_coordinador_role)
 ) -> Any:
     """
-    Crear múltiples personal en una sola operación.
+    Crear múltiples personal en una sola operación (administradores y coordinadores).
     """
     created_personal = []
     
@@ -234,10 +235,10 @@ def bulk_update_personal(
     *,
     db: Session = Depends(get_db),
     bulk_update: PersonalBulkUpdate,
-    current_user = Depends(check_admin_role)
+    current_user = Depends(check_admin_or_coordinador_role)
 ) -> Any:
     """
-    Actualizar múltiples personal en una sola operación.
+    Actualizar múltiples personal en una sola operación (administradores y coordinadores).
     """
     updated_personal = []
     

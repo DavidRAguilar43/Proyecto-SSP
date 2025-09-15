@@ -7,10 +7,10 @@ from app.db.database import get_db
 from app.models.persona import Persona
 from app.models.cita import Cita, EstadoCita, TipoCita
 from app.schemas.cita import (
-    CitaCreate, CitaUpdate, CitaOut, SolicitudCitaOut, 
-    NotificacionCita, EstadisticasCitas
+    CitaCreate, CitaUpdate, CitaOut, SolicitudCitaOut,
+    NotificacionCita, EstadisticasCitas, CitaBulkDelete
 )
-from app.utils.deps import get_current_active_user
+from app.utils.deps import get_current_active_user, check_admin_role
 
 router = APIRouter()
 
@@ -319,3 +319,25 @@ def get_estadisticas_citas(
         completadas=completadas,
         por_tipo=por_tipo
     )
+
+
+@router.post("/bulk-delete", response_model=List[int])
+def bulk_delete_citas(
+    *,
+    db: Session = Depends(get_db),
+    bulk_delete: CitaBulkDelete,
+    current_user: Persona = Depends(check_admin_role)
+) -> List[int]:
+    """
+    Eliminar múltiples citas en una sola operación (solo administradores).
+    """
+    deleted_ids = []
+
+    for cita_id in bulk_delete.ids:
+        cita = db.query(Cita).filter(Cita.id_cita == cita_id).first()
+        if cita:
+            db.delete(cita)
+            deleted_ids.append(cita_id)
+
+    db.commit()
+    return deleted_ids

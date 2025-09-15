@@ -19,6 +19,7 @@ import {
 import type { Persona, PersonaCreateAdmin } from '../types/index';
 import CatalogoSelector from './CatalogoSelector';
 import { useNotification } from '@/hooks/useNotification';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface PersonaFormProps {
   open: boolean;
@@ -31,8 +32,10 @@ interface PersonaFormProps {
 const PersonaForm = ({ open, onClose, onSubmit, persona, loading = false }: PersonaFormProps) => {
   // Hook para notificaciones
   const { notifyError, notifyValidationError } = useNotification();
-  // Estado para el rol de usuario seleccionado (incluye admin para administradores)
-  const [tipoUsuario, setTipoUsuario] = useState<'alumno' | 'docente' | 'personal' | 'admin'>('alumno');
+  // Hook para obtener el usuario actual
+  const { user } = useAuth();
+  // Estado para el rol de usuario seleccionado (incluye admin y coordinador para administradores)
+  const [tipoUsuario, setTipoUsuario] = useState<'alumno' | 'docente' | 'personal' | 'coordinador' | 'admin'>('alumno');
 
   const [formData, setFormData] = useState<PersonaCreateAdmin>({
     // Usar solo rol (sin tipo_persona)
@@ -70,8 +73,14 @@ const PersonaForm = ({ open, onClose, onSubmit, persona, loading = false }: Pers
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
 
-  // Función para manejar cambio de rol de usuario (incluye admin para administradores)
-  const handleTipoUsuarioChange = (tipo: 'alumno' | 'docente' | 'personal' | 'admin') => {
+  // Función para manejar cambio de rol de usuario (incluye admin y coordinador para administradores)
+  const handleTipoUsuarioChange = (tipo: 'alumno' | 'docente' | 'personal' | 'coordinador' | 'admin') => {
+    // Validación de seguridad: solo admin puede asignar roles administrativos
+    if ((tipo === 'coordinador' || tipo === 'admin') && user?.rol !== 'admin') {
+      notifyError('Solo los administradores pueden asignar roles administrativos');
+      return;
+    }
+
     setTipoUsuario(tipo);
 
     // Actualizar formData según el rol seleccionado
@@ -117,7 +126,7 @@ const PersonaForm = ({ open, onClose, onSubmit, persona, loading = false }: Pers
   useEffect(() => {
     if (persona) {
       // Actualizar tipoUsuario basado en el rol de la persona
-      setTipoUsuario(persona.rol as 'alumno' | 'docente' | 'personal' | 'admin');
+      setTipoUsuario(persona.rol as 'alumno' | 'docente' | 'personal' | 'coordinador' | 'admin');
 
       // Limpiar confirmación de contraseña en modo edición
       setConfirmPassword('');
@@ -126,7 +135,7 @@ const PersonaForm = ({ open, onClose, onSubmit, persona, loading = false }: Pers
       setFormData({
         // SEGURIDAD: Eliminamos tipo_persona, usamos solo rol
         correo_institucional: persona.correo_institucional,
-        rol: persona.rol as 'alumno' | 'docente' | 'personal' | 'admin',
+        rol: persona.rol as 'alumno' | 'docente' | 'personal' | 'coordinador' | 'admin',
         password: '', // No mostrar la contraseña existente
         sexo: (persona.sexo as 'no_decir' | 'masculino' | 'femenino' | 'otro') || 'no_decir',
         genero: (persona.genero as 'no_decir' | 'masculino' | 'femenino' | 'no_binario' | 'otro') || 'no_decir',
@@ -308,13 +317,20 @@ const PersonaForm = ({ open, onClose, onSubmit, persona, loading = false }: Pers
                 <InputLabel>Rol del usuario</InputLabel>
                 <Select
                   value={tipoUsuario}
-                  onChange={(e) => handleTipoUsuarioChange(e.target.value as 'alumno' | 'docente' | 'personal' | 'admin')}
+                  onChange={(e) => handleTipoUsuarioChange(e.target.value as 'alumno' | 'docente' | 'personal' | 'coordinador' | 'admin')}
                   label="Rol del usuario"
                 >
                   <MenuItem value="alumno">Estudiante</MenuItem>
                   <MenuItem value="docente">Docente</MenuItem>
                   <MenuItem value="personal">Personal Administrativo</MenuItem>
-                  <MenuItem value="admin">Administrador</MenuItem>
+                  {/* Mostrar coordinador si: es admin O la persona ya es coordinador */}
+                  {(user?.rol === 'admin' || tipoUsuario === 'coordinador') && (
+                    <MenuItem value="coordinador">Coordinador</MenuItem>
+                  )}
+                  {/* Mostrar admin si: es admin O la persona ya es admin */}
+                  {(user?.rol === 'admin' || tipoUsuario === 'admin') && (
+                    <MenuItem value="admin">Administrador</MenuItem>
+                  )}
                 </Select>
               </FormControl>
             </Grid>
@@ -374,6 +390,7 @@ const PersonaForm = ({ open, onClose, onSubmit, persona, loading = false }: Pers
                 helperText={
                   tipoUsuario === 'alumno' ? "Su número de matrícula estudiantil" :
                   tipoUsuario === 'docente' ? "Su número de matrícula como docente" :
+                  tipoUsuario === 'coordinador' ? "Su número de matrícula como coordinador" :
                   tipoUsuario === 'admin' ? "Su número de matrícula administrativa" :
                   "Su número de matrícula institucional"
                 }

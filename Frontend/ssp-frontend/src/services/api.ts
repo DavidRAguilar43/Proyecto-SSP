@@ -215,6 +215,10 @@ export const catalogosApi = {
     delete: async (id: number) => {
       const response = await api.delete(`/catalogos/religiones/${id}`);
       return response.data;
+    },
+    bulkDelete: async (ids: number[]) => {
+      const response = await api.post('/catalogos/religiones/bulk-delete', { ids });
+      return response.data;
     }
   },
 
@@ -240,6 +244,10 @@ export const catalogosApi = {
     delete: async (id: number) => {
       const response = await api.delete(`/catalogos/grupos-etnicos/${id}`);
       return response.data;
+    },
+    bulkDelete: async (ids: number[]) => {
+      const response = await api.post('/catalogos/grupos-etnicos/bulk-delete', { ids });
+      return response.data;
     }
   },
 
@@ -264,6 +272,10 @@ export const catalogosApi = {
     },
     delete: async (id: number) => {
       const response = await api.delete(`/catalogos/discapacidades/${id}`);
+      return response.data;
+    },
+    bulkDelete: async (ids: number[]) => {
+      const response = await api.post('/catalogos/discapacidades/bulk-delete', { ids });
       return response.data;
     }
   },
@@ -365,6 +377,12 @@ export const programasEducativosApi = {
     const response = await api.delete(`/programas-educativos/${id}`);
     return response.data;
   },
+
+  // Eliminar múltiples programas educativos
+  bulkDelete: async (ids: number[]) => {
+    const response = await api.post('/programas-educativos/bulk-delete', { ids });
+    return response.data;
+  },
 };
 
 // API para Unidades
@@ -402,6 +420,12 @@ export const unidadesApi = {
   // Eliminar una unidad
   delete: async (id: number) => {
     const response = await api.delete(`/unidades/${id}`);
+    return response.data;
+  },
+
+  // Eliminar múltiples unidades
+  bulkDelete: async (ids: number[]) => {
+    const response = await api.delete('/unidades/bulk-delete/', { data: { ids } });
     return response.data;
   },
 };
@@ -443,6 +467,12 @@ export const gruposApi = {
     const response = await api.delete(`/grupos/${id}`);
     return response.data;
   },
+
+  // Eliminar múltiples grupos
+  bulkDelete: async (ids: number[]) => {
+    const response = await api.post('/grupos/bulk-delete', { ids });
+    return response.data;
+  },
 };
 
 // API para Atenciones
@@ -480,6 +510,12 @@ export const atencionesApi = {
   // Eliminar una atención
   delete: async (id: number) => {
     const response = await api.delete(`/atenciones/${id}`);
+    return response.data;
+  },
+
+  // Eliminar múltiples atenciones
+  bulkDelete: async (ids: number[]) => {
+    const response = await api.post('/atenciones/bulk-delete', { ids });
     return response.data;
   },
 };
@@ -521,6 +557,12 @@ export const citasApi = {
   getEstadisticas: async () => {
     const response = await api.get('/citas/estadisticas');
     return response.data;
+  },
+
+  // Eliminar múltiples citas
+  bulkDelete: async (ids: number[]) => {
+    const response = await api.post('/citas/bulk-delete', { ids });
+    return response.data;
   }
 };
 
@@ -546,7 +588,7 @@ export const cuestionarioPsicopedagogicoApi = {
 
   // Obtener estudiantes con cuestionarios (solo admin/personal)
   getEstudiantesConCuestionarios: async () => {
-    const response = await api.get('/cuestionario-psicopedagogico/estudiantes');
+    const response = await api.get('/cuestionario-psicopedagogico/estudiantes-con-cuestionarios');
     return response.data;
   },
 

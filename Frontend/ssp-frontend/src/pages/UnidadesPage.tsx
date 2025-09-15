@@ -5,14 +5,6 @@ import {
   Typography,
   Button,
   TextField,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  IconButton,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -20,17 +12,27 @@ import {
   Snackbar,
   Alert,
   CircularProgress,
-  Chip
+  Chip,
+  Paper,
+  Toolbar,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  IconButton
 } from '@mui/material';
 import {
   Add as AddIcon,
-  Edit as EditIcon,
-  Delete as DeleteIcon,
   ArrowBack as ArrowBackIcon,
-  Search as SearchIcon
+  Search as SearchIcon,
+  Edit as EditIcon,
+  Delete as DeleteIcon
 } from '@mui/icons-material';
-import ConfirmDialog from '../components/ConfirmDialog';
+import ConfirmDialog from '@/components/ConfirmDialog';
 import { unidadesApi } from '@/services/api';
+import { useAuth } from '@/contexts/AuthContext';
 import type { Unidad, UnidadCreate } from '@/types';
 
 interface UnidadFormData {
@@ -39,6 +41,7 @@ interface UnidadFormData {
 
 export const UnidadesPage = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [unidades, setUnidades] = useState<Unidad[]>([]);
   const [loading, setLoading] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
@@ -147,6 +150,32 @@ export const UnidadesPage = () => {
     }
   };
 
+  const handleBulkDelete = async (ids: number[]) => {
+    try {
+      setLoading(true);
+      await unidadesApi.bulkDelete(ids);
+
+      // Actualizar la lista de unidades
+      setUnidades(prev => prev.filter(unidad => !ids.includes(unidad.id)));
+      showSnackbar(`${ids.length} unidad(es) eliminada(s) exitosamente`, 'success');
+    } catch (error: any) {
+      console.error('Error en bulk delete:', error);
+      let message = 'Error al eliminar las unidades seleccionadas';
+
+      if (error.response?.status === 403) {
+        message = 'No tiene permisos para eliminar unidades';
+      } else if (error.response?.data?.detail) {
+        message = error.response.data.detail;
+      }
+
+      showSnackbar(message, 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Función de bulk delete implementada
+
   const filteredUnidades = unidades.filter(unidad =>
     unidad.nombre.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -177,20 +206,23 @@ export const UnidadesPage = () => {
       </Box>
 
       {/* Barra de búsqueda */}
-      <Box sx={{ mb: 3 }}>
-        <TextField
-          fullWidth
-          variant="outlined"
-          placeholder="Buscar unidades..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          InputProps={{
-            startAdornment: <SearchIcon sx={{ mr: 1, color: 'text.secondary' }} />
-          }}
-        />
-      </Box>
+      <Paper sx={{ mb: 3 }}>
+        <Toolbar>
+          <TextField
+            fullWidth
+            variant="outlined"
+            placeholder="Buscar unidades..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            InputProps={{
+              startAdornment: <SearchIcon sx={{ mr: 1, color: 'text.secondary' }} />
+            }}
+            size="small"
+          />
+        </Toolbar>
+      </Paper>
 
-      {/* Tabla de unidades */}
+      {/* Tabla de unidades - implementación manual por ahora */}
       <TableContainer component={Paper}>
         <Table>
           <TableHead>

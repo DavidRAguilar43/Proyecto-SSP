@@ -47,6 +47,7 @@ def get_current_active_user(
 def check_admin_role(
     current_user: Persona = Depends(get_current_active_user),
 ) -> Persona:
+    """Solo administradores tienen acceso completo incluyendo eliminaciones."""
     if current_user.rol != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -55,10 +56,49 @@ def check_admin_role(
     return current_user
 
 
+def check_coordinador_role(
+    current_user: Persona = Depends(get_current_active_user),
+) -> Persona:
+    """Coordinadores tienen acceso administrativo excepto eliminaciones."""
+    if current_user.rol not in ["admin", "coordinador"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tiene permisos suficientes",
+        )
+    return current_user
+
+
+def check_admin_or_coordinador_role(
+    current_user: Persona = Depends(get_current_active_user),
+) -> Persona:
+    """Admin y Coordinador tienen acceso administrativo (sin restricciones de eliminación aquí)."""
+    if current_user.rol not in ["admin", "coordinador"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tiene permisos suficientes",
+        )
+    return current_user
+
+
+def check_user_level_access(
+    current_user: Persona = Depends(get_current_active_user),
+) -> Persona:
+    """Acceso de nivel usuario para roles restringidos (personal, docente, alumno)."""
+    if current_user.rol not in ["admin", "coordinador", "personal", "docente", "alumno"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tiene permisos suficientes",
+        )
+    return current_user
+
+
+# DEPRECATED: Estas funciones se mantienen temporalmente para compatibilidad
+# pero serán reemplazadas gradualmente por el nuevo sistema de permisos
 def check_personal_role(
     current_user: Persona = Depends(get_current_active_user),
 ) -> Persona:
-    if current_user.rol not in ["admin", "personal"]:
+    """DEPRECATED: Solo para acceso de nivel usuario ahora."""
+    if current_user.rol not in ["admin", "coordinador"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No tiene permisos suficientes",
@@ -69,9 +109,22 @@ def check_personal_role(
 def check_docente_role(
     current_user: Persona = Depends(get_current_active_user),
 ) -> Persona:
-    if current_user.rol not in ["admin", "personal", "docente"]:
+    """DEPRECATED: Solo para acceso de nivel usuario ahora."""
+    if current_user.rol not in ["admin", "coordinador"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No tiene permisos suficientes",
+        )
+    return current_user
+
+
+def check_deletion_permission(
+    current_user: Persona = Depends(get_current_active_user),
+) -> Persona:
+    """Solo administradores pueden eliminar registros."""
+    if current_user.rol != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Solo los administradores pueden eliminar registros",
         )
     return current_user

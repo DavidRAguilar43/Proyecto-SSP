@@ -17,6 +17,7 @@ from app.schemas.grupo import (
 from app.utils.deps import (
     get_current_active_user,
     check_admin_role,
+    check_admin_or_coordinador_role,
     check_personal_role
 )
 
@@ -141,10 +142,10 @@ def bulk_create_grupos(
     *,
     db: Session = Depends(get_db),
     bulk_grupos: GrupoBulkCreate,
-    current_user = Depends(check_admin_role)
+    current_user = Depends(check_admin_or_coordinador_role)
 ) -> Any:
     """
-    Crear múltiples grupos en una sola operación.
+    Crear múltiples grupos en una sola operación (administradores y coordinadores).
     """
     created_grupos = []
     
@@ -175,10 +176,10 @@ def bulk_update_grupos(
     *,
     db: Session = Depends(get_db),
     bulk_update: GrupoBulkUpdate,
-    current_user = Depends(check_admin_role)
+    current_user = Depends(check_admin_or_coordinador_role)
 ) -> Any:
     """
-    Actualizar múltiples grupos en una sola operación.
+    Actualizar múltiples grupos en una sola operación (administradores y coordinadores).
     """
     updated_grupos = []
     

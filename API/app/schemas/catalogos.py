@@ -120,6 +120,19 @@ class CatalogoBulkDelete(BaseModel):
     ids: List[int]
 
 
+# Esquemas específicos de bulk delete para cada catálogo
+class ReligionBulkDelete(BaseModel):
+    ids: List[int]
+
+
+class GrupoEtnicoBulkDelete(BaseModel):
+    ids: List[int]
+
+
+class DiscapacidadBulkDelete(BaseModel):
+    ids: List[int]
+
+
 # Esquema para respuesta de elementos pendientes
 class ElementosPendientes(BaseModel):
     religiones: List[ReligionOut]

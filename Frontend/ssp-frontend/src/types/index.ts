@@ -1,6 +1,9 @@
 // Re-export notification types
 export * from './notifications';
 
+// Re-export table types
+export * from './table';
+
 export interface LoginCredentials {
   username: string;
   password: string;
@@ -15,7 +18,7 @@ export interface User {
   id: number;
   correo_institucional: string;
   matricula?: string;
-  rol: 'admin' | 'personal' | 'docente' | 'alumno';
+  rol: 'admin' | 'coordinador' | 'personal' | 'docente' | 'alumno';
   is_active: boolean;
 }
 
@@ -57,7 +60,7 @@ export interface Persona {
   semestre?: number;
   numero_hijos?: number;
   grupo_etnico?: string;
-  rol: 'admin' | 'personal' | 'docente' | 'alumno';
+  rol: 'admin' | 'coordinador' | 'personal' | 'docente' | 'alumno';
   is_active: boolean;
   cohorte_id?: number;
   programas?: any[];
@@ -83,7 +86,7 @@ export interface PersonaCreate {
   semestre?: number;
   numero_hijos: number;
   grupo_etnico?: string;
-  rol: 'admin' | 'personal' | 'docente' | 'alumno';
+  rol: 'admin' | 'coordinador' | 'personal' | 'docente' | 'alumno';
   password: string;
   // Campos de cohorte simplificados
   cohorte_ano?: number;  // Año de cohorte (ej: 2024, 2025)

@@ -17,6 +17,7 @@ from app.schemas.atencion import (
 from app.utils.deps import (
     get_current_active_user,
     check_admin_role,
+    check_deletion_permission,
     check_personal_role
 )
 
@@ -137,10 +138,10 @@ def delete_atencion(
     *,
     db: Session = Depends(get_db),
     atencion_id: int,
-    current_user = Depends(check_admin_role)
+    current_user = Depends(check_deletion_permission)
 ) -> Any:
     """
-    Eliminar una atención.
+    Eliminar una atención (solo administradores - coordinadores NO pueden eliminar).
     """
     atencion = db.query(Atencion).filter(Atencion.id == atencion_id).first()
     if not atencion:

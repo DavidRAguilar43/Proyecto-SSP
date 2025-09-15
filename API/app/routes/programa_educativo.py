@@ -17,6 +17,8 @@ from app.schemas.programa_educativo import (
 from app.utils.deps import (
     get_current_active_user,
     check_admin_role,
+    check_admin_or_coordinador_role,
+    check_deletion_permission,
     check_personal_role
 )
 
@@ -126,10 +128,10 @@ def delete_programa_educativo(
     *,
     db: Session = Depends(get_db),
     programa_id: int,
-    current_user = Depends(check_admin_role)
+    current_user = Depends(check_deletion_permission)
 ) -> Any:
     """
-    Eliminar un programa educativo.
+    Eliminar un programa educativo (solo administradores - coordinadores NO pueden eliminar).
     """
     programa = db.query(ProgramaEducativo).filter(ProgramaEducativo.id == programa_id).first()
     if not programa:

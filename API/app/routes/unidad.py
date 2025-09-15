@@ -17,6 +17,7 @@ from app.schemas.unidad import (
 from app.utils.deps import (
     get_current_active_user,
     check_admin_role,
+    check_admin_or_coordinador_role,
     check_personal_role
 )
 
@@ -28,10 +29,10 @@ def create_unidad(
     *,
     db: Session = Depends(get_db),
     unidad_in: UnidadCreate,
-    current_user = Depends(check_admin_role)
+    current_user = Depends(check_admin_or_coordinador_role)
 ) -> Any:
     """
-    Crear una nueva unidad.
+    Crear una nueva unidad (administradores y coordinadores).
     """
     # Verificar si ya existe una unidad con el mismo nombre
     db_unidad = db.query(Unidad).filter(Unidad.nombre == unidad_in.nombre).first()
@@ -88,10 +89,10 @@ def update_unidad(
     db: Session = Depends(get_db),
     unidad_id: int,
     unidad_in: UnidadUpdate,
-    current_user = Depends(check_admin_role)
+    current_user = Depends(check_admin_or_coordinador_role)
 ) -> Any:
     """
-    Actualizar una unidad.
+    Actualizar una unidad (administradores y coordinadores).
     """
     unidad = db.query(Unidad).filter(Unidad.id == unidad_id).first()
     if not unidad:
@@ -141,10 +142,10 @@ def bulk_create_unidades(
     *,
     db: Session = Depends(get_db),
     unidades_in: UnidadBulkCreate,
-    current_user = Depends(check_admin_role)
+    current_user = Depends(check_admin_or_coordinador_role)
 ) -> Any:
     """
-    Crear múltiples unidades.
+    Crear múltiples unidades (administradores y coordinadores).
     """
     created_unidades = []
     for unidad_data in unidades_in.items:
@@ -169,10 +170,10 @@ def bulk_update_unidades(
     *,
     db: Session = Depends(get_db),
     unidades_in: UnidadBulkUpdate,
-    current_user = Depends(check_admin_role)
+    current_user = Depends(check_admin_or_coordinador_role)
 ) -> Any:
     """
-    Actualizar múltiples unidades.
+    Actualizar múltiples unidades (administradores y coordinadores).
     """
     updated_unidades = []
     for item in unidades_in.items:

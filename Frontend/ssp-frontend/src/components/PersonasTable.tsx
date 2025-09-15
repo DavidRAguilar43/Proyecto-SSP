@@ -22,6 +22,9 @@ import {
   Assessment as AssessmentIcon
 } from '@mui/icons-material';
 import type { Persona } from '@/types';
+import { useBulkSelection } from '@/hooks/useBulkSelection';
+import BulkDeleteToolbar from './BulkDeleteToolbar';
+import BulkDeleteDialog from './BulkDeleteDialog';
 
 interface PersonasTableProps {
   personas: Persona[];
@@ -44,37 +47,27 @@ const PersonasTable = ({
   onVerReporte,
   currentUserRole
 }: PersonasTableProps) => {
-  const [selected, setSelected] = useState<number[]>([]);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
 
-  const handleSelectAll = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (event.target.checked) {
-      const newSelected = personas.map((persona) => persona.id);
-      setSelected(newSelected);
-    } else {
-      setSelected([]);
-    }
+  const bulkSelection = useBulkSelection({
+    items: personas,
+    getItemId: (persona) => persona.id
+  });
+
+  const handleBulkDeleteClick = () => {
+    setBulkDeleteDialogOpen(true);
   };
 
-  const handleSelect = (id: number) => {
-    const selectedIndex = selected.indexOf(id);
-    let newSelected: number[] = [];
+  const handleBulkDeleteConfirm = () => {
+    onBulkDelete(bulkSelection.selectedIds);
+    bulkSelection.clearSelection();
+    setBulkDeleteDialogOpen(false);
+  };
 
-    if (selectedIndex === -1) {
-      newSelected = newSelected.concat(selected, id);
-    } else if (selectedIndex === 0) {
-      newSelected = newSelected.concat(selected.slice(1));
-    } else if (selectedIndex === selected.length - 1) {
-      newSelected = newSelected.concat(selected.slice(0, -1));
-    } else if (selectedIndex > 0) {
-      newSelected = newSelected.concat(
-        selected.slice(0, selectedIndex),
-        selected.slice(selectedIndex + 1)
-      );
-    }
-
-    setSelected(newSelected);
+  const handleBulkDeleteCancel = () => {
+    setBulkDeleteDialogOpen(false);
   };
 
   const handleChangePage = (event: unknown, newPage: number) => {
@@ -90,6 +83,8 @@ const PersonasTable = ({
     switch (rol) {
       case 'admin':
         return 'error';
+      case 'coordinador':
+        return 'secondary';
       case 'personal':
         return 'warning';
       case 'docente':
@@ -101,19 +96,11 @@ const PersonasTable = ({
     }
   };
 
-  const isSelected = (id: number) => selected.indexOf(id) !== -1;
-
   const emptyRows = page > 0 ? Math.max(0, (1 + page) * rowsPerPage - personas.length) : 0;
 
   return (
-    <Paper sx={{ width: '100%', overflow: 'hidden' }}>
-      {selected.length > 0 && (
-        <Box sx={{ p: 2, bgcolor: 'primary.light', color: 'primary.contrastText' }}>
-          <Typography variant="subtitle1">
-            {selected.length} elemento(s) seleccionado(s)
-          </Typography>
-        </Box>
-      )}
+    <>
+      <Paper sx={{ width: '100%', overflow: 'hidden' }}>
       
       <TableContainer sx={{ maxHeight: 440 }}>
         <Table stickyHeader aria-label="tabla de personas">
@@ -122,9 +109,9 @@ const PersonasTable = ({
               <TableCell padding="checkbox">
                 <Checkbox
                   color="primary"
-                  indeterminate={selected.length > 0 && selected.length < personas.length}
-                  checked={personas.length > 0 && selected.length === personas.length}
-                  onChange={handleSelectAll}
+                  indeterminate={bulkSelection.isIndeterminate}
+                  checked={bulkSelection.isAllSelected}
+                  onChange={bulkSelection.handleSelectAll}
                 />
               </TableCell>
               <TableCell>ID</TableCell>
@@ -139,11 +126,11 @@ const PersonasTable = ({
             {personas
               .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
               .map((persona) => {
-                const isItemSelected = isSelected(persona.id);
+                const isItemSelected = bulkSelection.isSelected(persona);
                 return (
                   <TableRow
                     hover
-                    onClick={() => handleSelect(persona.id)}
+                    onClick={() => bulkSelection.handleSelectItem(persona)}
                     role="checkbox"
                     aria-checked={isItemSelected}
                     tabIndex={-1}
@@ -213,10 +200,10 @@ const PersonasTable = ({
                         </Tooltip>
                       )}
 
-                      {/* Botón de reporte para admin/personal */}
+                      {/* Botón de reporte para admin/coordinador/personal */}
                       {persona.rol === 'alumno' &&
                        onVerReporte &&
-                       (currentUserRole === 'admin' || currentUserRole === 'personal') && (
+                       (currentUserRole === 'admin' || currentUserRole === 'coordinador' || currentUserRole === 'personal') && (
                         <Tooltip title="Ver Reporte Psicopedagógico">
                           <IconButton
                             size="small"
@@ -256,6 +243,30 @@ const PersonasTable = ({
         }
       />
     </Paper>
+
+    {/* Componentes de Batch Delete */}
+    {currentUserRole === 'admin' && (
+      <>
+        <BulkDeleteToolbar
+          selectedCount={bulkSelection.selectedCount}
+          onBulkDelete={handleBulkDeleteClick}
+          onClearSelection={bulkSelection.clearSelection}
+          loading={loading}
+          entityName="personas"
+        />
+
+        <BulkDeleteDialog
+          open={bulkDeleteDialogOpen}
+          onClose={handleBulkDeleteCancel}
+          onConfirm={handleBulkDeleteConfirm}
+          selectedCount={bulkSelection.selectedCount}
+          entityName="personas"
+          loading={loading}
+          warningMessage="Se eliminarán permanentemente todas las personas seleccionadas junto con sus datos asociados (atenciones, contactos de emergencia, etc.)."
+        />
+      </>
+    )}
+  </>
   );
 };
 

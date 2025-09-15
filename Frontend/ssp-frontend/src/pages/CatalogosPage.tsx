@@ -23,8 +23,8 @@ const CatalogosPage: React.FC = () => {
   const { user, logout } = useContext(AuthContext);
   const navigate = useNavigate();
 
-  // Verificar que el usuario sea administrador
-  if (user?.rol !== 'admin') {
+  // Verificar que el usuario sea administrador o coordinador
+  if (user?.rol !== 'admin' && user?.rol !== 'coordinador') {
     return (
       <Container maxWidth="lg" sx={{ mt: 4 }}>
         <Paper elevation={3} sx={{ p: 3, textAlign: 'center' }}>
@@ -34,8 +34,8 @@ const CatalogosPage: React.FC = () => {
           <Typography variant="body1" color="text.secondary">
             No tienes permisos para acceder a esta sección.
           </Typography>
-          <Button 
-            variant="contained" 
+          <Button
+            variant="contained"
             onClick={() => navigate('/dashboard')}
             sx={{ mt: 2 }}
           >
@@ -45,6 +45,9 @@ const CatalogosPage: React.FC = () => {
       </Container>
     );
   }
+
+  // Verificar si el usuario puede eliminar (solo admin)
+  const canDelete = user?.rol === 'admin';
 
   const handleNavigateToCatalogos = () => {
     // Ya estamos en la página de catálogos, no necesitamos navegar
@@ -115,7 +118,7 @@ const CatalogosPage: React.FC = () => {
         </Paper>
 
         {/* Componente principal de administración de catálogos */}
-        <CatalogosAdmin />
+        <CatalogosAdmin canDelete={canDelete} />
       </Container>
     </Box>
   );
