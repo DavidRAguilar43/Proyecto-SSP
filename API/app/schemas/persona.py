@@ -235,6 +235,7 @@ class PersonaUpdate(BaseModel):
     grupo_etnico: Optional[str] = None
     rol: Optional[Rol] = None
     password: Optional[str] = None
+    is_active: Optional[bool] = None  # Campo para activar/desactivar usuarios
     # Campos de cohorte simplificados
     cohorte_ano: Optional[int] = None  # Año de cohorte (ej: 2024, 2025)
     cohorte_periodo: Optional[int] = 1  # Período de cohorte (1 o 2, por defecto 1)

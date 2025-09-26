@@ -365,21 +365,11 @@ const RegistroUsuarioForm = ({ open, onClose, onSubmit, loading = false }: Regis
               </FormControl>
             </Grid>
 
-            {/* Alerta informativa según el tipo */}
+            {/* Alerta informativa */}
             <Grid size={{ xs: 12 }}>
-              {tipoUsuario === 'alumno' ? (
-                <Alert severity="info">
-                  <strong>Información importante:</strong> Los programas educativos y grupos serán asignados por el personal administrativo después del registro.
-                </Alert>
-              ) : tipoUsuario === 'personal' ? (
-                <Alert severity="warning">
-                  <strong>Registro de Personal:</strong> Tu registro será revisado por un administrador antes de ser activado. Recibirás una confirmación por correo electrónico.
-                </Alert>
-              ) : (
-                <Alert severity="info">
-                  <strong>Registro de Docente:</strong> Tu registro será revisado por un administrador antes de ser activado.
-                </Alert>
-              )}
+              <Alert severity="info">
+                <strong>Información importante:</strong> Los programas educativos y grupos serán asignados por el personal administrativo después del registro.
+              </Alert>
             </Grid>
 
             {/* Información Personal Básica */}
@@ -686,9 +676,7 @@ const RegistroUsuarioForm = ({ open, onClose, onSubmit, loading = false }: Regis
               disabled={!isFormValid() || loading}
               sx={{ py: 1.5 }}
             >
-              {loading ? 'Registrando...' :
-               tipoUsuario === 'alumno' ? 'Registrar' :
-               'Enviar Solicitud de Registro'}
+              {loading ? 'Registrando...' : 'Registrar'}
             </Button>
           </Grid>
 

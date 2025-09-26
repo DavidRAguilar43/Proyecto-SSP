@@ -4,6 +4,9 @@ export * from './notifications';
 // Re-export table types
 export * from './table';
 
+// Re-export cuestionarios types
+export * from './cuestionarios';
+
 export interface LoginCredentials {
   username: string;
   password: string;

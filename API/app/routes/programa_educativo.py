@@ -18,8 +18,7 @@ from app.utils.deps import (
     get_current_active_user,
     check_admin_role,
     check_admin_or_coordinador_role,
-    check_deletion_permission,
-    check_personal_role
+    check_deletion_permission
 )
 
 router = APIRouter(prefix="/programas-educativos", tags=["programas-educativos"])

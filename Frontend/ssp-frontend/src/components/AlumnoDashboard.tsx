@@ -54,6 +54,68 @@ const AlumnoDashboard = ({ user, onEditProfile }: AlumnoDashboardProps) => {
   const [cuestionarioCompletado, setCuestionarioCompletado] = useState(false);
   const [loadingCuestionario, setLoadingCuestionario] = useState(true);
 
+  // Funciones para obtener etiquetas personalizadas según el rol
+  const getFieldLabels = () => {
+    switch (user.rol) {
+      case 'personal':
+        return {
+          semestre: 'Departamento',
+          programa: 'Puesto',
+          grupo: 'Extensión (Lugar de contacto)'
+        };
+      case 'docente':
+        return {
+          semestre: 'Facultad',
+          programa: 'Carrera',
+          grupo: 'Materias asignadas'
+        };
+      case 'alumno':
+      default:
+        return {
+          semestre: 'Semestre Actual',
+          programa: 'Programa Educativo',
+          grupo: 'Grupo'
+        };
+    }
+  };
+
+  const getFieldValues = () => {
+    const labels = getFieldLabels();
+    switch (user.rol) {
+      case 'personal':
+        return {
+          semestre: user.semestre ? `Departamento ${user.semestre}` : 'No especificado',
+          programa: user.programas && user.programas.length > 0
+            ? user.programas[0].nombre_programa
+            : 'Pendiente de asignación',
+          grupo: user.grupos && user.grupos.length > 0
+            ? user.grupos[0].nombre_grupo
+            : 'Pendiente de asignación'
+        };
+      case 'docente':
+        return {
+          semestre: user.semestre ? `Facultad ${user.semestre}` : 'No especificado',
+          programa: user.programas && user.programas.length > 0
+            ? user.programas[0].nombre_programa
+            : 'Pendiente de asignación',
+          grupo: user.grupos && user.grupos.length > 0
+            ? user.grupos[0].nombre_grupo
+            : 'Pendiente de asignación'
+        };
+      case 'alumno':
+      default:
+        return {
+          semestre: user.semestre ? `${user.semestre}° Semestre` : 'No especificado',
+          programa: user.programas && user.programas.length > 0
+            ? user.programas[0].nombre_programa
+            : 'Pendiente de asignación',
+          grupo: user.grupos && user.grupos.length > 0
+            ? user.grupos[0].nombre_grupo
+            : 'Pendiente de asignación'
+        };
+    }
+  };
+
   // Estados para citas
   const [solicitudCitaOpen, setSolicitudCitaOpen] = useState(false);
   const [misCitasOpen, setMisCitasOpen] = useState(false);
@@ -71,9 +133,23 @@ const AlumnoDashboard = ({ user, onEditProfile }: AlumnoDashboardProps) => {
   // Función para formatear la información del usuario
   const formatUserInfo = () => {
     const info = [];
+    const labels = getFieldLabels();
 
     if (user.edad) info.push(`${user.edad} años`);
-    if (user.semestre) info.push(`Semestre ${user.semestre}`);
+    if (user.semestre) {
+      switch (user.rol) {
+        case 'personal':
+          info.push(`${labels.semestre} ${user.semestre}`);
+          break;
+        case 'docente':
+          info.push(`${labels.semestre} ${user.semestre}`);
+          break;
+        case 'alumno':
+        default:
+          info.push(`${labels.semestre.replace(' Actual', '')} ${user.semestre}`);
+          break;
+      }
+    }
     if (user.matricula) info.push(`Matrícula: ${user.matricula}`);
 
     return info.join(' • ');
@@ -184,9 +260,9 @@ const AlumnoDashboard = ({ user, onEditProfile }: AlumnoDashboardProps) => {
                 {formatUserInfo()}
               </Typography>
               
-              <Chip 
-                label="Estudiante" 
-                color="primary" 
+              <Chip
+                label={user.rol === 'alumno' ? 'Estudiante' : user.rol === 'docente' ? 'Docente' : 'Personal'}
+                color="primary"
                 variant="outlined"
                 sx={{ mb: 2 }}
               />
@@ -229,23 +305,10 @@ const AlumnoDashboard = ({ user, onEditProfile }: AlumnoDashboardProps) => {
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <Paper sx={{ p: 2, bgcolor: 'grey.50' }}>
                     <Typography variant="subtitle2" color="text.secondary">
-                      Semestre Actual
+                      {getFieldLabels().semestre}
                     </Typography>
                     <Typography variant="body1">
-                      {user.semestre ? `${user.semestre}° Semestre` : 'No especificado'}
-                    </Typography>
-                  </Paper>
-                </Grid>
-                
-                <Grid size={{ xs: 12, sm: 6 }}>
-                  <Paper sx={{ p: 2, bgcolor: 'grey.50' }}>
-                    <Typography variant="subtitle2" color="text.secondary">
-                      Programa Educativo
-                    </Typography>
-                    <Typography variant="body1">
-                      {user.programas && user.programas.length > 0
-                        ? user.programas[0].nombre_programa
-                        : 'Pendiente de asignación'}
+                      {getFieldValues().semestre}
                     </Typography>
                   </Paper>
                 </Grid>
@@ -253,12 +316,21 @@ const AlumnoDashboard = ({ user, onEditProfile }: AlumnoDashboardProps) => {
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <Paper sx={{ p: 2, bgcolor: 'grey.50' }}>
                     <Typography variant="subtitle2" color="text.secondary">
-                      Grupo
+                      {getFieldLabels().programa}
                     </Typography>
                     <Typography variant="body1">
-                      {user.grupos && user.grupos.length > 0
-                        ? user.grupos[0].nombre_grupo
-                        : 'Pendiente de asignación'}
+                      {getFieldValues().programa}
+                    </Typography>
+                  </Paper>
+                </Grid>
+
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <Paper sx={{ p: 2, bgcolor: 'grey.50' }}>
+                    <Typography variant="subtitle2" color="text.secondary">
+                      {getFieldLabels().grupo}
+                    </Typography>
+                    <Typography variant="body1">
+                      {getFieldValues().grupo}
                     </Typography>
                   </Paper>
                 </Grid>
@@ -349,6 +421,41 @@ const AlumnoDashboard = ({ user, onEditProfile }: AlumnoDashboardProps) => {
                 </Button>
               </CardActions>
             )}
+          </Card>
+
+          {/* Cuestionarios Asignados */}
+          <Card sx={{ mb: 3 }}>
+            <CardContent>
+              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
+                <AssignmentIcon sx={{ mr: 1, color: 'info.main' }} />
+                Mis Cuestionarios
+              </Typography>
+
+              <Alert severity="info" sx={{ mb: 2 }}>
+                <Typography variant="body2">
+                  📝 Aquí encontrarás todos los cuestionarios que te han sido asignados según tu rol.
+                </Typography>
+              </Alert>
+
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                • Cuestionarios de evaluación académica
+                <br />
+                • Encuestas de satisfacción
+                <br />
+                • Formularios de retroalimentación
+              </Typography>
+
+              <Button
+                variant="contained"
+                color="info"
+                startIcon={<AssignmentIcon />}
+                onClick={() => window.location.href = '/usuario/cuestionarios'}
+                size="large"
+                fullWidth
+              >
+                Ver Mis Cuestionarios
+              </Button>
+            </CardContent>
           </Card>
 
           {/* Citas con Personal */}
@@ -499,12 +606,12 @@ const AlumnoDashboard = ({ user, onEditProfile }: AlumnoDashboardProps) => {
                       <SchoolIcon color="warning" />
                     </ListItemIcon>
                     <ListItemText
-                      primary="Programa Educativo Pendiente"
-                      secondary="Su programa educativo será asignado por el personal administrativo. Manténgase al pendiente."
+                      primary={`${getFieldLabels().programa} Pendiente`}
+                      secondary={`Su ${getFieldLabels().programa.toLowerCase()} será asignado por el personal administrativo. Manténgase al pendiente.`}
                     />
                   </ListItem>
                 )}
-                
+
                 {(!user.grupos || user.grupos.length === 0) && (
                   <>
                     <Divider />
@@ -513,8 +620,8 @@ const AlumnoDashboard = ({ user, onEditProfile }: AlumnoDashboardProps) => {
                         <GroupIcon color="warning" />
                       </ListItemIcon>
                       <ListItemText
-                        primary="Grupo Pendiente"
-                        secondary="Su grupo será asignado por el personal administrativo. Manténgase al pendiente."
+                        primary={`${getFieldLabels().grupo} Pendiente`}
+                        secondary={`Su ${getFieldLabels().grupo.toLowerCase()} será asignado por el personal administrativo. Manténgase al pendiente.`}
                       />
                     </ListItem>
                   </>

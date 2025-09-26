@@ -18,8 +18,7 @@ from app.schemas.personal import (
 from app.utils.deps import (
     get_current_active_user,
     check_admin_role,
-    check_admin_or_coordinador_role,
-    check_personal_role
+    check_admin_or_coordinador_role
 )
 
 router = APIRouter(prefix="/personal", tags=["personal"])

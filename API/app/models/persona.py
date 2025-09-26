@@ -8,7 +8,9 @@ class Persona(Base):
     __tablename__ = "personas"
 
     id = Column(Integer, primary_key=True, index=True)
-    # SEGURIDAD: Eliminamos tipo_persona, usamos solo rol para simplificar y mejorar seguridad
+    # TEMPORAL: Mantenemos tipo_persona para compatibilidad con BD existente
+    # TODO: Crear migración para eliminar esta columna
+    tipo_persona = Column(String, nullable=False, default="usuario")  # TEMPORAL - será eliminado
     sexo = Column(String, nullable=False)  # masculino, femenino, no_decir, otro
     genero = Column(String, nullable=False)  # masculino, femenino, no_binario, otro
     edad = Column(Integer, nullable=False)
@@ -44,9 +46,15 @@ class Persona(Base):
     atenciones = relationship("Atencion", back_populates="persona")
     cuestionarios_completados = relationship("Cuestionario", back_populates="persona")
 
-    # Relaciones para notificaciones de registro
+    # Relaciones para cuestionarios administrativos
+    cuestionarios_creados = relationship("CuestionarioAdmin", back_populates="creador")
+    respuestas_cuestionarios = relationship("RespuestaCuestionario", back_populates="usuario")
+
+    # Relaciones para notificaciones
     notificaciones_enviadas = relationship("NotificacionRegistro", foreign_keys="NotificacionRegistro.usuario_solicitante_id", back_populates="usuario_solicitante")
     notificaciones_recibidas = relationship("NotificacionRegistro", foreign_keys="NotificacionRegistro.usuario_destinatario_id", back_populates="usuario_destinatario")
+
+
 
     # Relaciones de citas
     citas_como_alumno = relationship("Cita", foreign_keys="Cita.id_alumno", back_populates="alumno")

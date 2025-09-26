@@ -10,8 +10,16 @@ from app.models.personal import Personal
 from app.models.contacto_emergencia import ContactoEmergencia
 from app.models.atencion import Atencion
 from app.models.cuestionario import Cuestionario
+from app.models.cuestionario_admin import (
+    CuestionarioAdmin,
+    Pregunta,
+    AsignacionCuestionario,
+    RespuestaCuestionario,
+    RespuestaPregunta
+)
 from app.models.cohorte import Cohorte
 from app.models.cita import Cita
 from app.models.religion import Religion
 from app.models.grupo_etnico import GrupoEtnico
 from app.models.discapacidad import Discapacidad
+from app.models.notificacion import NotificacionRegistro

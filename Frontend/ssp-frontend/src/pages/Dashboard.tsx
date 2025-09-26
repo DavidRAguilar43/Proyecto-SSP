@@ -33,15 +33,15 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const [citasPendientes, setCitasPendientes] = useState(0);
 
-  // Redirigir alumnos a su página específica
+  // Redirigir usuarios finales (alumnos, docentes, personal) a la interfaz unificada
   useEffect(() => {
-    if (user?.rol === 'alumno') {
+    if (user?.rol === 'alumno' || user?.rol === 'docente' || user?.rol === 'personal') {
       navigate('/alumno', { replace: true });
     }
   }, [user, navigate]);
 
-  // Si es alumno, mostrar su página directamente
-  if (user?.rol === 'alumno') {
+  // Si es usuario final, mostrar la interfaz unificada
+  if (user?.rol === 'alumno' || user?.rol === 'docente' || user?.rol === 'personal') {
     return <AlumnoPage user={user} onLogout={logout} />;
   }
 
@@ -101,6 +101,20 @@ const Dashboard = () => {
       icon: <CategoryIcon sx={{ fontSize: 40 }} />,
       path: '/catalogos',
       roles: ['admin', 'coordinador']
+    },
+    {
+      title: 'Gestión de Cuestionarios',
+      description: 'Crear, editar y administrar cuestionarios para usuarios',
+      icon: <AssignmentIcon sx={{ fontSize: 40 }} />,
+      path: '/admin/cuestionarios',
+      roles: ['admin', 'coordinador']
+    },
+    {
+      title: 'Mis Cuestionarios',
+      description: 'Ver y responder cuestionarios asignados',
+      icon: <PsychologyIcon sx={{ fontSize: 40 }} />,
+      path: '/usuario/cuestionarios',
+      roles: ['alumno', 'docente', 'personal']
     }
   ];
 
@@ -145,8 +159,8 @@ const Dashboard = () => {
           )}
         </Paper>
 
-        {/* Notificaciones de Cuestionarios (solo para admin y personal) */}
-        {(user?.rol === 'admin' || user?.rol === 'personal') && (
+        {/* Notificaciones de Cuestionarios (solo para admin y coordinador) */}
+        {(user?.rol === 'admin' || user?.rol === 'coordinador') && (
           <Box sx={{ mb: 4 }}>
             <EstudiantesCuestionarios />
           </Box>

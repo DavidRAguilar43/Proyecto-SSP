@@ -1,7 +1,7 @@
 // Test file to verify imports work correctly
 import React from 'react';
-import GenericTableWithBulkDelete from '@/components/GenericTableWithBulkDelete';
-import { TableColumn, TableAction } from '@/types';
+import GenericTableWithBulkDelete from '../components/GenericTableWithBulkDelete';
+import { TableColumn, TableAction } from '../types';
 
 interface TestItem {
   id: number;

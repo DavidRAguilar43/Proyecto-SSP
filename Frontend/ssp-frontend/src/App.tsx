@@ -1,22 +1,33 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { CssBaseline } from '@mui/material';
-import { AuthProvider } from '@/contexts/AuthContext';
-import { NotificationProvider } from '@/contexts/NotificationContext';
-import NotificationContainer from '@/components/NotificationContainer';
-import LoginPage from '@/pages/LoginPage';
-import RegistroAlumnoPage from '@/pages/RegistroAlumnoPage';
-import Dashboard from '@/pages/Dashboard';
-import PersonasPage from '@/pages/PersonasPage';
-import { ProgramasEducativosPage } from '@/pages/ProgramasEducativosPage';
-import { UnidadesPage } from '@/pages/UnidadesPage';
-import { GruposPage } from '@/pages/GruposPage';
-import { AtencionesPage } from '@/pages/AtencionesPage';
-import AlumnoPage from '@/pages/AlumnoPage';
-import CatalogosPage from '@/pages/CatalogosPage';
-import CuestionariosCompletadosPage from '@/pages/CuestionariosCompletadosPage';
-import SolicitudesPendientesPage from '@/pages/SolicitudesPendientesPage';
-import CuestionariosPendientesPage from '@/pages/CuestionariosPendientesPage';
-import ProtectedRoute from '@/components/ProtectedRoute';
+import { AuthProvider } from './contexts/AuthContext';
+import { NotificationProvider } from './contexts/NotificationContext';
+import NotificationContainer from './components/NotificationContainer';
+import LoginPage from './pages/LoginPage';
+import RegistroAlumnoPage from './pages/RegistroAlumnoPage';
+import Dashboard from './pages/Dashboard';
+import PersonasPage from './pages/PersonasPage';
+import { ProgramasEducativosPage } from './pages/ProgramasEducativosPage';
+import { UnidadesPage } from './pages/UnidadesPage';
+import { GruposPage } from './pages/GruposPage';
+import { AtencionesPage } from './pages/AtencionesPage';
+import AlumnoPage from './pages/AlumnoPage';
+import CatalogosPage from './pages/CatalogosPage';
+import CuestionariosCompletadosPage from './pages/CuestionariosCompletadosPage';
+import SolicitudesPendientesPage from './pages/SolicitudesPendientesPage';
+import CuestionariosPendientesPage from './pages/CuestionariosPendientesPage';
+import ProtectedRoute from './components/ProtectedRoute';
+
+// Páginas de administración de cuestionarios
+import CuestionariosPage from './pages/admin/CuestionariosPage';
+import CrearCuestionarioPage from './pages/admin/CrearCuestionarioPage';
+import EditarCuestionarioPage from './pages/admin/EditarCuestionarioPage';
+
+// Páginas de usuario para cuestionarios
+import CuestionariosAsignadosPage from './pages/usuario/CuestionariosAsignadosPage';
+import ResponderCuestionarioPage from './pages/usuario/ResponderCuestionarioPage';
+
+
 
 function App() {
   return (
@@ -111,11 +122,56 @@ function App() {
           <Route
             path="/alumno"
             element={
-              <ProtectedRoute allowedRoles={['alumno']}>
+              <ProtectedRoute allowedRoles={['alumno', 'docente', 'personal']}>
                 <AlumnoPage />
               </ProtectedRoute>
             }
           />
+
+          {/* Rutas de administración de cuestionarios */}
+          <Route
+            path="/admin/cuestionarios"
+            element={
+              <ProtectedRoute allowedRoles={['admin', 'coordinador']}>
+                <CuestionariosPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/cuestionarios/crear"
+            element={
+              <ProtectedRoute allowedRoles={['admin', 'coordinador']}>
+                <CrearCuestionarioPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/cuestionarios/editar/:id"
+            element={
+              <ProtectedRoute allowedRoles={['admin', 'coordinador']}>
+                <EditarCuestionarioPage />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Rutas de usuario para cuestionarios */}
+          <Route
+            path="/usuario/cuestionarios"
+            element={
+              <ProtectedRoute allowedRoles={['alumno', 'docente', 'personal']}>
+                <CuestionariosAsignadosPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/usuario/cuestionarios/responder/:id"
+            element={
+              <ProtectedRoute allowedRoles={['alumno', 'docente', 'personal']}>
+                <ResponderCuestionarioPage />
+              </ProtectedRoute>
+            }
+          />
+
           <Route path="/" element={<Navigate to="/login" replace />} />
         </Routes>
         </Router>

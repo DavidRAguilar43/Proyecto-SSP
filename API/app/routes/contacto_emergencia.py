@@ -1,6 +1,6 @@
 from typing import Any, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 
@@ -18,7 +18,8 @@ from app.schemas.contacto_emergencia import (
 from app.utils.deps import (
     get_current_active_user,
     check_admin_role,
-    check_personal_role
+    check_end_user_access,
+    check_personal_role  # DEPRECATED - será eliminado
 )
 
 router = APIRouter(prefix="/contactos-emergencia", tags=["contactos-emergencia"])
@@ -29,16 +30,24 @@ def create_contacto_emergencia(
     *,
     db: Session = Depends(get_db),
     contacto_in: ContactoEmergenciaCreate,
-    current_user = Depends(check_personal_role)
+    current_user = Depends(check_end_user_access)
 ) -> Any:
     """
-    Crear un nuevo contacto de emergencia.
+    Crear un nuevo contacto de emergencia (usuarios finales).
+    Los usuarios finales solo pueden crear contactos para sí mismos.
     """
     # Verificar si la persona existe
     persona = db.query(Persona).filter(Persona.id == contacto_in.id_persona).first()
     if not persona:
         raise HTTPException(status_code=404, detail="Persona no encontrada")
-    
+
+    # VALIDACIÓN: Los usuarios finales solo pueden crear contactos para sí mismos
+    if current_user.rol in ["docente", "personal", "alumno"] and current_user.id != contacto_in.id_persona:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Solo puede crear contactos de emergencia para su propio perfil"
+        )
+
     # Crear objeto ContactoEmergencia
     db_contacto = ContactoEmergencia(
         nombre_contacto=contacto_in.nombre_contacto,
@@ -97,17 +106,32 @@ def update_contacto_emergencia(
     db: Session = Depends(get_db),
     contacto_id: int,
     contacto_in: ContactoEmergenciaUpdate,
-    current_user = Depends(check_personal_role)
+    current_user = Depends(check_end_user_access)
 ) -> Any:
     """
-    Actualizar un contacto de emergencia.
+    Actualizar un contacto de emergencia (usuarios finales).
+    Los usuarios finales solo pueden actualizar sus propios contactos.
     """
     contacto = db.query(ContactoEmergencia).filter(ContactoEmergencia.id_contacto == contacto_id).first()
     if not contacto:
         raise HTTPException(status_code=404, detail="Contacto de emergencia no encontrado")
-    
+
+    # VALIDACIÓN: Los usuarios finales solo pueden actualizar sus propios contactos
+    if current_user.rol in ["docente", "personal", "alumno"] and current_user.id != contacto.id_persona:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Solo puede actualizar sus propios contactos de emergencia"
+        )
+
     # Verificar si se está cambiando la persona y si existe
     if contacto_in.id_persona and contacto_in.id_persona != contacto.id_persona:
+        # VALIDACIÓN: Los usuarios finales no pueden cambiar la persona del contacto
+        if current_user.rol in ["docente", "personal", "alumno"]:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="No puede cambiar la persona asociada al contacto"
+            )
+
         persona = db.query(Persona).filter(Persona.id == contacto_in.id_persona).first()
         if not persona:
             raise HTTPException(status_code=404, detail="Persona no encontrada")
@@ -130,15 +154,23 @@ def delete_contacto_emergencia(
     *,
     db: Session = Depends(get_db),
     contacto_id: int,
-    current_user = Depends(check_personal_role)
+    current_user = Depends(check_end_user_access)
 ) -> Any:
     """
-    Eliminar un contacto de emergencia.
+    Eliminar un contacto de emergencia (usuarios finales).
+    Los usuarios finales solo pueden eliminar sus propios contactos.
     """
     contacto = db.query(ContactoEmergencia).filter(ContactoEmergencia.id_contacto == contacto_id).first()
     if not contacto:
         raise HTTPException(status_code=404, detail="Contacto de emergencia no encontrado")
-    
+
+    # VALIDACIÓN: Los usuarios finales solo pueden eliminar sus propios contactos
+    if current_user.rol in ["docente", "personal", "alumno"] and current_user.id != contacto.id_persona:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Solo puede eliminar sus propios contactos de emergencia"
+        )
+
     db.delete(contacto)
     db.commit()
     return contacto

@@ -21,8 +21,8 @@ import {
   Psychology as PsychologyIcon,
   Assessment as AssessmentIcon
 } from '@mui/icons-material';
-import type { Persona } from '@/types';
-import { useBulkSelection } from '@/hooks/useBulkSelection';
+import type { Persona } from '../types';
+import { useBulkSelection } from '../hooks/useBulkSelection';
 import BulkDeleteToolbar from './BulkDeleteToolbar';
 import BulkDeleteDialog from './BulkDeleteDialog';
 

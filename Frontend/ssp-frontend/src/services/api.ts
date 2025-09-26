@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { LoginCredentials, AuthResponse } from '@/types';
+import type { LoginCredentials, AuthResponse } from '../types';
 
 // Crear una instancia de axios con la URL base de la API
 const api = axios.create({
@@ -630,6 +630,140 @@ export const notificacionesApi = {
   // Obtener estadísticas de notificaciones
   getEstadisticas: async () => {
     const response = await api.get('/notificaciones/estadisticas');
+    return response.data;
+  }
+};
+
+// API para gestión de cuestionarios administrativos
+export const cuestionariosAdminApi = {
+  // Obtener todos los cuestionarios con filtros
+  getAll: async (filtros?: {
+    titulo?: string;
+    estado?: string;
+    tipo_usuario?: string;
+    fecha_creacion_desde?: string;
+    fecha_creacion_hasta?: string;
+    creado_por?: string;
+    skip?: number;
+    limit?: number;
+  }) => {
+    const response = await api.get('/cuestionarios-admin', { params: filtros });
+    return response.data;
+  },
+
+  // Obtener cuestionario por ID
+  getById: async (id: string) => {
+    const response = await api.get(`/cuestionarios-admin/${id}`);
+    return response.data;
+  },
+
+  // Crear nuevo cuestionario
+  create: async (data: any) => {
+    const response = await api.post('/cuestionarios-admin', data);
+    return response.data;
+  },
+
+  // Actualizar cuestionario existente
+  update: async (id: string, data: any) => {
+    const response = await api.put(`/cuestionarios-admin/${id}`, data);
+    return response.data;
+  },
+
+  // Eliminar cuestionario
+  delete: async (id: string) => {
+    const response = await api.delete(`/cuestionarios-admin/${id}`);
+    return response.data;
+  },
+
+  // Duplicar cuestionario
+  duplicate: async (id: string, nuevoTitulo?: string) => {
+    const response = await api.post(`/cuestionarios-admin/${id}/duplicar`, {
+      nuevo_titulo: nuevoTitulo
+    });
+    return response.data;
+  },
+
+  // Obtener estadísticas de un cuestionario
+  getEstadisticas: async (id: string) => {
+    const response = await api.get(`/cuestionarios-admin/${id}/estadisticas`);
+    return response.data;
+  },
+
+  // Asignación masiva de cuestionarios
+  asignacionMasiva: async (data: {
+    cuestionario_ids: string[];
+    tipos_usuario: string[];
+    fecha_inicio?: string;
+    fecha_fin?: string;
+  }) => {
+    const response = await api.post('/cuestionarios-admin/asignacion-masiva', data);
+    return response.data;
+  },
+
+  // Validar cuestionario antes de guardar
+  validar: async (data: any) => {
+    const response = await api.post('/cuestionarios-admin/validar', data);
+    return response.data;
+  },
+
+  // Cambiar estado de cuestionario (activar/desactivar)
+  cambiarEstado: async (id: string, estado: string) => {
+    const response = await api.patch(`/cuestionarios-admin/${id}/estado`, { estado });
+    return response.data;
+  }
+};
+
+// API para usuarios finales (responder cuestionarios)
+export const cuestionariosUsuarioApi = {
+  // Obtener cuestionarios asignados al usuario actual
+  getCuestionariosAsignados: async (filtros?: {
+    estado?: string;
+    tipo?: string;
+    skip?: number;
+    limit?: number;
+  }) => {
+    const response = await api.get('/cuestionarios-usuario/asignados', { params: filtros });
+    return response.data;
+  },
+
+  // Obtener cuestionario específico para responder
+  getCuestionarioParaResponder: async (cuestionarioId: string) => {
+    const response = await api.get(`/cuestionarios-usuario/${cuestionarioId}/responder`);
+    return response.data;
+  },
+
+  // Guardar respuestas (progreso parcial)
+  guardarRespuestas: async (cuestionarioId: string, respuestas: any) => {
+    const response = await api.post(`/cuestionarios-usuario/${cuestionarioId}/guardar-respuestas`, {
+      respuestas,
+      estado: 'en_progreso'
+    });
+    return response.data;
+  },
+
+  // Completar cuestionario (envío final)
+  completarCuestionario: async (cuestionarioId: string, respuestas: any) => {
+    const response = await api.post(`/cuestionarios-usuario/${cuestionarioId}/completar`, {
+      respuestas,
+      estado: 'completado'
+    });
+    return response.data;
+  },
+
+  // Obtener respuestas guardadas de un cuestionario
+  getRespuestasGuardadas: async (cuestionarioId: string) => {
+    const response = await api.get(`/cuestionarios-usuario/${cuestionarioId}/respuestas`);
+    return response.data;
+  },
+
+  // Obtener historial de cuestionarios completados
+  getHistorialCompletados: async (filtros?: {
+    fecha_desde?: string;
+    fecha_hasta?: string;
+    skip?: number;
+    limit?: number;
+  }) => {
+    const response = await api.get('/cuestionarios-usuario/historial', { params: filtros });
     return response.data;
   }
 };

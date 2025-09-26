@@ -127,9 +127,9 @@ def get_solicitudes_citas(
     current_user: Persona = Depends(get_current_active_user)
 ):
     """
-    Obtener solicitudes de citas (solo para admin y personal).
+    Obtener solicitudes de citas (solo para admin y coordinador).
     """
-    if current_user.rol not in ["admin", "personal"]:
+    if current_user.rol not in ["admin", "coordinador"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No tienes permisos para ver las solicitudes de citas"
@@ -172,9 +172,9 @@ def confirmar_cita(
     current_user: Persona = Depends(get_current_active_user)
 ):
     """
-    Confirmar o actualizar una cita (solo para admin y personal).
+    Confirmar o actualizar una cita (solo para admin y coordinador).
     """
-    if current_user.rol not in ["admin", "personal"]:
+    if current_user.rol not in ["admin", "coordinador"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No tienes permisos para confirmar citas"
@@ -291,9 +291,9 @@ def get_estadisticas_citas(
     current_user: Persona = Depends(get_current_active_user)
 ):
     """
-    Obtener estadísticas de citas (solo para admin y personal).
+    Obtener estadísticas de citas (solo para admin y coordinador).
     """
-    if current_user.rol not in ["admin", "personal"]:
+    if current_user.rol not in ["admin", "coordinador"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No tienes permisos para ver estadísticas"

@@ -48,6 +48,55 @@ const AlumnoPerfilForm = ({ open, onClose, onSubmit, persona, loading = false }:
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
 
+  // Funciones para obtener etiquetas personalizadas según el rol
+  const getFieldLabels = () => {
+    switch (persona.rol) {
+      case 'personal':
+        return {
+          semestre: 'Departamento',
+          programa: 'Puesto',
+          grupo: 'Extensión (Lugar de contacto)'
+        };
+      case 'docente':
+        return {
+          semestre: 'Facultad',
+          programa: 'Carrera',
+          grupo: 'Materias asignadas'
+        };
+      case 'alumno':
+      default:
+        return {
+          semestre: 'Semestre',
+          programa: 'Programa Educativo',
+          grupo: 'Grupo'
+        };
+    }
+  };
+
+  const getFieldHelperTexts = () => {
+    switch (persona.rol) {
+      case 'personal':
+        return {
+          semestre: 'Departamento al que pertenece',
+          programa: 'Puesto que desempeña',
+          grupo: 'Extensión o lugar de contacto'
+        };
+      case 'docente':
+        return {
+          semestre: 'Facultad donde labora',
+          programa: 'Carrera que imparte',
+          grupo: 'Materias que tiene asignadas'
+        };
+      case 'alumno':
+      default:
+        return {
+          semestre: 'Semestre actual que cursa',
+          programa: 'Programa educativo inscrito',
+          grupo: 'Grupo asignado'
+        };
+    }
+  };
+
   // Cargar cohortes cuando se abra el formulario
   useEffect(() => {
     const loadCohortes = async () => {
@@ -236,7 +285,7 @@ const AlumnoPerfilForm = ({ open, onClose, onSubmit, persona, loading = false }:
             
             <Grid size={{ xs: 12 }}>
               <Alert severity="info">
-                <strong>Nota:</strong> Solo puede modificar su información personal. Los programas educativos y grupos son asignados por el personal administrativo.
+                <strong>Nota:</strong> Solo puede modificar su información personal. Los {getFieldLabels().programa.toLowerCase()}s y {getFieldLabels().grupo.toLowerCase()}s son asignados por el personal administrativo.
               </Alert>
             </Grid>
 
@@ -392,10 +441,11 @@ const AlumnoPerfilForm = ({ open, onClose, onSubmit, persona, loading = false }:
             <Grid size={{ xs: 12, sm: 6 }}>
               <TextField
                 fullWidth
-                label="Semestre"
+                label={getFieldLabels().semestre}
                 type="number"
                 value={formData.semestre || 1}
                 onChange={handleChange('semestre')}
+                helperText={getFieldHelperTexts().semestre}
                 inputProps={{ min: 1, max: 12 }}
               />
             </Grid>

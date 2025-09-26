@@ -24,15 +24,17 @@ import {
   ArrowBack as ArrowBackIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { personasService } from '@/services/api';
-import PersonasTable from '@/components/PersonasTable';
-import PersonaForm from '@/components/PersonaForm';
-import ConfirmDialog from '@/components/ConfirmDialog';
-import CuestionarioPsicopedagogico from '@/components/CuestionarioPsicopedagogico';
-import ReportePsicopedagogico from '@/components/ReportePsicopedagogico';
-import NotificacionesRegistrosPendientes from '@/components/admin/NotificacionesRegistrosPendientes';
-import type { Persona, PersonaCreateAdmin } from '@/types';
-import { useAuth } from '@/contexts/AuthContext';
+import { personasService } from '../services/api';
+import PersonasTable from '../components/PersonasTable';
+import PersonaForm from '../components/PersonaForm';
+import ConfirmDialog from '../components/ConfirmDialog';
+import CuestionarioPsicopedagogico from '../components/CuestionarioPsicopedagogico';
+import ReportePsicopedagogico from '../components/ReportePsicopedagogico';
+import NotificacionesRegistrosPendientes from '../components/admin/NotificacionesRegistrosPendientes';
+import type { Persona, PersonaCreate } from '../types';
+import { useAuth } from '../contexts/AuthContext';
+import { logAuthDiagnostic, enableRequestDebugging } from '../utils/authDiagnostic';
+import '../utils/testDeletePersonal'; // Importar funciones de prueba para consola
 
 const PersonasPage = () => {
   const { user } = useAuth();
@@ -128,7 +130,7 @@ const PersonasPage = () => {
     }
   };
 
-  const handleFormSubmit = async (personaData: PersonaCreateAdmin) => {
+  const handleFormSubmit = async (personaData: PersonaCreate) => {
     try {
       setLoading(true);
 
@@ -183,22 +185,60 @@ const PersonasPage = () => {
 
     try {
       setLoading(true);
-      await personasService.delete(personaToDelete.id);
-      showSnackbar('Persona eliminada correctamente', 'success');
 
-      // Eliminar la persona de la lista local
-      setPersonas(prevPersonas =>
-        prevPersonas.filter(p => p.id !== personaToDelete.id)
-      );
+      // 🔍 DIAGNÓSTICO DETALLADO ANTES DE ELIMINAR
+      console.group(`🗑️ INTENTANDO ELIMINAR PERSONA: ${personaToDelete.correo_institucional} (ID: ${personaToDelete.id})`);
+      console.log('👤 Persona a eliminar:', personaToDelete);
+      console.log('🔑 Usuario actual:', user);
 
-      setConfirmOpen(false);
-      setPersonaToDelete(null);
+      // Ejecutar diagnóstico de autenticación
+      await logAuthDiagnostic();
+
+      // Activar debugging de requests temporalmente
+      const disableDebugging = enableRequestDebugging();
+
+      try {
+        await personasService.delete(personaToDelete.id);
+        showSnackbar('Persona eliminada correctamente', 'success');
+
+        // Eliminar la persona de la lista local
+        setPersonas(prevPersonas =>
+          prevPersonas.filter(p => p.id !== personaToDelete.id)
+        );
+
+        setConfirmOpen(false);
+        setPersonaToDelete(null);
+        console.log('✅ ELIMINACIÓN EXITOSA');
+      } finally {
+        // Desactivar debugging
+        disableDebugging();
+        console.groupEnd();
+      }
+
     } catch (error: any) {
-      console.error('Error deleting persona:', error);
+      console.error('❌ ERROR AL ELIMINAR PERSONA:', error);
+
+      // Diagnóstico detallado del error
+      console.group('🔍 ANÁLISIS DEL ERROR');
+      console.log('Status Code:', error.response?.status);
+      console.log('Response Data:', error.response?.data);
+      console.log('Response Headers:', error.response?.headers);
+      console.log('Request Config:', error.config);
+      console.groupEnd();
+
       let message = 'Error al eliminar la persona';
 
       if (error.response?.status === 403) {
         message = 'No tiene permisos para eliminar personas';
+        console.warn('🚫 ERROR 403: Verificar token de autenticación y permisos de usuario');
+      } else if (error.response?.status === 401) {
+        message = 'Sesión expirada. Por favor, inicie sesión nuevamente';
+        console.warn('🔐 ERROR 401: Token inválido o expirado');
+      } else if (error.response?.status === 404) {
+        message = 'La persona no fue encontrada';
+      } else if (error.response?.status === 500) {
+        message = 'Error interno del servidor. Contacte al administrador';
+        console.error('🔥 ERROR 500: Problema en el servidor backend');
       } else if (error.response?.data?.detail) {
         if (Array.isArray(error.response.data.detail)) {
           message = error.response.data.detail.map((err: any) =>
@@ -334,6 +374,22 @@ const PersonasPage = () => {
           >
             Nueva Persona
           </Button>
+
+          {/* Botón de diagnóstico para debugging (solo para admin) */}
+          {user?.rol === 'admin' && (
+            <Button
+              variant="outlined"
+              color="info"
+              onClick={async () => {
+                console.clear();
+                await logAuthDiagnostic();
+                console.log('🔧 Para activar debugging de requests, ejecuta en consola: enableRequestDebugging()');
+              }}
+              sx={{ ml: 1 }}
+            >
+              🔍 Diagnóstico Auth
+            </Button>
+          )}
         </Toolbar>
       </Paper>
 

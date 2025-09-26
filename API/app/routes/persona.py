@@ -11,6 +11,7 @@ from app.models.persona import Persona
 from app.models.programa_educativo import ProgramaEducativo
 from app.models.grupo import Grupo
 from app.models.notificacion import NotificacionRegistro
+
 from app.schemas.persona import (
     PersonaCreate,
     PersonaRegistro,
@@ -23,9 +24,9 @@ from app.schemas.persona import (
 from app.utils.deps import (
     get_current_active_user,
     check_admin_role,
-    check_admin_or_coordinador_role,
-    check_deletion_permission,
-    check_personal_role
+    check_administrative_access,
+    check_admin_or_coordinador_role,  # DEPRECATED
+    check_deletion_permission
 )
 from app.middleware.rate_limit import registro_rate_limiter
 
@@ -71,7 +72,7 @@ def registro_usuario(
 ) -> Any:
     """
     Auto-registro para usuarios (alumnos, docentes, personal). No requiere autenticación.
-    Los alumnos se activan inmediatamente, el personal y docentes requieren aprobación.
+    Todos los usuarios se activan automáticamente al registrarse.
     SEGURIDAD: Solo se permiten roles específicos, NUNCA admin.
     """
     # SEGURIDAD: Rate limiting para prevenir spam de registros
@@ -106,12 +107,13 @@ def registro_usuario(
         raise HTTPException(status_code=400, detail="Ya existe una persona con este correo institucional")
 
     # Determinar si el usuario debe estar activo inmediatamente
-    # Solo los alumnos se activan automáticamente
-    is_active = persona_in.rol == "alumno"
+    # Todos los usuarios se activan automáticamente (alumnos, personal, docentes)
+    is_active = True
 
     # Crear objeto Persona
     db_persona = Persona(
-        # SEGURIDAD: Eliminamos tipo_persona, usamos solo rol
+        # TEMPORAL: Incluimos tipo_persona para compatibilidad con BD
+        tipo_persona="usuario",  # TEMPORAL - será eliminado en migración futura
         sexo=persona_in.sexo,
         genero=persona_in.genero,
         edad=persona_in.edad,
@@ -140,30 +142,8 @@ def registro_usuario(
     db.commit()
     db.refresh(db_persona)
 
-    # Si es personal o docente, crear notificación para administradores
-    if persona_in.rol in ["personal", "docente"]:
-        # Buscar administradores para notificar
-        admins = db.query(Persona).filter(Persona.rol == "admin", Persona.is_active == True).all()
-
-        tipo_notificacion = "registro_personal_pendiente" if persona_in.rol == "personal" else "registro_docente_pendiente"
-        tipo_usuario_texto = "personal administrativo" if persona_in.rol == "personal" else "docente"
-
-        mensaje = f"Nuevo registro de {tipo_usuario_texto} pendiente de aprobación: {persona_in.correo_institucional}"
-
-        # Crear notificación para cada administrador
-        for admin in admins:
-            notificacion = NotificacionRegistro(
-                tipo_notificacion=tipo_notificacion,
-                mensaje=mensaje,
-                usuario_solicitante_id=db_persona.id,
-                usuario_destinatario_id=admin.id
-            )
-            db.add(notificacion)
-
-        db.commit()
-
-    # Los alumnos no pueden asignar programas y grupos en el auto-registro
-    # Esto debe ser hecho por el personal administrativo
+    # Todos los usuarios se registran y activan automáticamente
+    # Los programas y grupos pueden ser asignados posteriormente por el personal administrativo
 
     return db_persona
 
@@ -224,10 +204,10 @@ def create_persona(
     *,
     db: Session = Depends(get_db),
     persona_in: PersonaCreate,
-    current_user: Persona = Depends(check_personal_role)
+    current_user: Persona = Depends(check_administrative_access)
 ) -> Any:
     """
-    Crear una nueva persona.
+    Crear una nueva persona (solo administradores y coordinadores).
     """
     # Verificar si ya existe una persona con el mismo correo o matrícula
     db_persona = db.query(Persona).filter(
@@ -244,7 +224,8 @@ def create_persona(
 
     # Crear objeto Persona
     db_persona = Persona(
-        # SEGURIDAD: Eliminamos tipo_persona, usamos solo rol
+        # TEMPORAL: Incluimos tipo_persona para compatibilidad con BD
+        tipo_persona="usuario",  # TEMPORAL - será eliminado en migración futura
         sexo=persona_in.sexo,
         genero=persona_in.genero,
         edad=persona_in.edad,
@@ -365,8 +346,9 @@ def read_persona(
     if not persona:
         raise HTTPException(status_code=404, detail="Persona no encontrada")
 
-    # Si no es admin o personal, solo puede ver su propia información
-    if current_user.rol not in ["admin", "personal"] and current_user.id != persona_id:
+    # Solo admin/coordinador pueden ver información de otros usuarios
+    # Usuarios finales (docente, personal, alumno) solo pueden ver su propia información
+    if current_user.rol not in ["admin", "coordinador"] and current_user.id != persona_id:
         raise HTTPException(status_code=403, detail="No tiene permisos para ver esta información")
 
     return persona
@@ -387,9 +369,9 @@ def update_persona(
     if not persona:
         raise HTTPException(status_code=404, detail="Persona no encontrada")
 
-    # Verificar permisos: solo admin/personal pueden modificar cualquier usuario
-    # Los demás solo pueden modificar su propia información
-    if current_user.rol not in ["admin", "personal"] and current_user.id != persona_id:
+    # Verificar permisos: solo admin/coordinador pueden modificar cualquier usuario
+    # Usuarios finales (docente, personal, alumno) solo pueden modificar su propia información
+    if current_user.rol not in ["admin", "coordinador"] and current_user.id != persona_id:
         raise HTTPException(status_code=403, detail="No tiene permisos para modificar esta información")
 
     # Actualizar campos si se proporcionan
@@ -419,6 +401,14 @@ def update_persona(
             ).all()
             persona.grupos = grupos
 
+    # SEGURIDAD: Solo administradores pueden cambiar el estado activo de usuarios
+    if "is_active" in update_data:
+        if current_user.rol != "admin":
+            raise HTTPException(
+                status_code=403,
+                detail="Solo los administradores pueden activar/desactivar usuarios"
+            )
+
     # Actualizar el resto de campos
     for field, value in update_data.items():
         setattr(persona, field, value)
@@ -446,6 +436,19 @@ def delete_persona(
     # Limpiar relaciones antes de eliminar
     persona.programas.clear()
     persona.grupos.clear()
+
+    # Eliminar notificaciones relacionadas (como solicitante o destinatario)
+    notificaciones_como_solicitante = db.query(NotificacionRegistro).filter(
+        NotificacionRegistro.usuario_solicitante_id == persona_id
+    ).all()
+    for notificacion in notificaciones_como_solicitante:
+        db.delete(notificacion)
+
+    notificaciones_como_destinatario = db.query(NotificacionRegistro).filter(
+        NotificacionRegistro.usuario_destinatario_id == persona_id
+    ).all()
+    for notificacion in notificaciones_como_destinatario:
+        db.delete(notificacion)
 
     # Eliminar registros relacionados
     if persona.personal:
@@ -490,7 +493,8 @@ def bulk_create_personas(
 
         # Crear objeto Persona
         db_persona = Persona(
-            # SEGURIDAD: Eliminamos tipo_persona, usamos solo rol
+            # TEMPORAL: Incluimos tipo_persona para compatibilidad con BD
+            tipo_persona="usuario",  # TEMPORAL - será eliminado en migración futura
             sexo=persona_data.sexo,
             genero=persona_data.genero,
             edad=persona_data.edad,
@@ -616,11 +620,55 @@ def bulk_delete_personas(
     for persona_id in bulk_delete.ids:
         persona = db.query(Persona).filter(Persona.id == persona_id).first()
         if persona:
+            # Eliminar notificaciones relacionadas antes de eliminar la persona
+            notificaciones_como_solicitante = db.query(NotificacionRegistro).filter(
+                NotificacionRegistro.usuario_solicitante_id == persona_id
+            ).all()
+            for notificacion in notificaciones_como_solicitante:
+                db.delete(notificacion)
+
+            notificaciones_como_destinatario = db.query(NotificacionRegistro).filter(
+                NotificacionRegistro.usuario_destinatario_id == persona_id
+            ).all()
+            for notificacion in notificaciones_como_destinatario:
+                db.delete(notificacion)
+
             db.delete(persona)
             deleted_ids.append(persona_id)
 
     db.commit()
     return deleted_ids
+
+
+@router.post("/limpiar-notificaciones-obsoletas")
+def limpiar_notificaciones_obsoletas(
+    *,
+    db: Session = Depends(get_db),
+    current_user: Persona = Depends(check_admin_role)
+) -> Any:
+    """
+    TEMPORAL: Limpiar todas las notificaciones de registro obsoletas.
+    Este endpoint es temporal para resolver problemas de integridad después
+    de eliminar la funcionalidad de notificaciones.
+    """
+    try:
+        # Contar notificaciones antes de eliminar
+        count_before = db.query(NotificacionRegistro).count()
+
+        # Eliminar todas las notificaciones de registro
+        db.query(NotificacionRegistro).delete()
+        db.commit()
+
+        return {
+            "message": "Notificaciones obsoletas eliminadas exitosamente",
+            "notificaciones_eliminadas": count_before
+        }
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error al limpiar notificaciones: {str(e)}"
+        )
 
 
 @router.get("/list/estudiantes", response_model=List[PersonaOut])

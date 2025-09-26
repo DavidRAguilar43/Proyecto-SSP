@@ -19,7 +19,7 @@ from app.utils.deps import (
     check_admin_role,
     check_admin_or_coordinador_role,
     check_deletion_permission,
-    check_personal_role
+    check_end_user_access  # Reemplaza check_personal_role para usuarios finales
 )
 
 router = APIRouter(prefix="/cuestionarios", tags=["cuestionarios"])
@@ -30,10 +30,10 @@ def create_cuestionario(
     *,
     db: Session = Depends(get_db),
     cuestionario_in: CuestionarioCreate,
-    current_user = Depends(check_personal_role)
+    current_user = Depends(check_end_user_access)
 ) -> Any:
     """
-    Crear un nuevo cuestionario.
+    Crear un nuevo cuestionario (docentes, personal y alumnos).
     """
     # Crear objeto Cuestionario
     db_cuestionario = Cuestionario(
@@ -83,10 +83,10 @@ def update_cuestionario(
     db: Session = Depends(get_db),
     cuestionario_id: int,
     cuestionario_in: CuestionarioUpdate,
-    current_user = Depends(check_personal_role)
+    current_user = Depends(check_end_user_access)
 ) -> Any:
     """
-    Actualizar un cuestionario.
+    Actualizar un cuestionario (docentes, personal y alumnos).
     """
     cuestionario = db.query(Cuestionario).filter(Cuestionario.id_cuestionario == cuestionario_id).first()
     if not cuestionario:

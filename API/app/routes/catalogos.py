@@ -20,8 +20,7 @@ from app.utils.deps import (
     check_admin_role,
     check_coordinador_role,
     check_admin_or_coordinador_role,
-    check_deletion_permission,
-    check_personal_role
+    check_deletion_permission
 )
 
 router = APIRouter(prefix="/catalogos", tags=["catalogos"])

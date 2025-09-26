@@ -101,7 +101,7 @@ const AlumnoPage = ({ user: propUser, onLogout: propOnLogout }: AlumnoPageProps)
       <AppBar position="static" sx={{ bgcolor: 'primary.main' }}>
         <Toolbar>
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            Sistema SSP - Portal Estudiantil
+            Sistema SSP - Portal de Usuario
           </Typography>
           
           <Box sx={{ display: 'flex', alignItems: 'center' }}>

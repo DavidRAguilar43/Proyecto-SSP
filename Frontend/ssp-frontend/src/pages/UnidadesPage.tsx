@@ -30,10 +30,10 @@ import {
   Edit as EditIcon,
   Delete as DeleteIcon
 } from '@mui/icons-material';
-import ConfirmDialog from '@/components/ConfirmDialog';
-import { unidadesApi } from '@/services/api';
-import { useAuth } from '@/contexts/AuthContext';
-import type { Unidad, UnidadCreate } from '@/types';
+import ConfirmDialog from '../components/ConfirmDialog';
+import { unidadesApi } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
+import type { Unidad, UnidadCreate } from '../types';
 
 interface UnidadFormData {
   nombre: string;

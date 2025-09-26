@@ -43,11 +43,11 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { es } from 'date-fns/locale';
 import { format } from 'date-fns';
-import { AuthContext } from '@/contexts/AuthContext';
-import { citasApi } from '@/services/api';
-import type { SolicitudCita, CitaUpdate, EstadoCita, TipoCita } from '@/types';
-import { useNotification } from '@/hooks/useNotification';
-import ConfirmDialog from '@/components/ConfirmDialog';
+import { AuthContext } from '../contexts/AuthContext';
+import { citasApi } from '../services/api';
+import type { SolicitudCita, CitaUpdate, EstadoCita, TipoCita } from '../types';
+import { useNotification } from '../hooks/useNotification';
+import ConfirmDialog from '../components/ConfirmDialog';
 
 const SolicitudesPendientesPage: React.FC = () => {
   const { user, logout } = useContext(AuthContext);

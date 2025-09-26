@@ -15,7 +15,8 @@ from app.schemas.cohorte import (
 )
 from app.utils.deps import (
     get_current_active_user,
-    check_personal_role
+    check_administrative_access,
+    check_personal_role  # DEPRECATED
 )
 
 router = APIRouter(prefix="/cohortes", tags=["cohortes"])
@@ -25,10 +26,10 @@ def create_cohorte(
     *,
     db: Session = Depends(get_db),
     cohorte_in: CohorteCreate,
-    current_user: Persona = Depends(check_personal_role)
+    current_user: Persona = Depends(check_administrative_access)
 ) -> Any:
     """
-    Crear una nueva cohorte.
+    Crear una nueva cohorte (solo administradores y coordinadores).
     """
     # Verificar si ya existe una cohorte con el mismo nombre
     db_cohorte = db.query(Cohorte).filter(Cohorte.nombre == cohorte_in.nombre).first()
@@ -84,10 +85,10 @@ def read_cohortes_activas(
 @router.get("/generar-opciones/", response_model=List[CohorteOut])
 def generar_opciones_cohortes(
     db: Session = Depends(get_db),
-    current_user: Persona = Depends(check_personal_role)
+    current_user: Persona = Depends(check_administrative_access)
 ) -> Any:
     """
-    Generar automáticamente opciones de cohortes desde años pasados hasta futuros.
+    Generar automáticamente opciones de cohortes desde años pasados hasta futuros (solo administradores y coordinadores).
     """
     current_year = datetime.now().year
     cohortes_generadas = []
@@ -162,10 +163,10 @@ def update_cohorte(
     db: Session = Depends(get_db),
     cohorte_id: int,
     cohorte_in: CohorteUpdate,
-    current_user: Persona = Depends(check_personal_role)
+    current_user: Persona = Depends(check_administrative_access)
 ) -> Any:
     """
-    Actualizar una cohorte.
+    Actualizar una cohorte (solo administradores y coordinadores).
     """
     cohorte = db.query(Cohorte).filter(Cohorte.id == cohorte_id).first()
     if not cohorte:
@@ -192,10 +193,10 @@ def delete_cohorte(
     *,
     db: Session = Depends(get_db),
     cohorte_id: int,
-    current_user: Persona = Depends(check_personal_role)
+    current_user: Persona = Depends(check_administrative_access)
 ) -> Any:
     """
-    Eliminar una cohorte.
+    Eliminar una cohorte (solo administradores y coordinadores).
     """
     cohorte = db.query(Cohorte).filter(Cohorte.id == cohorte_id).first()
     if not cohorte:

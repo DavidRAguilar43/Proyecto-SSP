@@ -18,7 +18,7 @@ from app.utils.deps import (
     get_current_active_user,
     check_admin_role,
     check_admin_or_coordinador_role,
-    check_personal_role
+    check_end_user_access  # Para usuarios finales unificados
 )
 
 router = APIRouter(prefix="/grupos", tags=["grupos"])
@@ -29,10 +29,10 @@ def create_grupo(
     *,
     db: Session = Depends(get_db),
     grupo_in: GrupoCreate,
-    current_user = Depends(check_personal_role)
+    current_user = Depends(check_end_user_access)
 ) -> Any:
     """
-    Crear un nuevo grupo.
+    Crear un nuevo grupo (docentes, personal y alumnos).
     """
     # Crear objeto Grupo
     db_grupo = Grupo(
@@ -96,10 +96,10 @@ def update_grupo(
     db: Session = Depends(get_db),
     grupo_id: int,
     grupo_in: GrupoUpdate,
-    current_user = Depends(check_personal_role)
+    current_user = Depends(check_end_user_access)
 ) -> Any:
     """
-    Actualizar un grupo.
+    Actualizar un grupo (docentes, personal y alumnos).
     """
     grupo = db.query(Grupo).filter(Grupo.id == grupo_id).first()
     if not grupo:

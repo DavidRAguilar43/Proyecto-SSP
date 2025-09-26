@@ -1,6 +1,6 @@
 import { createContext, useState, useEffect, ReactNode, useContext } from 'react';
-import { authService } from '@/services/api';
-import type { AuthContextType, LoginCredentials, User } from '@/types';
+import { authService } from '../services/api';
+import type { AuthContextType, LoginCredentials, User } from '../types';
 
 // Crear el contexto de autenticación
 export const AuthContext = createContext<AuthContextType>({

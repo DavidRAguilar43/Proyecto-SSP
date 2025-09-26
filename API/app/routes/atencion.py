@@ -17,8 +17,8 @@ from app.schemas.atencion import (
 from app.utils.deps import (
     get_current_active_user,
     check_admin_role,
-    check_deletion_permission,
-    check_personal_role
+    check_administrative_access,
+    check_deletion_permission
 )
 
 router = APIRouter(prefix="/atenciones", tags=["atenciones"])
@@ -29,10 +29,10 @@ def create_atencion(
     *,
     db: Session = Depends(get_db),
     atencion_in: AtencionCreate,
-    current_user = Depends(check_personal_role)
+    current_user = Depends(check_administrative_access)
 ) -> Any:
     """
-    Crear una nueva atención.
+    Crear una nueva atención (solo administradores y coordinadores).
     """
     # Crear objeto Atencion
     db_atencion = Atencion(
@@ -111,10 +111,10 @@ def update_atencion(
     db: Session = Depends(get_db),
     atencion_id: int,
     atencion_in: AtencionUpdate,
-    current_user = Depends(check_personal_role)
+    current_user = Depends(check_administrative_access)
 ) -> Any:
     """
-    Actualizar una atención.
+    Actualizar una atención (solo administradores y coordinadores).
     """
     atencion = db.query(Atencion).filter(Atencion.id == atencion_id).first()
     if not atencion:

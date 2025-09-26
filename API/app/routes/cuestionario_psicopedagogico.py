@@ -222,8 +222,9 @@ def get_todos_los_reportes(
     Obtener todos los reportes de cuestionarios psicopedagógicos.
     Solo disponible para admin y personal.
     """
-    # Verificar permisos - solo admin y personal pueden ver reportes
-    if current_user.rol not in ["admin", "personal"]:
+    # Verificar permisos - solo admin y coordinador pueden ver reportes
+    # Personal, docente y alumno NO tienen acceso a reportes de otros usuarios
+    if current_user.rol not in ["admin", "coordinador"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No tienes permisos para ver reportes psicopedagógicos"
@@ -254,9 +255,9 @@ def get_estudiantes_con_cuestionarios(
 ) -> List[Dict[str, Any]]:
     """
     Obtener lista de estudiantes que han completado cuestionarios psicopedagógicos.
-    Solo disponible para admin y personal.
+    Solo disponible para admin y coordinador.
     """
-    if current_user.rol not in ["admin", "personal"]:
+    if current_user.rol not in ["admin", "coordinador"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No tienes permisos para acceder a esta información"

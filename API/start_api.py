@@ -25,6 +25,7 @@ def main():
         import app.models.contacto_emergencia
         import app.models.atencion
         import app.models.cuestionario
+        import app.models.cuestionario_admin
         import app.models.notificacion
 
         # Crear todas las tablas

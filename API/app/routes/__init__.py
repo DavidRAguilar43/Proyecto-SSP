@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from . import auth, persona, personal, atencion, grupo, cuestionario, contacto_emergencia, programa_educativo, unidad, cuestionario_psicopedagogico, citas
+from . import auth, persona, personal, atencion, grupo, cuestionario, contacto_emergencia, programa_educativo, unidad, cuestionario_psicopedagogico, citas, cuestionarios_admin, cuestionarios_usuario
 # Cohorte router comentado temporalmente debido a simplificación del sistema
 # from . import cohorte
 
