@@ -61,11 +61,9 @@ const NotificacionesCitas: React.FC<NotificacionesCitasProps> = ({
       setError(null);
       const data = await citasApi.getNotificaciones();
       setNotificaciones(data);
-      
-      // Actualizar badge
-      if (onBadgeUpdate) {
-        onBadgeUpdate(data.length);
-      }
+
+      // No actualizar badge aquí - se maneja en el componente padre
+      // El badge se actualiza cuando se abren las notificaciones, no cuando se cargan
     } catch (error: any) {
       console.error('Error loading notificaciones:', error);
       setError(error.response?.data?.detail || 'Error al cargar las notificaciones');

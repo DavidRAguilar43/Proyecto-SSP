@@ -55,7 +55,7 @@ const Dashboard = () => {
     },
     {
       title: 'Atenciones',
-      description: 'Registrar y gestionar atenciones psicopedagógicas',
+      description: 'Ver, editar y eliminar solicitudes de citas',
       icon: <AssignmentIcon sx={{ fontSize: 40 }} />,
       path: '/atenciones',
       roles: ['admin', 'coordinador']
@@ -81,13 +81,7 @@ const Dashboard = () => {
       path: '/unidades',
       roles: ['admin', 'coordinador']
     },
-    {
-      title: 'Gestión de Solicitudes',
-      description: 'Ver, editar y eliminar solicitudes de citas',
-      icon: <ScheduleIcon sx={{ fontSize: 40 }} />,
-      path: '/solicitudes-pendientes',
-      roles: ['admin', 'coordinador']
-    },
+
     {
       title: 'Cuestionarios Pendientes',
       description: 'Ver, revisar y gestionar cuestionarios nuevos',

@@ -41,6 +41,7 @@ import NotificacionesCitas from './NotificacionesCitas';
 import AppointmentRequestModal from './AppointmentRequestModal';
 import { api, citasApi } from '@/services/api';
 import { useNotification } from '@/hooks/useNotification';
+import { citasNotificationService } from '@/services/citasNotificationService';
 
 interface AlumnoDashboardProps {
   user: Persona;
@@ -174,6 +175,43 @@ const AlumnoDashboard = ({ user, onEditProfile }: AlumnoDashboardProps) => {
       verificarCuestionario();
     }
   }, [user.id]);
+
+  // Cargar notificaciones al montar el componente
+  useEffect(() => {
+    const loadInitialNotifications = async () => {
+      try {
+        const data = await citasApi.getNotificaciones();
+        const unreadCount = citasNotificationService.contarNoLeidas(data, user.id);
+        setNotificacionesBadge(unreadCount);
+      } catch (error) {
+        console.error('Error loading initial notifications:', error);
+        // En caso de error, no mostrar badge
+        setNotificacionesBadge(0);
+      }
+    };
+
+    if (user.id) {
+      loadInitialNotifications();
+    }
+  }, [user.id]);
+
+  // Manejar cuando se abren las notificaciones (marcar como leídas)
+  const handleNotificacionesOpen = async () => {
+    setNotificacionesOpen(true);
+
+    try {
+      // Obtener las notificaciones actuales
+      const data = await citasApi.getNotificaciones();
+
+      // Marcar todas como leídas
+      citasNotificationService.marcarTodasComoLeidas(data, user.id);
+
+      // Actualizar el badge a 0
+      setNotificacionesBadge(0);
+    } catch (error) {
+      console.error('Error marking notifications as read:', error);
+    }
+  };
 
   // Manejar éxito del cuestionario
   const handleCuestionarioSuccess = () => {
@@ -511,7 +549,7 @@ const AlumnoDashboard = ({ user, onEditProfile }: AlumnoDashboardProps) => {
                       <NotificationsIcon />
                     </Badge>
                   }
-                  onClick={() => setNotificacionesOpen(true)}
+                  onClick={handleNotificacionesOpen}
                   size="large"
                   sx={{ flex: 1, minWidth: '180px' }}
                 >
@@ -670,7 +708,6 @@ const AlumnoDashboard = ({ user, onEditProfile }: AlumnoDashboardProps) => {
       <NotificacionesCitas
         open={notificacionesOpen}
         onClose={() => setNotificacionesOpen(false)}
-        onBadgeUpdate={setNotificacionesBadge}
       />
 
       {/* Modal de Solicitud de Cita después del Cuestionario */}
