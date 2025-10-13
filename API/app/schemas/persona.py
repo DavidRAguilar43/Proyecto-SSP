@@ -38,6 +38,7 @@ class EstadoCivil(str, Enum):
     VIUDO = "viudo"
     VIUDA = "viuda"      # Agregamos la variante femenina
     UNION_LIBRE = "union_libre"
+    NO_DECIR = "no_decir"  # Opción para no especificar
     OTRO = "otro"
 
 

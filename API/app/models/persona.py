@@ -8,9 +8,6 @@ class Persona(Base):
     __tablename__ = "personas"
 
     id = Column(Integer, primary_key=True, index=True)
-    # TEMPORAL: Mantenemos tipo_persona para compatibilidad con BD existente
-    # TODO: Crear migración para eliminar esta columna
-    tipo_persona = Column(String, nullable=False, default="usuario")  # TEMPORAL - será eliminado
     sexo = Column(String, nullable=False)  # masculino, femenino, no_decir, otro
     genero = Column(String, nullable=False)  # masculino, femenino, no_binario, otro
     edad = Column(Integer, nullable=False)

@@ -112,8 +112,6 @@ def registro_usuario(
 
     # Crear objeto Persona
     db_persona = Persona(
-        # TEMPORAL: Incluimos tipo_persona para compatibilidad con BD
-        tipo_persona="usuario",  # TEMPORAL - será eliminado en migración futura
         sexo=persona_in.sexo,
         genero=persona_in.genero,
         edad=persona_in.edad,
@@ -224,8 +222,6 @@ def create_persona(
 
     # Crear objeto Persona
     db_persona = Persona(
-        # TEMPORAL: Incluimos tipo_persona para compatibilidad con BD
-        tipo_persona="usuario",  # TEMPORAL - será eliminado en migración futura
         sexo=persona_in.sexo,
         genero=persona_in.genero,
         edad=persona_in.edad,
@@ -493,8 +489,6 @@ def bulk_create_personas(
 
         # Crear objeto Persona
         db_persona = Persona(
-            # TEMPORAL: Incluimos tipo_persona para compatibilidad con BD
-            tipo_persona="usuario",  # TEMPORAL - será eliminado en migración futura
             sexo=persona_data.sexo,
             genero=persona_data.genero,
             edad=persona_data.edad,

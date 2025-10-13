@@ -16,7 +16,8 @@ import {
   Toolbar,
   Tabs,
   Tab,
-  Badge
+  Badge,
+  IconButton
 } from '@mui/material';
 import {
   Assignment as AssignmentIcon,
@@ -24,7 +25,8 @@ import {
   CheckCircle as CompletedIcon,
   Schedule as PendingIcon,
   Edit as InProgressIcon,
-  Info as InfoIcon
+  Info as InfoIcon,
+  ArrowBack as ArrowBackIcon
 } from '@mui/icons-material';
 import { AuthContext } from '@/contexts/AuthContext';
 import { cuestionariosUsuarioApi } from '@/services/api';
@@ -278,6 +280,14 @@ const CuestionariosAsignadosPage: React.FC = () => {
       {/* Header */}
       <AppBar position="static" color="default" elevation={1}>
         <Toolbar>
+          <IconButton
+            color="inherit"
+            onClick={() => navigate('/dashboard')}
+            sx={{ mr: 2 }}
+            aria-label="Regresar al dashboard"
+          >
+            <ArrowBackIcon />
+          </IconButton>
           <AssignmentIcon sx={{ mr: 2 }} />
           <Box sx={{ flexGrow: 1 }}>
             <Typography variant="h6" component="div">

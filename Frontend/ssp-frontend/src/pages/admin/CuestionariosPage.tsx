@@ -30,7 +30,8 @@ import {
   Delete as DeleteIcon,
   ContentCopy as CopyIcon,
   Visibility as ViewIcon,
-  Assignment as AssignmentIcon
+  Assignment as AssignmentIcon,
+  ArrowBack as ArrowBackIcon
 } from '@mui/icons-material';
 import { cuestionariosAdminApi } from '@/services/api';
 import { useNotification } from '@/hooks/useNotification';
@@ -189,6 +190,14 @@ const CuestionariosPage: React.FC = () => {
       {/* Header */}
       <AppBar position="static" color="default" elevation={1}>
         <Toolbar>
+          <IconButton
+            color="inherit"
+            onClick={() => navigate('/dashboard')}
+            sx={{ mr: 2 }}
+            aria-label="Regresar al dashboard"
+          >
+            <ArrowBackIcon />
+          </IconButton>
           <AssignmentIcon sx={{ mr: 2 }} />
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
             Gestión de Cuestionarios
