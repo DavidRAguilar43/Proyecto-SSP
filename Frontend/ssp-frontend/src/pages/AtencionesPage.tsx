@@ -1,397 +1,531 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Typography,
+  AppBar,
+  Toolbar,
   Button,
+  Container,
   Paper,
+  IconButton,
+  Tooltip,
+  Alert,
+  CircularProgress,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
-  IconButton,
-  TextField,
-  InputAdornment,
   Chip,
-  Snackbar,
-  Alert,
-  CircularProgress,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  FormControlLabel,
-  Switch,
+  TablePagination,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField
 } from '@mui/material';
 import {
-  Add as AddIcon,
+  ArrowBack as ArrowBackIcon,
+  Refresh as RefreshIcon,
+  Visibility as VisibilityIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
-  Search as SearchIcon,
-  CheckCircle as CheckCircleIcon,
-  Schedule as ScheduleIcon,
-  ArrowBack as ArrowBackIcon
+  Check as CheckIcon,
+  Close as CloseIcon,
+  Psychology as PsychologyIcon,
+  School as SchoolIcon,
+  Help as HelpIcon
 } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
-import { AtencionForm } from '../components/AtencionForm';
-import { ConfirmDialog } from '../components/ConfirmDialog';
-import { atencionesApi } from '@/services/api';
-import type { Atencion } from '../types/index';
+import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { es } from 'date-fns/locale';
+import { format } from 'date-fns';
+import { AuthContext } from '../contexts/AuthContext';
+import { citasApi } from '../services/api';
+import type { SolicitudCita, CitaUpdate, EstadoCita, TipoCita } from '../types';
+import { useNotification } from '../hooks/useNotification';
+import ConfirmDialog from '../components/ConfirmDialog';
 
-export const AtencionesPage: React.FC = () => {
+const AtencionesPage: React.FC = () => {
+  const { user, logout } = useContext(AuthContext);
   const navigate = useNavigate();
-  const [atenciones, setAtenciones] = useState<Atencion[]>([]);
+  const { notifySuccess, notifyError } = useNotification();
+
+  const [solicitudes, setSolicitudes] = useState<SolicitudCita[]>([]);
   const [loading, setLoading] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterAtendido, setFilterAtendido] = useState('');
-  const [filterSeguimiento, setFilterSeguimiento] = useState('');
-  const [formOpen, setFormOpen] = useState(false);
-  const [selectedAtencion, setSelectedAtencion] = useState<Atencion | null>(null);
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [atencionToDelete, setAtencionToDelete] = useState<Atencion | null>(null);
-  const [snackbar, setSnackbar] = useState({
-    open: false,
-    message: '',
-    severity: 'success' as 'success' | 'error' | 'warning' | 'info',
+  const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+
+  // Estados para diálogos
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedSolicitud, setSelectedSolicitud] = useState<SolicitudCita | null>(null);
+
+  // Estados para confirmación de cita
+  const [confirmData, setConfirmData] = useState<CitaUpdate>({
+    estado: 'confirmada',
+    fecha_confirmada: '',
+    observaciones_personal: '',
+    ubicacion: ''
   });
-
-  const showSnackbar = (message: string, severity: typeof snackbar.severity) => {
-    setSnackbar({ open: true, message, severity });
-  };
-
-  const loadAtenciones = async () => {
-    try {
-      setLoading(true);
-      const data = await atencionesApi.getAll();
-      setAtenciones(data);
-    } catch (error) {
-      console.error('Error loading atenciones:', error);
-      showSnackbar('Error al cargar las atenciones', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [confirmLoading, setConfirmLoading] = useState(false);
 
   useEffect(() => {
-    loadAtenciones();
+    loadSolicitudes();
   }, []);
 
-  const handleCreate = () => {
-    setSelectedAtencion(null);
-    setFormOpen(true);
-  };
-
-  const handleEdit = (atencion: Atencion) => {
-    setSelectedAtencion(atencion);
-    setFormOpen(true);
-  };
-
-  const handleDelete = (atencion: Atencion) => {
-    setAtencionToDelete(atencion);
-    setConfirmOpen(true);
-  };
-
-  const handleFormSubmit = async (atencionData: any) => {
+  const loadSolicitudes = async () => {
     try {
       setLoading(true);
-
-      if (selectedAtencion) {
-        // Actualizar atención existente
-        const updatedAtencion = await atencionesApi.update(selectedAtencion.id, atencionData);
-        setAtenciones(prev =>
-          prev.map(a => a.id === selectedAtencion.id ? updatedAtencion : a)
-        );
-        showSnackbar('Atención actualizada exitosamente', 'success');
-      } else {
-        // Crear nueva atención
-        const newAtencion = await atencionesApi.create(atencionData);
-        setAtenciones(prev => [...prev, newAtencion]);
-        showSnackbar('Atención creada exitosamente', 'success');
-      }
-
-      setFormOpen(false);
-      setSelectedAtencion(null);
-      setSearchQuery('');
-      setFilterAtendido('');
-      setFilterSeguimiento('');
-
+      setError(null);
+      const data = await citasApi.getSolicitudes();
+      setSolicitudes(data);
     } catch (error: any) {
-      console.error('Error saving atencion:', error);
-      let message = 'Error al guardar la atención';
-
-      if (error.response?.data?.detail) {
-        if (Array.isArray(error.response.data.detail)) {
-          message = error.response.data.detail.map((err: any) =>
-            `${err.loc?.join('.')}: ${err.msg}`
-          ).join(', ');
-        } else {
-          message = error.response.data.detail;
-        }
-      }
-
-      showSnackbar(message, 'error');
+      console.error('Error loading solicitudes:', error);
+      setError(error.response?.data?.detail || 'Error al cargar las solicitudes');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleConfirmDelete = async () => {
-    if (!atencionToDelete) return;
+  const handleChangePage = (event: unknown, newPage: number) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
+
+  const handleViewSolicitud = (solicitud: SolicitudCita) => {
+    setSelectedSolicitud(solicitud);
+    setViewDialogOpen(true);
+  };
+
+  const handleEditSolicitud = (solicitud: SolicitudCita) => {
+    setSelectedSolicitud(solicitud);
+    setConfirmData({
+      estado: 'confirmada',
+      fecha_confirmada: solicitud.fecha_propuesta_alumno || '',
+      observaciones_personal: '',
+      ubicacion: 'Oficina de Servicios Estudiantiles'
+    });
+    setEditDialogOpen(true);
+  };
+
+  const handleDeleteSolicitud = (solicitud: SolicitudCita) => {
+    setSelectedSolicitud(solicitud);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteSolicitud = async () => {
+    if (!selectedSolicitud) return;
 
     try {
-      setLoading(true);
-      await atencionesApi.delete(atencionToDelete.id);
+      await citasApi.confirmar(selectedSolicitud.id_cita, {
+        estado: 'cancelada',
+        observaciones_personal: 'Solicitud eliminada por el personal'
+      });
 
-      setAtenciones(prev =>
-        prev.filter(a => a.id !== atencionToDelete.id)
-      );
-
-      showSnackbar('Atención eliminada exitosamente', 'success');
-      setConfirmOpen(false);
-      setAtencionToDelete(null);
+      loadSolicitudes();
+      notifySuccess('Solicitud eliminada exitosamente');
     } catch (error: any) {
-      console.error('Error deleting atencion:', error);
-      let message = 'Error al eliminar la atención';
-
-      if (error.response?.status === 403) {
-        message = 'No tiene permisos para eliminar atenciones';
-      } else if (error.response?.data?.detail) {
-        message = error.response.data.detail;
-      }
-
-      showSnackbar(message, 'error');
+      console.error('Error eliminando solicitud:', error);
+      notifyError(error.response?.data?.detail || 'Error al eliminar la solicitud');
     } finally {
-      setLoading(false);
+      setDeleteDialogOpen(false);
+      setSelectedSolicitud(null);
     }
   };
 
-  const filteredAtenciones = atenciones.filter(atencion => {
-    const matchesSearch = atencion.observaciones?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         atencion.persona?.correo_institucional?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         atencion.fecha_atencion.includes(searchQuery);
+  const handleSubmitEdit = async () => {
+    if (!selectedSolicitud) return;
 
-    const matchesAtendido = !filterAtendido ||
-                           (filterAtendido === 'true' && atencion.atendido) ||
-                           (filterAtendido === 'false' && !atencion.atendido);
+    try {
+      setConfirmLoading(true);
+      await citasApi.confirmar(selectedSolicitud.id_cita, {
+        ...confirmData,
+        fecha_confirmada: confirmData.fecha_confirmada
+          ? new Date(confirmData.fecha_confirmada).toISOString()
+          : undefined
+      });
 
-    const matchesSeguimiento = !filterSeguimiento ||
-                              (filterSeguimiento === 'true' && atencion.requiere_seguimiento) ||
-                              (filterSeguimiento === 'false' && !atencion.requiere_seguimiento);
+      setEditDialogOpen(false);
+      setSelectedSolicitud(null);
+      loadSolicitudes();
+      notifySuccess('Solicitud actualizada exitosamente');
+    } catch (error: any) {
+      console.error('Error actualizando solicitud:', error);
+      notifyError(error.response?.data?.detail || 'Error al actualizar la solicitud');
+    } finally {
+      setConfirmLoading(false);
+    }
+  };
 
-    return matchesSearch && matchesAtendido && matchesSeguimiento;
-  });
+  const getTipoIcon = (tipo: TipoCita) => {
+    switch (tipo) {
+      case 'psicologica':
+        return <PsychologyIcon color="secondary" fontSize="small" />;
+      case 'academica':
+        return <SchoolIcon color="primary" fontSize="small" />;
+      default:
+        return <HelpIcon color="action" fontSize="small" />;
+    }
+  };
+
+  const getTipoLabel = (tipo: TipoCita) => {
+    switch (tipo) {
+      case 'psicologica':
+        return 'Psicológica';
+      case 'academica':
+        return 'Académica';
+      default:
+        return 'General';
+    }
+  };
+
+  const getEstadoColor = (estado: EstadoCita): 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning' => {
+    switch (estado) {
+      case 'pendiente':
+        return 'warning';
+      case 'confirmada':
+        return 'success';
+      case 'cancelada':
+        return 'error';
+      case 'completada':
+        return 'info';
+      default:
+        return 'default';
+    }
+  };
+
+  const getEstadoLabel = (estado: EstadoCita) => {
+    switch (estado) {
+      case 'pendiente':
+        return 'Pendiente';
+      case 'confirmada':
+        return 'Confirmada';
+      case 'cancelada':
+        return 'Cancelada';
+      case 'completada':
+        return 'Completada';
+      default:
+        return estado;
+    }
+  };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('es-ES');
+    try {
+      return format(new Date(dateString), "dd/MM/yyyy HH:mm", { locale: es });
+    } catch {
+      return dateString;
+    }
   };
 
-  const getMotivos = (atencion: Atencion) => {
-    const motivos = [];
-    if (atencion.motivo_psicologico) motivos.push('Psicológico');
-    if (atencion.motivo_academico) motivos.push('Académico');
-    if (atencion.salud_en_general) motivos.push('Salud General');
-    return motivos;
-  };
+
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Box display="flex" alignItems="center">
-          <IconButton
+    <Box sx={{ flexGrow: 1 }}>
+      {/* App Bar */}
+      <AppBar position="static">
+        <Toolbar>
+          <Button
+            color="inherit"
+            startIcon={<ArrowBackIcon />}
             onClick={() => navigate('/dashboard')}
             sx={{ mr: 2 }}
-            aria-label="Regresar al dashboard"
           >
-            <ArrowBackIcon />
-          </IconButton>
-          <Typography variant="h4" component="h1">
-            Gestión de Atenciones
+            Volver
+          </Button>
+
+          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+            Gestión de Solicitudes de Citas ({solicitudes.length})
           </Typography>
-        </Box>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={handleCreate}
-          disabled={loading}
-        >
-          Nueva Atención
-        </Button>
-      </Box>
 
-      <Box sx={{ mb: 3, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-        <TextField
-          sx={{ flexGrow: 1, minWidth: 300 }}
-          placeholder="Buscar por observaciones, correo o fecha..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchIcon />
-              </InputAdornment>
-            ),
-          }}
-        />
+          {/* Botón de actualizar */}
+          <Tooltip title="Actualizar">
+            <IconButton
+              color="inherit"
+              onClick={loadSolicitudes}
+              disabled={loading}
+              sx={{ mr: 2 }}
+            >
+              <RefreshIcon />
+            </IconButton>
+          </Tooltip>
 
-        <FormControl sx={{ minWidth: 150 }}>
-          <InputLabel>Estado</InputLabel>
-          <Select
-            value={filterAtendido}
-            onChange={(e) => setFilterAtendido(e.target.value)}
-            label="Estado"
-          >
-            <MenuItem value="">Todos</MenuItem>
-            <MenuItem value="true">Atendido</MenuItem>
-            <MenuItem value="false">Pendiente</MenuItem>
-          </Select>
-        </FormControl>
+          <Button color="inherit" onClick={logout}>
+            Cerrar Sesión
+          </Button>
+        </Toolbar>
+      </AppBar>
 
-        <FormControl sx={{ minWidth: 150 }}>
-          <InputLabel>Seguimiento</InputLabel>
-          <Select
-            value={filterSeguimiento}
-            onChange={(e) => setFilterSeguimiento(e.target.value)}
-            label="Seguimiento"
-          >
-            <MenuItem value="">Todos</MenuItem>
-            <MenuItem value="true">Requiere</MenuItem>
-            <MenuItem value="false">No requiere</MenuItem>
-          </Select>
-        </FormControl>
-      </Box>
+      {/* Contenido Principal */}
+      <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        )}
 
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>ID</TableCell>
-              <TableCell>Fecha</TableCell>
-              <TableCell>Persona</TableCell>
-              <TableCell>Motivos</TableCell>
-              <TableCell>Estado</TableCell>
-              <TableCell>Seguimiento</TableCell>
-              <TableCell>Observaciones</TableCell>
-              <TableCell align="center">Acciones</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {loading && atenciones.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={8} align="center">
-                  <CircularProgress />
-                </TableCell>
-              </TableRow>
-            ) : filteredAtenciones.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={8} align="center">
-                  No se encontraron atenciones
-                </TableCell>
-              </TableRow>
-            ) : (
-              filteredAtenciones.map((atencion) => (
-                <TableRow key={atencion.id}>
-                  <TableCell>{atencion.id}</TableCell>
-                  <TableCell>{formatDate(atencion.fecha_atencion)}</TableCell>
-                  <TableCell>
-                    {atencion.persona?.correo_institucional || `ID: ${atencion.id_persona}`}
-                  </TableCell>
-                  <TableCell>
-                    {getMotivos(atencion).map((motivo, index) => (
-                      <Chip
-                        key={index}
-                        label={motivo}
-                        size="small"
-                        sx={{ mr: 0.5, mb: 0.5 }}
-                        color="primary"
-                        variant="outlined"
-                      />
-                    ))}
-                  </TableCell>
-                  <TableCell>
-                    <Chip
-                      icon={atencion.atendido ? <CheckCircleIcon /> : <ScheduleIcon />}
-                      label={atencion.atendido ? 'Atendido' : 'Pendiente'}
-                      color={atencion.atendido ? 'success' : 'warning'}
-                      variant="outlined"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    {atencion.requiere_seguimiento ? (
-                      <Chip label="Sí" color="info" variant="outlined" />
-                    ) : (
-                      <Chip label="No" color="default" variant="outlined" />
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {atencion.observaciones ?
-                      (atencion.observaciones.length > 50 ?
-                        `${atencion.observaciones.substring(0, 50)}...` :
-                        atencion.observaciones
-                      ) : '-'
-                    }
-                  </TableCell>
-                  <TableCell align="center">
-                    <IconButton
-                      onClick={() => handleEdit(atencion)}
-                      color="primary"
-                      disabled={loading}
-                    >
-                      <EditIcon />
-                    </IconButton>
-                    <IconButton
-                      onClick={() => handleDelete(atencion)}
-                      color="error"
-                      disabled={loading}
-                    >
-                      <DeleteIcon />
-                    </IconButton>
-                  </TableCell>
+        <Paper>
+          <TableContainer sx={{ maxHeight: 600 }}>
+            <Table stickyHeader aria-label="tabla de solicitudes de citas">
+              <TableHead>
+                <TableRow>
+                  <TableCell>ID</TableCell>
+                  <TableCell>Tipo</TableCell>
+                  <TableCell>Estudiante</TableCell>
+                  <TableCell>Email</TableCell>
+                  <TableCell>Matrícula</TableCell>
+                  <TableCell>Motivo</TableCell>
+                  <TableCell>Fecha Solicitud</TableCell>
+                  <TableCell>Fecha Preferida</TableCell>
+                  <TableCell>Estado</TableCell>
+                  <TableCell align="center">Acciones</TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
+              </TableHead>
+              <TableBody>
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={10} align="center">
+                      <Box py={2}>
+                        <CircularProgress />
+                        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                          Cargando solicitudes...
+                        </Typography>
+                      </Box>
+                    </TableCell>
+                  </TableRow>
+                ) : solicitudes.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={10} align="center">
+                      <Box py={2}>
+                        <Typography variant="body2" color="text.secondary">
+                          No hay solicitudes de citas registradas
+                        </Typography>
+                      </Box>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  solicitudes
+                    .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                    .map((solicitud) => (
+                      <TableRow key={solicitud.id_cita} hover>
+                        <TableCell>{solicitud.id_cita}</TableCell>
+                        <TableCell>
+                          <Box display="flex" alignItems="center" gap={1}>
+                            {getTipoIcon(solicitud.tipo_cita)}
+                            {getTipoLabel(solicitud.tipo_cita)}
+                          </Box>
+                        </TableCell>
+                        <TableCell>{solicitud.alumno_nombre}</TableCell>
+                        <TableCell>{solicitud.alumno_email}</TableCell>
+                        <TableCell>{solicitud.alumno_matricula || 'N/A'}</TableCell>
+                        <TableCell>
+                          <Typography variant="body2" sx={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {solicitud.motivo}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>{formatDate(solicitud.fecha_solicitud)}</TableCell>
+                        <TableCell>
+                          {solicitud.fecha_propuesta_alumno
+                            ? formatDate(solicitud.fecha_propuesta_alumno)
+                            : 'No especificada'
+                          }
+                        </TableCell>
+                        <TableCell>
+                          <Chip
+                            label={getEstadoLabel(solicitud.estado)}
+                            color={getEstadoColor(solicitud.estado)}
+                            size="small"
+                          />
+                        </TableCell>
+                        <TableCell align="center">
+                          <Tooltip title="Ver detalles">
+                            <IconButton
+                              size="small"
+                              onClick={() => handleViewSolicitud(solicitud)}
+                            >
+                              <VisibilityIcon />
+                            </IconButton>
+                          </Tooltip>
+                          {solicitud.estado === 'pendiente' && (
+                            <>
+                              <Tooltip title="Confirmar/Editar">
+                                <IconButton
+                                  size="small"
+                                  color="primary"
+                                  onClick={() => handleEditSolicitud(solicitud)}
+                                >
+                                  <EditIcon />
+                                </IconButton>
+                              </Tooltip>
+                              <Tooltip title="Eliminar">
+                                <IconButton
+                                  size="small"
+                                  color="error"
+                                  onClick={() => handleDeleteSolicitud(solicitud)}
+                                >
+                                  <DeleteIcon />
+                                </IconButton>
+                              </Tooltip>
+                            </>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
 
-      {/* Formulario de atención */}
-      <AtencionForm
-        open={formOpen}
-        onClose={() => {
-          setFormOpen(false);
-          setSelectedAtencion(null);
-        }}
-        onSubmit={handleFormSubmit}
-        atencion={selectedAtencion}
-        loading={loading}
-      />
+          <TablePagination
+            rowsPerPageOptions={[5, 10, 25, 50]}
+            component="div"
+            count={solicitudes.length}
+            rowsPerPage={rowsPerPage}
+            page={page}
+            onPageChange={handleChangePage}
+            onRowsPerPageChange={handleChangeRowsPerPage}
+            labelRowsPerPage="Filas por página:"
+            labelDisplayedRows={({ from, to, count }) =>
+              `${from}-${to} de ${count !== -1 ? count : `más de ${to}`}`
+            }
+          />
+        </Paper>
+      </Container>
+
+      {/* Diálogo para Ver Detalles */}
+      <Dialog open={viewDialogOpen} onClose={() => setViewDialogOpen(false)} maxWidth="md" fullWidth>
+        <DialogTitle>
+          Detalles de la Solicitud #{selectedSolicitud?.id_cita}
+        </DialogTitle>
+        <DialogContent>
+          {selectedSolicitud && (
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="h6" gutterBottom>Información del Estudiante</Typography>
+              <Typography><strong>Nombre:</strong> {selectedSolicitud.alumno_nombre}</Typography>
+              <Typography><strong>Email:</strong> {selectedSolicitud.alumno_email}</Typography>
+              <Typography><strong>Matrícula:</strong> {selectedSolicitud.alumno_matricula || 'N/A'}</Typography>
+              {selectedSolicitud.alumno_celular && (
+                <Typography><strong>Celular:</strong> {selectedSolicitud.alumno_celular}</Typography>
+              )}
+
+              <Typography variant="h6" gutterBottom sx={{ mt: 3 }}>Información de la Cita</Typography>
+              <Typography><strong>Tipo:</strong> {getTipoLabel(selectedSolicitud.tipo_cita)}</Typography>
+              <Typography><strong>Estado:</strong> {getEstadoLabel(selectedSolicitud.estado)}</Typography>
+              <Typography><strong>Fecha de Solicitud:</strong> {formatDate(selectedSolicitud.fecha_solicitud)}</Typography>
+              {selectedSolicitud.fecha_propuesta_alumno && (
+                <Typography><strong>Fecha Preferida:</strong> {formatDate(selectedSolicitud.fecha_propuesta_alumno)}</Typography>
+              )}
+
+              <Typography variant="h6" gutterBottom sx={{ mt: 3 }}>Motivo</Typography>
+              <Typography>{selectedSolicitud.motivo}</Typography>
+
+              {selectedSolicitud.observaciones_alumno && (
+                <>
+                  <Typography variant="h6" gutterBottom sx={{ mt: 3 }}>Observaciones del Estudiante</Typography>
+                  <Typography>{selectedSolicitud.observaciones_alumno}</Typography>
+                </>
+              )}
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setViewDialogOpen(false)}>Cerrar</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Diálogo para Editar/Confirmar */}
+      <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>
+          Confirmar Cita - {selectedSolicitud?.alumno_nombre}
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ mt: 2 }}>
+            <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={es}>
+              <DateTimePicker
+                label="Fecha y Hora de la Cita"
+                value={confirmData.fecha_confirmada ? new Date(confirmData.fecha_confirmada) : null}
+                onChange={(newValue) => setConfirmData(prev => ({
+                  ...prev,
+                  fecha_confirmada: newValue?.toISOString() || ''
+                }))}
+                slotProps={{
+                  textField: {
+                    fullWidth: true,
+                    sx: { mb: 3 }
+                  }
+                }}
+                minDateTime={new Date()}
+              />
+            </LocalizationProvider>
+
+            <TextField
+              fullWidth
+              label="Ubicación"
+              value={confirmData.ubicacion}
+              onChange={(e) => setConfirmData(prev => ({
+                ...prev,
+                ubicacion: e.target.value
+              }))}
+              sx={{ mb: 3 }}
+              placeholder="Ej: Oficina de Servicios Estudiantiles, Cubículo 3"
+            />
+
+            <TextField
+              fullWidth
+              multiline
+              rows={3}
+              label="Observaciones (Opcional)"
+              value={confirmData.observaciones_personal}
+              onChange={(e) => setConfirmData(prev => ({
+                ...prev,
+                observaciones_personal: e.target.value
+              }))}
+              placeholder="Información adicional sobre la cita..."
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEditDialogOpen(false)} disabled={confirmLoading}>
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleSubmitEdit}
+            disabled={confirmLoading || !confirmData.fecha_confirmada}
+            variant="contained"
+            startIcon={confirmLoading ? <CircularProgress size={20} /> : <CheckIcon />}
+          >
+            {confirmLoading ? 'Confirmando...' : 'Confirmar Cita'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Diálogo de confirmación para eliminar */}
       <ConfirmDialog
-        open={confirmOpen}
-        title="Confirmar Eliminación"
-        message={`¿Está seguro de que desea eliminar la atención del ${atencionToDelete ? formatDate(atencionToDelete.fecha_atencion) : ''}? Esta acción eliminará permanentemente todos los datos asociados y no se puede deshacer.`}
-        onConfirm={handleConfirmDelete}
+        open={deleteDialogOpen}
+        title="Confirmar eliminación"
+        message={`¿Estás seguro de que deseas eliminar la solicitud de cita de ${selectedSolicitud?.alumno_nombre}? Esta acción no se puede deshacer.`}
+        onConfirm={confirmDeleteSolicitud}
         onCancel={() => {
-          setConfirmOpen(false);
-          setAtencionToDelete(null);
+          setDeleteDialogOpen(false);
+          setSelectedSolicitud(null);
         }}
-        loading={loading}
         confirmText="Sí, Eliminar"
         cancelText="Cancelar"
         severity="error"
+        loading={loading}
       />
-
-      {/* Snackbar para notificaciones */}
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={6000}
-        onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
-      >
-        <Alert severity={snackbar.severity} onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}>
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
     </Box>
   );
 };
+
+export { AtencionesPage };
+export default AtencionesPage;

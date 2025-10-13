@@ -10,11 +10,11 @@ import PersonasPage from './pages/PersonasPage';
 import { ProgramasEducativosPage } from './pages/ProgramasEducativosPage';
 import { UnidadesPage } from './pages/UnidadesPage';
 import { GruposPage } from './pages/GruposPage';
-import { AtencionesPage } from './pages/AtencionesPage';
+import AtencionesPage from './pages/AtencionesPage';
 import AlumnoPage from './pages/AlumnoPage';
 import CatalogosPage from './pages/CatalogosPage';
 import CuestionariosCompletadosPage from './pages/CuestionariosCompletadosPage';
-import SolicitudesPendientesPage from './pages/SolicitudesPendientesPage';
+
 import CuestionariosPendientesPage from './pages/CuestionariosPendientesPage';
 import ProtectedRoute from './components/ProtectedRoute';
 
@@ -103,14 +103,7 @@ function App() {
               </ProtectedRoute>
             }
           />
-          <Route
-            path="/solicitudes-pendientes"
-            element={
-              <ProtectedRoute allowedRoles={['admin', 'coordinador']}>
-                <SolicitudesPendientesPage />
-              </ProtectedRoute>
-            }
-          />
+
           <Route
             path="/cuestionarios-pendientes"
             element={
