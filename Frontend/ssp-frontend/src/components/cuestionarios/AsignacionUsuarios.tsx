@@ -81,35 +81,12 @@ const AsignacionUsuarios: React.FC<AsignacionUsuariosProps> = ({
 
   return (
     <Box>
-      <FormControl component="fieldset" error={error} disabled={disabled}>
+      <FormControl component="fieldset" error={error} disabled={disabled} sx={{ width: '100%' }}>
         <FormLabel component="legend" sx={{ mb: 2 }}>
           <Typography variant="subtitle1" component="span">
             Asignar cuestionario a:
           </Typography>
         </FormLabel>
-
-        {/* Resumen de selección */}
-        {algunoSeleccionado && (
-          <Box sx={{ mb: 2 }}>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-              Tipos seleccionados ({tiposSeleccionados.length}):
-            </Typography>
-            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-              {tiposSeleccionados.map(tipo => {
-                const tipoInfo = TIPOS_USUARIO.find(t => t.value === tipo);
-                return (
-                  <Chip
-                    key={tipo}
-                    label={tipoInfo?.label}
-                    color={tipoInfo?.color}
-                    size="small"
-                    icon={tipoInfo?.icon}
-                  />
-                );
-              })}
-            </Box>
-          </Box>
-        )}
 
         {/* Opciones de selección */}
         <Grid container spacing={2}>
@@ -195,6 +172,35 @@ const AsignacionUsuarios: React.FC<AsignacionUsuariosProps> = ({
           />
         </Box>
 
+        {/* Resumen de selección - Con altura mínima para evitar desplazamiento */}
+        <Box sx={{ mt: 2 }}>
+          {algunoSeleccionado ? (
+            <Box>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                Tipos seleccionados ({tiposSeleccionados.length}):
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                {tiposSeleccionados.map(tipo => {
+                  const tipoInfo = TIPOS_USUARIO.find(t => t.value === tipo);
+                  return (
+                    <Chip
+                      key={tipo}
+                      label={tipoInfo?.label}
+                      color={tipoInfo?.color}
+                      size="small"
+                      icon={tipoInfo?.icon}
+                    />
+                  );
+                })}
+              </Box>
+            </Box>
+          ) : (
+            <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+              Seleccione al menos un tipo de usuario
+            </Typography>
+          )}
+        </Box>
+
         {/* Mensaje de error o ayuda */}
         {error && !algunoSeleccionado && (
           <Alert severity="error" sx={{ mt: 2 }}>
@@ -206,16 +212,6 @@ const AsignacionUsuarios: React.FC<AsignacionUsuariosProps> = ({
           <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
             {helperText}
           </Typography>
-        )}
-
-        {/* Información adicional */}
-        {algunoSeleccionado && (
-          <Alert severity="info" sx={{ mt: 2 }}>
-            <Typography variant="body2">
-              El cuestionario será visible para {tiposSeleccionados.length} tipo(s) de usuario.
-              Los usuarios podrán ver y responder el cuestionario según las fechas de vigencia configuradas.
-            </Typography>
-          </Alert>
         )}
       </FormControl>
     </Box>

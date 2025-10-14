@@ -21,7 +21,7 @@ import {
 import CuestionarioForm from '@/components/cuestionarios/CuestionarioForm';
 import { cuestionariosAdminApi } from '@/services/api';
 import { useNotification } from '@/hooks/useNotification';
-import type { CuestionarioAdmin, CuestionarioAdminUpdate } from '@/types/cuestionarios';
+import type { CuestionarioAdmin, CuestionarioAdminUpdate, EstadoCuestionario } from '@/types/cuestionarios';
 
 /**
  * Página para editar un cuestionario administrativo existente
@@ -60,7 +60,8 @@ const EditarCuestionarioPage: React.FC = () => {
     };
 
     cargarCuestionario();
-  }, [id, showNotification]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]); // Solo depende de id, showNotification se omite intencionalmente
 
   const handleSubmit = async (data: CuestionarioAdminUpdate) => {
     if (!id || !cuestionario) return;
@@ -142,6 +143,31 @@ const EditarCuestionarioPage: React.FC = () => {
 
   const handleCancel = () => {
     navigate('/admin/cuestionarios');
+  };
+
+  const handleCambiarEstado = async (nuevoEstado: EstadoCuestionario) => {
+    if (!id || !cuestionario) return;
+
+    try {
+      setSaving(true);
+      setError(null);
+
+      const cuestionarioActualizado = await cuestionariosAdminApi.cambiarEstado(id, nuevoEstado);
+      setCuestionario(cuestionarioActualizado);
+
+      showNotification(
+        `Cuestionario ${nuevoEstado === 'activo' ? 'activado' : 'desactivado'} exitosamente`,
+        'success'
+      );
+
+    } catch (error: any) {
+      console.error('Error al cambiar estado:', error);
+      const errorMessage = error.response?.data?.detail || error.message || 'Error al cambiar el estado del cuestionario';
+      setError(errorMessage);
+      showNotification(errorMessage, 'error');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const getEstadoColor = (estado: string) => {
@@ -283,6 +309,7 @@ const EditarCuestionarioPage: React.FC = () => {
           cuestionario={cuestionario}
           onSubmit={handleSubmit}
           onCancel={handleCancel}
+          onCambiarEstado={handleCambiarEstado}
           loading={saving}
         />
       </Box>

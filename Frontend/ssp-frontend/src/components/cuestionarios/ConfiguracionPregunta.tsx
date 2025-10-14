@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   TextField,
@@ -8,13 +8,16 @@ import {
   Chip,
   IconButton,
   Button,
-  Divider,
-  Slider
+  Slider,
+  Collapse,
+  Paper
 } from '@mui/material';
 import {
   Add as AddIcon,
   Delete as DeleteIcon,
-  DragIndicator as DragIcon
+  DragIndicator as DragIcon,
+  ExpandMore as ExpandMoreIcon,
+  ExpandLess as ExpandLessIcon
 } from '@mui/icons-material';
 import type { TipoPregunta, ConfiguracionPregunta } from '@/types/cuestionarios';
 
@@ -32,6 +35,7 @@ const ConfiguracionPreguntaComponent: React.FC<ConfiguracionPreguntaProps> = ({
   configuracion,
   onChange
 }) => {
+  const [expanded, setExpanded] = useState(false);
   const updateConfig = (updates: Partial<ConfiguracionPregunta>) => {
     onChange({ ...configuracion, ...updates });
   };
@@ -59,6 +63,14 @@ const ConfiguracionPreguntaComponent: React.FC<ConfiguracionPreguntaProps> = ({
       case 'abierta':
         return (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+             <TextField
+              label="Longitud mínima"
+              type="number"
+              value={configuracion.longitud_minima || ''}
+              onChange={(e) => updateConfig({ longitud_minima: parseInt(e.target.value) || undefined })}
+              helperText="Mínimo número de caracteres requeridos"
+              inputProps={{ min: 0, max: 1000 }}
+            />
             <TextField
               label="Límite de caracteres"
               type="number"
@@ -66,14 +78,6 @@ const ConfiguracionPreguntaComponent: React.FC<ConfiguracionPreguntaProps> = ({
               onChange={(e) => updateConfig({ limite_caracteres: parseInt(e.target.value) || undefined })}
               helperText="Máximo número de caracteres permitidos (opcional)"
               inputProps={{ min: 1, max: 5000 }}
-            />
-            <TextField
-              label="Longitud mínima"
-              type="number"
-              value={configuracion.longitud_minima || ''}
-              onChange={(e) => updateConfig({ longitud_minima: parseInt(e.target.value) || undefined })}
-              helperText="Mínimo número de caracteres requeridos"
-              inputProps={{ min: 0, max: 1000 }}
             />
           </Box>
         );
@@ -274,12 +278,41 @@ const ConfiguracionPreguntaComponent: React.FC<ConfiguracionPreguntaProps> = ({
 
   return (
     <Box sx={{ mt: 2 }}>
-      <Typography variant="subtitle2" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-        Configuración
-        <Chip size="small" label={tipo.replace('_', ' ')} variant="outlined" />
-      </Typography>
-      <Divider sx={{ mb: 2 }} />
-      {renderConfiguracion()}
+      {/* Header colapsable */}
+      <Paper
+        elevation={0}
+        sx={{
+          p: 1.5,
+          bgcolor: 'grey.50',
+          border: '1px solid',
+          borderColor: 'divider',
+          borderRadius: 1,
+          cursor: 'pointer',
+          '&:hover': {
+            bgcolor: 'grey.100'
+          }
+        }}
+        onClick={() => setExpanded(!expanded)}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
+              Configuración
+            </Typography>
+            <Chip size="small" label={tipo.replace('_', ' ')} variant="outlined" />
+          </Box>
+          <IconButton size="small">
+            {expanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+          </IconButton>
+        </Box>
+      </Paper>
+
+      {/* Contenido colapsable */}
+      <Collapse in={expanded}>
+        <Box sx={{ mt: 2, p: 2, bgcolor: 'background.paper', borderRadius: 1 }}>
+          {renderConfiguracion()}
+        </Box>
+      </Collapse>
     </Box>
   );
 };

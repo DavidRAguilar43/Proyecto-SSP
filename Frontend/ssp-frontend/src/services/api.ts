@@ -659,7 +659,7 @@ export const cuestionariosAdminApi = {
 
   // Crear nuevo cuestionario
   create: async (data: any) => {
-    const response = await api.post('/cuestionarios-admin', data);
+    const response = await api.post('/cuestionarios-admin/', data);
     return response.data;
   },
 

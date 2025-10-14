@@ -89,6 +89,22 @@ export const useNotification = () => {
     });
   };
 
+  // Método genérico showNotification para compatibilidad
+  const showNotification = (message: string, type: 'success' | 'error' | 'warning' | 'info' = 'info', title?: string) => {
+    switch (type) {
+      case 'success':
+        return showSuccess(title || 'Éxito', message);
+      case 'error':
+        return showError(title || 'Error', message);
+      case 'warning':
+        return showWarning(title || 'Advertencia', message);
+      case 'info':
+        return showInfo(title || 'Información', message);
+      default:
+        return showInfo(title || 'Información', message);
+    }
+  };
+
   return {
     // Métodos básicos
     showSuccess,
@@ -98,6 +114,9 @@ export const useNotification = () => {
     addNotification,
     removeNotification,
     clearAllNotifications,
+
+    // Método genérico
+    showNotification,
 
     // Métodos de conveniencia
     notifySuccess,

@@ -31,7 +31,9 @@ import {
   ContentCopy as CopyIcon,
   Visibility as ViewIcon,
   Assignment as AssignmentIcon,
-  ArrowBack as ArrowBackIcon
+  ArrowBack as ArrowBackIcon,
+  CheckCircle as ActivarIcon,
+  Cancel as DesactivarIcon
 } from '@mui/icons-material';
 import { cuestionariosAdminApi } from '@/services/api';
 import { useNotification } from '@/hooks/useNotification';
@@ -430,11 +432,13 @@ const CuestionariosPage: React.FC = () => {
           Duplicar
         </MenuItem>
         {cuestionarioSeleccionado?.estado === 'activo' ? (
-          <MenuItem onClick={() => handleChangeStatus('inactivo')}>
+          <MenuItem onClick={() => handleChangeStatus('inactivo')} sx={{ color: 'error.main' }}>
+            <DesactivarIcon sx={{ mr: 1 }} />
             Desactivar
           </MenuItem>
         ) : (
-          <MenuItem onClick={() => handleChangeStatus('activo')}>
+          <MenuItem onClick={() => handleChangeStatus('activo')} sx={{ color: 'success.main' }}>
+            <ActivarIcon sx={{ mr: 1 }} />
             Activar
           </MenuItem>
         )}

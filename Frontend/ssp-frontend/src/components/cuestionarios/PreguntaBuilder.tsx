@@ -49,7 +49,7 @@ const PreguntaBuilder: React.FC<PreguntaBuilderProps> = ({
   totalPreguntas,
   errors = []
 }) => {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(false); // Colapsado por defecto
   const [showPreview, setShowPreview] = useState(false);
 
   const updatePregunta = (updates: Partial<Pregunta>) => {
@@ -96,178 +96,213 @@ const PreguntaBuilder: React.FC<PreguntaBuilderProps> = ({
 
   const hasErrors = errors.length > 0;
 
+  // Colores alternados: azul claro para pares, anaranjado claro para impares
+  const backgroundColor = index % 2 === 0
+    ? 'rgba(33, 150, 243, 0.08)'  // Azul claro
+    : 'rgba(255, 152, 0, 0.08)';   // Anaranjado claro
+
+  // Obtener nombre legible del tipo de pregunta
+  const getTipoNombre = (tipo: TipoPregunta): string => {
+    const tipos: Record<TipoPregunta, string> = {
+      'abierta': 'Texto Abierto',
+      'opcion_multiple': 'Opción Múltiple',
+      'select': 'Selección',
+      'checkbox': 'Casillas de Verificación',
+      'radio_button': 'Botones de Radio',
+      'escala_likert': 'Escala Likert'
+    };
+    return tipos[tipo] || tipo;
+  };
+
   return (
-    <Card 
-      sx={{ 
-        mb: 2, 
+    <Card
+      sx={{
+        mb: 2,
         border: hasErrors ? '2px solid' : '1px solid',
         borderColor: hasErrors ? 'error.main' : 'divider',
+        bgcolor: backgroundColor,
         '&:hover': {
           boxShadow: 2
         }
       }}
     >
-      <CardContent>
-        {/* Header con información básica */}
-        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2, mb: 2 }}>
-          <DragIcon sx={{ color: 'grey.400', cursor: 'grab', mt: 1 }} />
-          
-          <Box sx={{ flex: 1 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-              <Typography variant="h6" component="h3">
-                Pregunta {index + 1}
+      {/* HEADER COLAPSABLE - Siempre visible */}
+      <Box
+        onClick={() => setExpanded(!expanded)}
+        sx={{
+          p: 2,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 2,
+          cursor: 'pointer',
+          '&:hover': {
+            bgcolor: 'action.hover'
+          }
+        }}
+      >
+        <DragIcon sx={{ color: 'grey.400' }} />
+
+        <Box sx={{ flex: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+            <Typography variant="subtitle1" component="h3" sx={{ fontWeight: 'bold' }}>
+              Pregunta {index + 1}
+            </Typography>
+            {pregunta.obligatoria && (
+              <Typography variant="caption" color="error" sx={{ fontWeight: 'bold' }}>
+                *Obligatoria
               </Typography>
-              {pregunta.obligatoria && (
-                <Typography variant="caption" color="error" sx={{ fontWeight: 'bold' }}>
-                  *Obligatoria
-                </Typography>
-              )}
-            </Box>
-
-            {/* Campo de texto de la pregunta */}
-            <TextField
-              fullWidth
-              label="Texto de la pregunta"
-              value={pregunta.texto}
-              onChange={(e) => updatePregunta({ texto: e.target.value })}
-              error={!pregunta.texto.trim()}
-              helperText={!pregunta.texto.trim() ? 'El texto de la pregunta es obligatorio' : ''}
-              multiline
-              rows={2}
-              sx={{ mb: 2 }}
-            />
-
-            {/* Descripción opcional */}
-            <TextField
-              fullWidth
-              label="Descripción (opcional)"
-              value={pregunta.descripcion || ''}
-              onChange={(e) => updatePregunta({ descripcion: e.target.value })}
-              helperText="Información adicional para ayudar al usuario a responder"
-              multiline
-              rows={1}
-              sx={{ mb: 2 }}
-            />
-
-            {/* Selector de tipo de pregunta */}
-            <TipoPreguntaSelector
-              value={pregunta.tipo}
-              onChange={handleTipoChange}
-            />
+            )}
           </Box>
 
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-            <IconButton
-              onClick={() => setShowPreview(!showPreview)}
-              color={showPreview ? 'primary' : 'default'}
-              title="Vista previa"
-            >
-              <PreviewIcon />
-            </IconButton>
-            <IconButton
-              onClick={onDelete}
-              color="error"
-              disabled={totalPreguntas <= 1}
-              title="Eliminar pregunta"
-            >
-              <DeleteIcon />
-            </IconButton>
-          </Box>
-        </Box>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+            {pregunta.texto || 'Sin texto'}
+          </Typography>
 
-        {/* Errores de validación */}
-        {hasErrors && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 1 }}>
-              Errores en esta pregunta:
-            </Typography>
-            <ul style={{ margin: 0, paddingLeft: 20 }}>
-              {errors.map((error, idx) => (
-                <li key={idx}>
-                  <Typography variant="body2">{error}</Typography>
-                </li>
-              ))}
-            </ul>
-          </Alert>
-        )}
-
-        {/* Vista previa de la pregunta */}
-        <Collapse in={showPreview}>
-          <Box sx={{ mb: 2, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
-            <Typography variant="subtitle2" sx={{ mb: 1 }}>
-              Vista Previa:
-            </Typography>
-            <VistaPreviaPregunta pregunta={pregunta} />
-          </Box>
-        </Collapse>
-
-        {/* Configuración específica del tipo de pregunta */}
-        <ConfiguracionPreguntaComponent
-          tipo={pregunta.tipo}
-          configuracion={pregunta.configuracion}
-          onChange={handleConfiguracionChange}
-        />
-      </CardContent>
-
-      <CardActions sx={{ justifyContent: 'space-between', px: 2, pb: 2 }}>
-        <Box>
-          <FormControlLabel
-            control={
-              <Switch
-                checked={pregunta.obligatoria}
-                onChange={(e) => updatePregunta({ obligatoria: e.target.checked })}
-              />
-            }
-            label="Pregunta obligatoria"
-          />
+          <Typography variant="caption" color="primary" sx={{ fontWeight: 'medium' }}>
+            Tipo: {getTipoNombre(pregunta.tipo)}
+          </Typography>
         </Box>
 
         <Box sx={{ display: 'flex', gap: 1 }}>
-          <Button
-            startIcon={<ExpandMoreIcon />}
-            onClick={() => setExpanded(!expanded)}
+          <IconButton
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete();
+            }}
+            color="error"
+            disabled={totalPreguntas <= 1}
+            title="Eliminar pregunta"
             size="small"
           >
-            {expanded ? 'Menos opciones' : 'Más opciones'}
-          </Button>
-          
-          {onDuplicate && (
-            <Button
-              onClick={onDuplicate}
-              size="small"
-              variant="outlined"
-            >
-              Duplicar
-            </Button>
-          )}
-        </Box>
-      </CardActions>
+            <DeleteIcon />
+          </IconButton>
 
-      {/* Opciones avanzadas */}
+          <IconButton size="small">
+            {expanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+          </IconButton>
+        </Box>
+      </Box>
+
+      {/* CONTENIDO EXPANDIBLE */}
       <Collapse in={expanded}>
-        <Box sx={{ px: 2, pb: 2 }}>
+        <CardContent sx={{ pt: 0 }}>
           <Divider sx={{ mb: 2 }} />
-          <Typography variant="subtitle2" sx={{ mb: 2 }}>
-            Opciones Avanzadas
-          </Typography>
-          
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+
+          <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
+            <Box sx={{ flex: 1 }}>
+              {/* Campo de texto de la pregunta */}
+              <TextField
+                fullWidth
+                label="Texto de la pregunta"
+                value={pregunta.texto}
+                onChange={(e) => updatePregunta({ texto: e.target.value })}
+                error={!pregunta.texto.trim()}
+                helperText={!pregunta.texto.trim() ? 'El texto de la pregunta es obligatorio' : ''}
+                multiline
+                rows={2}
+                sx={{ mb: 2 }}
+              />
+
+              {/* Descripción opcional */}
+              <TextField
+                fullWidth
+                label="Descripción (opcional)"
+                value={pregunta.descripcion || ''}
+                onChange={(e) => updatePregunta({ descripcion: e.target.value })}
+                helperText="Información adicional para ayudar al usuario a responder"
+                multiline
+                rows={1}
+                sx={{ mb: 2 }}
+              />
+
+              {/* Selector de tipo de pregunta */}
+              <TipoPreguntaSelector
+                value={pregunta.tipo}
+                onChange={handleTipoChange}
+              />
+            </Box>
+
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+              <IconButton
+                onClick={() => setShowPreview(!showPreview)}
+                color={showPreview ? 'primary' : 'default'}
+                title="Vista previa"
+              >
+                <PreviewIcon />
+              </IconButton>
+            </Box>
+          </Box>
+
+          {/* Errores de validación */}
+          {hasErrors && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 1 }}>
+                Errores en esta pregunta:
+              </Typography>
+              <ul style={{ margin: 0, paddingLeft: 20 }}>
+                {errors.map((error, idx) => (
+                  <li key={idx}>
+                    <Typography variant="body2">{error}</Typography>
+                  </li>
+                ))}
+              </ul>
+            </Alert>
+          )}
+
+          {/* Vista previa de la pregunta */}
+          <Collapse in={showPreview}>
+            <Box sx={{ mb: 2, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+              <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                Vista Previa:
+              </Typography>
+              <VistaPreviaPregunta pregunta={pregunta} />
+            </Box>
+          </Collapse>
+
+          {/* Configuración específica del tipo de pregunta */}
+          <ConfiguracionPreguntaComponent
+            tipo={pregunta.tipo}
+            configuracion={pregunta.configuracion}
+            onChange={handleConfiguracionChange}
+          />
+
+          {/* Opciones de la pregunta */}
+          <Box sx={{ mt: 3 }}>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={pregunta.obligatoria}
+                  onChange={(e) => updatePregunta({ obligatoria: e.target.checked })}
+                />
+              }
+              label="Pregunta obligatoria"
+            />
+          </Box>
+
+          {/* Botones de acción */}
+          <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
+            {onDuplicate && (
+              <Button
+                onClick={onDuplicate}
+                size="small"
+                variant="outlined"
+              >
+                Duplicar
+              </Button>
+            )}
+
             <TextField
               label="Orden"
               type="number"
               value={pregunta.orden}
               onChange={(e) => updatePregunta({ orden: parseInt(e.target.value) || index + 1 })}
-              helperText="Posición de la pregunta en el cuestionario"
+              helperText="Posición de la pregunta"
               inputProps={{ min: 1, max: totalPreguntas }}
               size="small"
-              sx={{ maxWidth: 200 }}
+              sx={{ maxWidth: 150 }}
             />
-            
-            <Typography variant="body2" color="text.secondary">
-              ID de la pregunta: {pregunta.id}
-            </Typography>
           </Box>
-        </Box>
+        </CardContent>
       </Collapse>
     </Card>
   );

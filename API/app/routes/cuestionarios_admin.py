@@ -25,6 +25,7 @@ from app.schemas.cuestionario_admin import (
     FiltrosCuestionarios,
     CuestionarioBulkDelete,
     CuestionarioDuplicate,
+    CuestionarioEstadoUpdate,
     PreguntaOut
 )
 from app.utils.deps import (
@@ -394,7 +395,7 @@ def delete_cuestionario(
     return {"message": "Cuestionario eliminado exitosamente"}
 
 
-@router.post("/{cuestionario_id}/duplicate", response_model=CuestionarioAdminOut)
+@router.post("/{cuestionario_id}/duplicar", response_model=CuestionarioAdminOut)
 def duplicate_cuestionario(
     *,
     db: Session = Depends(get_db),
@@ -483,6 +484,81 @@ def duplicate_cuestionario(
         "tipos_usuario_asignados": cuestionario_duplicado.tipos_usuario_asignados,
         "created_at": cuestionario_duplicado.created_at,
         "updated_at": cuestionario_duplicado.updated_at
+    }
+
+    return CuestionarioAdminOut(**cuestionario_dict)
+
+
+@router.patch("/{cuestionario_id}/estado", response_model=CuestionarioAdminOut)
+def cambiar_estado_cuestionario(
+    *,
+    db: Session = Depends(get_db),
+    cuestionario_id: str,
+    estado_update: CuestionarioEstadoUpdate,
+    current_user: Persona = Depends(check_admin_or_coordinador_role)
+) -> Any:
+    """
+    Cambiar el estado de un cuestionario (activar/desactivar/borrador).
+    """
+    # Buscar el cuestionario
+    cuestionario = db.query(CuestionarioAdmin).options(
+        joinedload(CuestionarioAdmin.creador),
+        joinedload(CuestionarioAdmin.preguntas),
+        joinedload(CuestionarioAdmin.asignaciones)
+    ).filter(CuestionarioAdmin.id == cuestionario_id).first()
+
+    if not cuestionario:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Cuestionario no encontrado"
+        )
+
+    # Verificar permisos (solo el creador o admin puede cambiar estado)
+    if current_user.rol != "admin" and cuestionario.creado_por != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tienes permisos para cambiar el estado de este cuestionario"
+        )
+
+    # Validaciones antes de activar
+    if estado_update.estado == EstadoCuestionario.ACTIVO:
+        # Verificar que tenga al menos una pregunta
+        if not cuestionario.preguntas or len(cuestionario.preguntas) == 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No se puede activar un cuestionario sin preguntas"
+            )
+
+        # Verificar que tenga asignaciones
+        if not cuestionario.asignaciones or len(cuestionario.asignaciones) == 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No se puede activar un cuestionario sin asignaciones de usuarios"
+            )
+
+    # Cambiar el estado
+    cuestionario.estado = estado_update.estado
+    db.add(cuestionario)
+    db.commit()
+    db.refresh(cuestionario)
+
+    # Enriquecer datos para respuesta
+    cuestionario_dict = {
+        "id": cuestionario.id,
+        "titulo": cuestionario.titulo,
+        "descripcion": cuestionario.descripcion,
+        "fecha_creacion": cuestionario.fecha_creacion,
+        "fecha_inicio": cuestionario.fecha_inicio,
+        "fecha_fin": cuestionario.fecha_fin,
+        "estado": cuestionario.estado,
+        "creado_por": cuestionario.creado_por,
+        "creado_por_nombre": cuestionario.creador.correo_institucional if cuestionario.creador else None,
+        "total_preguntas": cuestionario.total_preguntas,
+        "total_respuestas": cuestionario.total_respuestas,
+        "preguntas": cuestionario.preguntas,
+        "tipos_usuario_asignados": cuestionario.tipos_usuario_asignados,
+        "created_at": cuestionario.created_at,
+        "updated_at": cuestionario.updated_at
     }
 
     return CuestionarioAdminOut(**cuestionario_dict)

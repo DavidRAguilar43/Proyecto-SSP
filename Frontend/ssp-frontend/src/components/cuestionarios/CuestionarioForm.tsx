@@ -21,7 +21,9 @@ import {
   Add as AddIcon,
   Save as SaveIcon,
   Preview as PreviewIcon,
-  Delete as DeleteIcon
+  Delete as DeleteIcon,
+  CheckCircle as ActivarIcon,
+  Cancel as DesactivarIcon
 } from '@mui/icons-material';
 // import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import PreguntaBuilder from './PreguntaBuilder';
@@ -44,6 +46,7 @@ interface CuestionarioFormProps {
   cuestionario?: CuestionarioAdmin;
   onSubmit: (data: CuestionarioAdminCreate | CuestionarioAdminUpdate) => Promise<void>;
   onCancel: () => void;
+  onCambiarEstado?: (nuevoEstado: EstadoCuestionario) => Promise<void>;
   loading?: boolean;
   mode: 'create' | 'edit';
 }
@@ -55,6 +58,7 @@ const CuestionarioForm: React.FC<CuestionarioFormProps> = ({
   cuestionario,
   onSubmit,
   onCancel,
+  onCambiarEstado,
   loading = false,
   mode
 }) => {
@@ -246,15 +250,42 @@ const CuestionarioForm: React.FC<CuestionarioFormProps> = ({
         </Alert>
       )}
 
-      <Grid container spacing={3}>
-        {/* Información básica */}
-        <Grid item xs={12} md={8}>
-          <Card sx={{ mb: 3 }}>
+      {/* Layout de dos columnas con FLEXBOX */}
+      <Box sx={{ display: 'flex', gap: 3, alignItems: 'flex-start' }}>
+        {/* COLUMNA IZQUIERDA: Panel lateral con opciones (30% fijo) */}
+        <Box
+          sx={{
+            width: '30%',
+            minWidth: '300px',
+            flexShrink: 0,
+            position: 'sticky',
+            top: 16,
+            maxHeight: 'calc(100vh - 32px)',
+            overflowY: 'auto',
+            overflowX: 'hidden',
+            '&::-webkit-scrollbar': {
+              width: '8px',
+            },
+            '&::-webkit-scrollbar-track': {
+              background: '#f1f1f1',
+              borderRadius: '4px',
+            },
+            '&::-webkit-scrollbar-thumb': {
+              background: '#888',
+              borderRadius: '4px',
+            },
+            '&::-webkit-scrollbar-thumb:hover': {
+              background: '#555',
+            },
+          }}
+        >
+            {/* Información básica */}
+            <Card sx={{ mb: 3 }}>
             <CardContent>
               <Typography variant="h6" sx={{ mb: 2 }}>
                 Información Básica
               </Typography>
-              
+
               <TextField
                 fullWidth
                 label="Título del cuestionario"
@@ -279,50 +310,41 @@ const CuestionarioForm: React.FC<CuestionarioFormProps> = ({
                 sx={{ mb: 2 }}
               />
 
-              <Grid container spacing={2}>
-                <Grid item xs={12} sm={4}>
-                  <FormControl fullWidth>
-                    <InputLabel>Estado</InputLabel>
-                    <Select
-                      value={estado}
-                      label="Estado"
-                      onChange={(e) => setEstado(e.target.value as EstadoCuestionario)}
-                    >
-                      <MenuItem value="borrador">Borrador</MenuItem>
-                      <MenuItem value="activo">Activo</MenuItem>
-                      <MenuItem value="inactivo">Inactivo</MenuItem>
-                    </Select>
-                  </FormControl>
-                </Grid>
-                
-                <Grid item xs={12} sm={4}>
-                  <TextField
-                    fullWidth
-                    label="Fecha de inicio"
-                    type="datetime-local"
-                    value={fechaInicio ? fechaInicio.toISOString().slice(0, 16) : ''}
-                    onChange={(e) => setFechaInicio(e.target.value ? new Date(e.target.value) : null)}
-                    InputLabelProps={{ shrink: true }}
-                  />
-                </Grid>
+              <FormControl fullWidth sx={{ mb: 2 }}>
+                <InputLabel>Estado</InputLabel>
+                <Select
+                  value={estado}
+                  label="Estado"
+                  onChange={(e) => setEstado(e.target.value as EstadoCuestionario)}
+                >
+                  <MenuItem value="borrador">Borrador</MenuItem>
+                  <MenuItem value="activo">Activo</MenuItem>
+                  <MenuItem value="inactivo">Inactivo</MenuItem>
+                </Select>
+              </FormControl>
 
-                <Grid item xs={12} sm={4}>
-                  <TextField
-                    fullWidth
-                    label="Fecha de fin"
-                    type="datetime-local"
-                    value={fechaFin ? fechaFin.toISOString().slice(0, 16) : ''}
-                    onChange={(e) => setFechaFin(e.target.value ? new Date(e.target.value) : null)}
-                    InputLabelProps={{ shrink: true }}
-                  />
-                </Grid>
-              </Grid>
+              <TextField
+                fullWidth
+                label="Fecha de inicio"
+                type="datetime-local"
+                value={fechaInicio ? fechaInicio.toISOString().slice(0, 16) : ''}
+                onChange={(e) => setFechaInicio(e.target.value ? new Date(e.target.value) : null)}
+                InputLabelProps={{ shrink: true }}
+                sx={{ mb: 2 }}
+              />
+
+              <TextField
+                fullWidth
+                label="Fecha de fin"
+                type="datetime-local"
+                value={fechaFin ? fechaFin.toISOString().slice(0, 16) : ''}
+                onChange={(e) => setFechaFin(e.target.value ? new Date(e.target.value) : null)}
+                InputLabelProps={{ shrink: true }}
+              />
             </CardContent>
           </Card>
-        </Grid>
 
-        {/* Panel lateral */}
-        <Grid item xs={12} md={4}>
+          {/* Asignación de usuarios */}
           <Card sx={{ mb: 3 }}>
             <CardContent>
               <Typography variant="h6" sx={{ mb: 2 }}>
@@ -335,81 +357,141 @@ const CuestionarioForm: React.FC<CuestionarioFormProps> = ({
               />
             </CardContent>
           </Card>
-        </Grid>
-      </Grid>
 
-      {/* Sección de preguntas */}
-      <Card sx={{ mb: 3 }}>
-        <CardContent>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-            <Typography variant="h6">
-              Preguntas ({preguntas.length})
-            </Typography>
-            <Button
-              startIcon={<AddIcon />}
-              onClick={agregarPregunta}
-              variant="contained"
-              disabled={preguntas.length >= 50}
-            >
-              Agregar Pregunta
-            </Button>
-          </Box>
+          {/* Botón agregar pregunta */}
+          <Button
+            fullWidth
+            startIcon={<AddIcon />}
+            onClick={agregarPregunta}
+            variant="contained"
+            disabled={preguntas.length >= 50}
+            sx={{ mb: 2 }}
+          >
+            Agregar Pregunta
+          </Button>
 
-          {preguntas.length === 0 && (
-            <Alert severity="info">
-              Agregue al menos una pregunta para completar el cuestionario.
-            </Alert>
-          )}
+          {/* Botones de acción */}
+          <Card>
+            <CardContent>
+              <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 'bold' }}>
+                Acciones
+              </Typography>
 
-          {preguntas.map((pregunta, index) => (
-            <PreguntaBuilder
-              key={pregunta.id}
-              pregunta={pregunta}
-              onChange={(preguntaActualizada) => actualizarPregunta(index, preguntaActualizada)}
-              onDelete={() => eliminarPregunta(index)}
-              onDuplicate={() => duplicarPregunta(index)}
-              index={index}
-              totalPreguntas={preguntas.length}
-              errors={validacion?.errores_preguntas[pregunta.id]}
-            />
-          ))}
-        </CardContent>
-      </Card>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                <Button
+                  fullWidth
+                  startIcon={<PreviewIcon />}
+                  onClick={() => setShowPreview(true)}
+                  variant="outlined"
+                  disabled={preguntas.length === 0}
+                >
+                  Vista Previa
+                </Button>
 
-      {/* Botones de acción */}
-      <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end', mb: 3 }}>
-        <Button
-          onClick={onCancel}
-          disabled={loading || guardandoBorrador}
-        >
-          Cancelar
-        </Button>
-        
-        <Button
-          onClick={guardarBorrador}
-          disabled={loading || guardandoBorrador}
-          variant="outlined"
-        >
-          Guardar Borrador
-        </Button>
-        
-        <Button
-          startIcon={<PreviewIcon />}
-          onClick={() => setShowPreview(true)}
-          variant="outlined"
-          disabled={preguntas.length === 0}
-        >
-          Vista Previa
-        </Button>
-        
-        <Button
-          startIcon={<SaveIcon />}
-          onClick={handleSubmit}
-          variant="contained"
-          disabled={loading || guardandoBorrador}
-        >
-          {mode === 'create' ? 'Crear Cuestionario' : 'Guardar Cambios'}
-        </Button>
+                <Button
+                  fullWidth
+                  onClick={guardarBorrador}
+                  disabled={loading || guardandoBorrador}
+                  variant="outlined"
+                >
+                  Guardar Borrador
+                </Button>
+
+                {/* Botones de activar/desactivar solo en modo edición */}
+                {mode === 'edit' && onCambiarEstado && cuestionario && (
+                  <>
+                    <Divider sx={{ my: 1 }} />
+
+                    {estado !== 'activo' ? (
+                      <Button
+                        fullWidth
+                        startIcon={<ActivarIcon />}
+                        onClick={() => onCambiarEstado('activo')}
+                        variant="contained"
+                        color="success"
+                        disabled={loading || guardandoBorrador || preguntas.length === 0 || tiposUsuario.length === 0}
+                      >
+                        Activar Cuestionario
+                      </Button>
+                    ) : (
+                      <Button
+                        fullWidth
+                        startIcon={<DesactivarIcon />}
+                        onClick={() => onCambiarEstado('inactivo')}
+                        variant="contained"
+                        color="error"
+                        disabled={loading || guardandoBorrador}
+                      >
+                        Desactivar Cuestionario
+                      </Button>
+                    )}
+                  </>
+                )}
+
+                <Divider sx={{ my: 1 }} />
+
+                <Button
+                  fullWidth
+                  startIcon={<SaveIcon />}
+                  onClick={handleSubmit}
+                  variant="contained"
+                  disabled={loading || guardandoBorrador}
+                  size="large"
+                >
+                  {mode === 'create' ? 'Crear Cuestionario' : 'Guardar Cambios'}
+                </Button>
+
+                <Button
+                  fullWidth
+                  onClick={onCancel}
+                  disabled={loading || guardandoBorrador}
+                  variant="text"
+                >
+                  Cancelar
+                </Button>
+              </Box>
+            </CardContent>
+          </Card>
+        </Box>
+
+        {/* COLUMNA DERECHA: Lista de preguntas (70% - crece para llenar el espacio) */}
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Card sx={{ mb: 3 }}>
+            <CardContent>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Typography variant="h6">
+                  Preguntas ({preguntas.length})
+                </Typography>
+                <Chip
+                  label={preguntas.length === 0 ? 'Sin preguntas' : `${preguntas.length} pregunta${preguntas.length !== 1 ? 's' : ''}`}
+                  color={preguntas.length === 0 ? 'default' : 'primary'}
+                  variant="outlined"
+                />
+              </Box>
+
+              {preguntas.length === 0 && (
+                <Alert severity="info">
+                  Agregue al menos una pregunta para completar el cuestionario.
+                  <br />
+                  Use el botón "Agregar Pregunta" en el panel lateral.
+                </Alert>
+              )}
+
+              {preguntas.map((pregunta, index) => (
+                <PreguntaBuilder
+                  key={pregunta.id}
+                  pregunta={pregunta}
+                  onChange={(preguntaActualizada) => actualizarPregunta(index, preguntaActualizada)}
+                  onDelete={() => eliminarPregunta(index)}
+                  onDuplicate={() => duplicarPregunta(index)}
+                  index={index}
+                  totalPreguntas={preguntas.length}
+                  errors={validacion?.errores_preguntas[pregunta.id]}
+                />
+              ))}
+            </CardContent>
+          </Card>
+        </Box>
       </Box>
 
       {/* Modal de vista previa */}

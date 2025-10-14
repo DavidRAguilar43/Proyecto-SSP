@@ -263,3 +263,8 @@ class CuestionarioBulkDelete(BaseModel):
 
 class CuestionarioDuplicate(BaseModel):
     nuevo_titulo: str = Field(..., max_length=100, description="Título para el cuestionario duplicado")
+
+
+class CuestionarioEstadoUpdate(BaseModel):
+    """Esquema para cambiar el estado de un cuestionario"""
+    estado: EstadoCuestionario = Field(..., description="Nuevo estado del cuestionario")

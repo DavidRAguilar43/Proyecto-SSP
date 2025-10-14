@@ -61,7 +61,8 @@ const CuestionariosAsignadosPage: React.FC = () => {
     };
 
     cargarCuestionarios();
-  }, [showNotification]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Sin dependencias, solo se ejecuta al montar
 
   // Filtrar cuestionarios por estado
   const cuestionariosPendientes = cuestionarios.filter(c => c.estado === 'pendiente');

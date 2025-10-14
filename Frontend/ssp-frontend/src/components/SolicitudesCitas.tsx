@@ -39,7 +39,9 @@ import {
   LocationOn as LocationIcon,
   Check as CheckIcon,
   Close as CloseIcon,
-  Refresh as RefreshIcon
+  Refresh as RefreshIcon,
+  Visibility as VisibilityIcon,
+  NotificationImportant as NotificationImportantIcon
 } from '@mui/icons-material';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -75,6 +77,10 @@ const SolicitudesCitas: React.FC<SolicitudesCitasProps> = ({ onBadgeUpdate }) =>
   // Estados para diálogo de confirmación de cancelación
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
   const [solicitudToCancel, setSolicitudToCancel] = useState<SolicitudCita | null>(null);
+
+  // Estado para diálogo de detalles de cita confirmada
+  const [detallesDialogOpen, setDetallesDialogOpen] = useState(false);
+  const [citaDetalles, setCitaDetalles] = useState<SolicitudCita | null>(null);
 
   useEffect(() => {
     loadSolicitudes();
@@ -181,6 +187,26 @@ const SolicitudesCitas: React.FC<SolicitudesCitasProps> = ({ onBadgeUpdate }) =>
         return 'Académica';
       default:
         return 'General';
+    }
+  };
+
+  const getTipoColor = (tipo: TipoCita) => {
+    switch (tipo) {
+      case 'psicologica':
+        return {
+          bg: 'rgba(156, 39, 176, 0.08)', // Morado claro
+          border: '#9c27b0'
+        };
+      case 'academica':
+        return {
+          bg: 'rgba(33, 150, 243, 0.08)', // Azul claro
+          border: '#2196f3'
+        };
+      default:
+        return {
+          bg: 'rgba(158, 158, 158, 0.08)', // Gris claro
+          border: '#9e9e9e'
+        };
     }
   };
 
@@ -404,33 +430,102 @@ const SolicitudesCitas: React.FC<SolicitudesCitasProps> = ({ onBadgeUpdate }) =>
                 <CheckIcon sx={{ mr: 1, color: 'success.main' }} />
                 Citas Confirmadas ({solicitudesConfirmadas.length})
               </Typography>
-              
-              <Grid container spacing={2}>
-                {solicitudesConfirmadas.map((solicitud) => (
-                  <Grid size={{ xs: 12, md: 6 }} key={solicitud.id_cita}>
-                    <Card>
-                      <CardContent>
-                        <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2}>
-                          <Box display="flex" alignItems="center">
-                            {getTipoIcon(solicitud.tipo_cita)}
-                            <Typography variant="h6" sx={{ ml: 1 }}>
-                              {solicitud.alumno_nombre}
-                            </Typography>
-                          </Box>
-                          <Chip 
-                            label={getEstadoLabel(solicitud.estado)} 
-                            color={getEstadoColor(solicitud.estado)}
-                            size="small"
-                          />
-                        </Box>
 
-                        <Typography variant="body2" color="text.secondary">
-                          Cita {getTipoLabel(solicitud.tipo_cita)} • {solicitud.alumno_email}
-                        </Typography>
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                ))}
+              <Grid container spacing={2}>
+                {solicitudesConfirmadas.map((solicitud) => {
+                  const tipoColor = getTipoColor(solicitud.tipo_cita);
+                  return (
+                    <Grid size={{ xs: 12, md: 6 }} key={solicitud.id_cita}>
+                      <Card
+                        sx={{
+                          border: '2px solid',
+                          borderColor: tipoColor.border,
+                          bgcolor: tipoColor.bg,
+                          position: 'relative',
+                          '&:hover': {
+                            boxShadow: 4,
+                            transform: 'translateY(-2px)',
+                            transition: 'all 0.3s ease'
+                          }
+                        }}
+                      >
+                        <CardContent>
+                          {/* Icono de atención en la esquina superior derecha */}
+                          <Box
+                            sx={{
+                              position: 'absolute',
+                              top: 8,
+                              right: 8
+                            }}
+                          >
+                            <NotificationImportantIcon
+                              sx={{
+                                color: tipoColor.border,
+                                fontSize: 28
+                              }}
+                            />
+                          </Box>
+
+                          <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2}>
+                            <Box display="flex" alignItems="center">
+                              {getTipoIcon(solicitud.tipo_cita)}
+                              <Typography variant="h6" sx={{ ml: 1 }}>
+                                {solicitud.alumno_nombre}
+                              </Typography>
+                            </Box>
+                            <Chip
+                              label={getEstadoLabel(solicitud.estado)}
+                              color={getEstadoColor(solicitud.estado)}
+                              size="small"
+                            />
+                          </Box>
+
+                          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                            Cita {getTipoLabel(solicitud.tipo_cita)} • {solicitud.alumno_email}
+                          </Typography>
+
+                          {solicitud.fecha_confirmada && (
+                            <Box display="flex" alignItems="center" mb={1}>
+                              <CalendarIcon sx={{ fontSize: 16, mr: 0.5, color: 'text.secondary' }} />
+                              <Typography variant="body2" color="text.secondary">
+                                {format(new Date(solicitud.fecha_confirmada), "dd/MM/yyyy HH:mm", { locale: es })}
+                              </Typography>
+                            </Box>
+                          )}
+
+                          {solicitud.ubicacion && (
+                            <Box display="flex" alignItems="center" mb={2}>
+                              <LocationIcon sx={{ fontSize: 16, mr: 0.5, color: 'text.secondary' }} />
+                              <Typography variant="body2" color="text.secondary">
+                                {solicitud.ubicacion}
+                              </Typography>
+                            </Box>
+                          )}
+
+                          {/* Botón Ver */}
+                          <Button
+                            fullWidth
+                            variant="contained"
+                            startIcon={<VisibilityIcon />}
+                            onClick={() => {
+                              setCitaDetalles(solicitud);
+                              setDetallesDialogOpen(true);
+                            }}
+                            sx={{
+                              bgcolor: tipoColor.border,
+                              '&:hover': {
+                                bgcolor: tipoColor.border,
+                                filter: 'brightness(0.9)'
+                              }
+                            }}
+                          >
+                            Ver Detalles
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                  );
+                })}
               </Grid>
             </Box>
           )}
@@ -518,6 +613,161 @@ const SolicitudesCitas: React.FC<SolicitudesCitasProps> = ({ onBadgeUpdate }) =>
         severity="warning"
         loading={loading}
       />
+
+      {/* Diálogo de detalles de cita confirmada */}
+      <Dialog
+        open={detallesDialogOpen}
+        onClose={() => {
+          setDetallesDialogOpen(false);
+          setCitaDetalles(null);
+        }}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ bgcolor: citaDetalles ? getTipoColor(citaDetalles.tipo_cita).bg : 'transparent' }}>
+          <Box display="flex" alignItems="center">
+            {citaDetalles && getTipoIcon(citaDetalles.tipo_cita)}
+            <Typography variant="h6" sx={{ ml: 1 }}>
+              Detalles de la Cita
+            </Typography>
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          {citaDetalles && (
+            <Box sx={{ mt: 2 }}>
+              {/* Información del alumno */}
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                  Información del Alumno
+                </Typography>
+                <Divider sx={{ mb: 2 }} />
+
+                <Box display="flex" alignItems="center" mb={1}>
+                  <PersonIcon sx={{ fontSize: 20, mr: 1, color: 'text.secondary' }} />
+                  <Typography variant="body1">
+                    <strong>Nombre:</strong> {citaDetalles.alumno_nombre}
+                  </Typography>
+                </Box>
+
+                <Box display="flex" alignItems="center" mb={1}>
+                  <EmailIcon sx={{ fontSize: 20, mr: 1, color: 'text.secondary' }} />
+                  <Typography variant="body1">
+                    <strong>Email:</strong> {citaDetalles.alumno_email}
+                  </Typography>
+                </Box>
+
+                {citaDetalles.alumno_telefono && (
+                  <Box display="flex" alignItems="center" mb={1}>
+                    <PhoneIcon sx={{ fontSize: 20, mr: 1, color: 'text.secondary' }} />
+                    <Typography variant="body1">
+                      <strong>Teléfono:</strong> {citaDetalles.alumno_telefono}
+                    </Typography>
+                  </Box>
+                )}
+
+                {citaDetalles.alumno_matricula && (
+                  <Box display="flex" alignItems="center">
+                    <BadgeIcon sx={{ fontSize: 20, mr: 1, color: 'text.secondary' }} />
+                    <Typography variant="body1">
+                      <strong>Matrícula:</strong> {citaDetalles.alumno_matricula}
+                    </Typography>
+                  </Box>
+                )}
+              </Box>
+
+              {/* Información de la cita */}
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                  Información de la Cita
+                </Typography>
+                <Divider sx={{ mb: 2 }} />
+
+                <Box mb={2}>
+                  <Typography variant="body2" color="text.secondary">
+                    Tipo de Cita
+                  </Typography>
+                  <Chip
+                    label={getTipoLabel(citaDetalles.tipo_cita)}
+                    color="primary"
+                    size="small"
+                    sx={{ mt: 0.5 }}
+                  />
+                </Box>
+
+                <Box mb={2}>
+                  <Typography variant="body2" color="text.secondary">
+                    Estado
+                  </Typography>
+                  <Chip
+                    label={getEstadoLabel(citaDetalles.estado)}
+                    color={getEstadoColor(citaDetalles.estado)}
+                    size="small"
+                    sx={{ mt: 0.5 }}
+                  />
+                </Box>
+
+                {citaDetalles.fecha_confirmada && (
+                  <Box display="flex" alignItems="center" mb={2}>
+                    <CalendarIcon sx={{ fontSize: 20, mr: 1, color: 'text.secondary' }} />
+                    <Box>
+                      <Typography variant="body2" color="text.secondary">
+                        Fecha y Hora
+                      </Typography>
+                      <Typography variant="body1">
+                        {format(new Date(citaDetalles.fecha_confirmada), "dd/MM/yyyy 'a las' HH:mm", { locale: es })}
+                      </Typography>
+                    </Box>
+                  </Box>
+                )}
+
+                {citaDetalles.ubicacion && (
+                  <Box display="flex" alignItems="center" mb={2}>
+                    <LocationIcon sx={{ fontSize: 20, mr: 1, color: 'text.secondary' }} />
+                    <Box>
+                      <Typography variant="body2" color="text.secondary">
+                        Ubicación
+                      </Typography>
+                      <Typography variant="body1">
+                        {citaDetalles.ubicacion}
+                      </Typography>
+                    </Box>
+                  </Box>
+                )}
+
+                <Box mb={2}>
+                  <Typography variant="body2" color="text.secondary" gutterBottom>
+                    Motivo
+                  </Typography>
+                  <Typography variant="body1">
+                    {citaDetalles.motivo}
+                  </Typography>
+                </Box>
+
+                {citaDetalles.observaciones_personal && (
+                  <Box>
+                    <Typography variant="body2" color="text.secondary" gutterBottom>
+                      Observaciones del Personal
+                    </Typography>
+                    <Typography variant="body1">
+                      {citaDetalles.observaciones_personal}
+                    </Typography>
+                  </Box>
+                )}
+              </Box>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => {
+              setDetallesDialogOpen(false);
+              setCitaDetalles(null);
+            }}
+          >
+            Cerrar
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
