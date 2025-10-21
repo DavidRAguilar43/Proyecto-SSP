@@ -25,6 +25,21 @@ import {
   CheckCircle as ActivarIcon,
   Cancel as DesactivarIcon
 } from '@mui/icons-material';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors
+} from '@dnd-kit/core';
+import type { DragEndEvent } from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy
+} from '@dnd-kit/sortable';
 // import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import PreguntaBuilder from './PreguntaBuilder';
 import AsignacionUsuarios from './AsignacionUsuarios';
@@ -84,6 +99,18 @@ const CuestionarioForm: React.FC<CuestionarioFormProps> = ({
   const [validacion, setValidacion] = useState<ValidacionCuestionario | null>(null);
   const [guardandoBorrador, setGuardandoBorrador] = useState(false);
 
+  // Configurar sensores para drag & drop
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8, // Requiere mover 8px antes de activar el drag
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
   // Generar ID único para nuevas preguntas
   const generarIdPregunta = () => {
     return `pregunta_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -130,6 +157,51 @@ const CuestionarioForm: React.FC<CuestionarioFormProps> = ({
       orden: preguntas.length + 1
     };
     setPreguntas([...preguntas, preguntaDuplicada]);
+  };
+
+  // Manejar el fin del drag & drop
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = preguntas.findIndex((p) => p.id === active.id);
+      const newIndex = preguntas.findIndex((p) => p.id === over.id);
+
+      const nuevasPreguntas = arrayMove(preguntas, oldIndex, newIndex);
+
+      // Actualizar el orden de todas las preguntas
+      const preguntasReordenadas = nuevasPreguntas.map((pregunta, i) => ({
+        ...pregunta,
+        orden: i + 1
+      }));
+
+      setPreguntas(preguntasReordenadas);
+    }
+  };
+
+  // Manejar cambio manual de orden
+  const handleCambioOrdenManual = (index: number, nuevoOrden: number) => {
+    // Validar que el nuevo orden esté dentro del rango válido
+    if (nuevoOrden < 1 || nuevoOrden > preguntas.length) {
+      return;
+    }
+
+    const nuevasPreguntas = [...preguntas];
+    const preguntaMovida = nuevasPreguntas[index];
+
+    // Remover la pregunta de su posición actual
+    nuevasPreguntas.splice(index, 1);
+
+    // Insertar en la nueva posición (nuevoOrden - 1 porque el array es 0-indexed)
+    nuevasPreguntas.splice(nuevoOrden - 1, 0, preguntaMovida);
+
+    // Actualizar el orden de todas las preguntas
+    const preguntasReordenadas = nuevasPreguntas.map((pregunta, i) => ({
+      ...pregunta,
+      orden: i + 1
+    }));
+
+    setPreguntas(preguntasReordenadas);
   };
 
   // Validar formulario usando las utilidades
@@ -477,18 +549,30 @@ const CuestionarioForm: React.FC<CuestionarioFormProps> = ({
                 </Alert>
               )}
 
-              {preguntas.map((pregunta, index) => (
-                <PreguntaBuilder
-                  key={pregunta.id}
-                  pregunta={pregunta}
-                  onChange={(preguntaActualizada) => actualizarPregunta(index, preguntaActualizada)}
-                  onDelete={() => eliminarPregunta(index)}
-                  onDuplicate={() => duplicarPregunta(index)}
-                  index={index}
-                  totalPreguntas={preguntas.length}
-                  errors={validacion?.errores_preguntas[pregunta.id]}
-                />
-              ))}
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext
+                  items={preguntas.map(p => p.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  {preguntas.map((pregunta, index) => (
+                    <PreguntaBuilder
+                      key={pregunta.id}
+                      pregunta={pregunta}
+                      onChange={(preguntaActualizada) => actualizarPregunta(index, preguntaActualizada)}
+                      onDelete={() => eliminarPregunta(index)}
+                      onDuplicate={() => duplicarPregunta(index)}
+                      onCambioOrden={(nuevoOrden) => handleCambioOrdenManual(index, nuevoOrden)}
+                      index={index}
+                      totalPreguntas={preguntas.length}
+                      errors={validacion?.errores_preguntas[pregunta.id]}
+                    />
+                  ))}
+                </SortableContext>
+              </DndContext>
             </CardContent>
           </Card>
         </Box>

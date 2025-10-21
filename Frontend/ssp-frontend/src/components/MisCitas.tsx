@@ -17,7 +17,9 @@ import {
   List,
   ListItem,
   ListItemIcon,
-  ListItemText
+  ListItemText,
+  Tabs,
+  Tab
 } from '@mui/material';
 import {
   ArrowBack as ArrowBackIcon,
@@ -28,7 +30,11 @@ import {
   Person as PersonIcon,
   LocationOn as LocationIcon,
   CalendarToday as CalendarIcon,
-  AccessTime as TimeIcon
+  AccessTime as TimeIcon,
+  Today as TodayIcon,
+  History as HistoryIcon,
+  HourglassEmpty as HourglassEmptyIcon,
+  CheckCircle as CheckCircleIcon
 } from '@mui/icons-material';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -44,6 +50,10 @@ const MisCitas: React.FC<MisCitasProps> = ({ open, onClose }) => {
   const [citas, setCitas] = useState<Cita[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Estado para filtro de pestañas temporales
+  type FiltroTemporal = 'todas' | 'hoy' | 'pasadas' | 'pendientes' | 'revision';
+  const [filtroTemporal, setFiltroTemporal] = useState<FiltroTemporal>('todas');
 
   useEffect(() => {
     if (open) {
@@ -133,6 +143,181 @@ const MisCitas: React.FC<MisCitasProps> = ({ open, onClose }) => {
     }
   };
 
+  /**
+   * Determina el color de la barra de estado basándose en la fecha y estado de la cita.
+   *
+   * Lógica de colores:
+   * - Verde: La fecha de la cita ya llegó (es hoy o ya pasó) y está confirmada/completada
+   * - Rojo: La fecha de la cita ya pasó y NO fue atendida/revisada
+   * - Gris: Cita pendiente (la fecha aún no llega, está en el futuro)
+   * - Amarillo: La cita ya fue revisada/atendida (completada)
+   *
+   * Args:
+   *     cita: Objeto de cita con estado y fechas
+   *
+   * Returns:
+   *     string: Color en formato hexadecimal o nombre de color de MUI
+   */
+  const getBarraEstadoColor = (cita: Cita): string => {
+    const ahora = new Date();
+    const fechaCita = cita.fecha_confirmada
+      ? new Date(cita.fecha_confirmada)
+      : cita.fecha_propuesta_alumno
+        ? new Date(cita.fecha_propuesta_alumno)
+        : null;
+
+    // Si la cita está completada (revisada/atendida) -> Amarillo
+    if (cita.estado === 'completada') {
+      return '#FFC107'; // Amarillo (warning.main)
+    }
+
+    // Si la cita está cancelada -> No mostrar barra o usar color neutral
+    if (cita.estado === 'cancelada') {
+      return '#9E9E9E'; // Gris
+    }
+
+    // Si no hay fecha confirmada ni propuesta, usar gris por defecto
+    if (!fechaCita) {
+      return '#9E9E9E'; // Gris
+    }
+
+    // Normalizar fechas para comparación (solo fecha, sin hora)
+    const ahoraFecha = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
+    const citaFecha = new Date(fechaCita.getFullYear(), fechaCita.getMonth(), fechaCita.getDate());
+
+    // Si la fecha de la cita ya pasó
+    if (citaFecha < ahoraFecha) {
+      // Si está confirmada o completada -> Verde
+      if (cita.estado === 'confirmada' || cita.estado === 'completada') {
+        return '#4CAF50'; // Verde (success.main)
+      }
+      // Si NO fue atendida (pendiente) -> Rojo
+      return '#F44336'; // Rojo (error.main)
+    }
+
+    // Si la fecha es hoy
+    if (citaFecha.getTime() === ahoraFecha.getTime()) {
+      // Si está confirmada -> Verde
+      if (cita.estado === 'confirmada') {
+        return '#4CAF50'; // Verde (success.main)
+      }
+      // Si está pendiente -> Gris
+      return '#9E9E9E'; // Gris
+    }
+
+    // Si la fecha está en el futuro -> Gris (pendiente)
+    return '#9E9E9E'; // Gris
+  };
+
+  /**
+   * Determina si una cita es de hoy.
+   *
+   * Args:
+   *     cita: Objeto de cita
+   *
+   * Returns:
+   *     boolean: true si la cita es de hoy
+   */
+  const esCitaDeHoy = (cita: Cita): boolean => {
+    const fechaCita = cita.fecha_confirmada
+      ? new Date(cita.fecha_confirmada)
+      : cita.fecha_propuesta_alumno
+        ? new Date(cita.fecha_propuesta_alumno)
+        : null;
+
+    if (!fechaCita) return false;
+
+    const ahora = new Date();
+    const ahoraFecha = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
+    const citaFecha = new Date(fechaCita.getFullYear(), fechaCita.getMonth(), fechaCita.getDate());
+
+    return citaFecha.getTime() === ahoraFecha.getTime();
+  };
+
+  /**
+   * Determina si una cita ya pasó.
+   *
+   * Args:
+   *     cita: Objeto de cita
+   *
+   * Returns:
+   *     boolean: true si la fecha de la cita ya pasó
+   */
+  const esCitaPasada = (cita: Cita): boolean => {
+    const fechaCita = cita.fecha_confirmada
+      ? new Date(cita.fecha_confirmada)
+      : cita.fecha_propuesta_alumno
+        ? new Date(cita.fecha_propuesta_alumno)
+        : null;
+
+    if (!fechaCita) return false;
+
+    const ahora = new Date();
+    const ahoraFecha = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
+    const citaFecha = new Date(fechaCita.getFullYear(), fechaCita.getMonth(), fechaCita.getDate());
+
+    return citaFecha < ahoraFecha;
+  };
+
+  /**
+   * Determina si una cita está pendiente (fecha futura).
+   *
+   * Args:
+   *     cita: Objeto de cita
+   *
+   * Returns:
+   *     boolean: true si la fecha de la cita está en el futuro
+   */
+  const esCitaPendienteFutura = (cita: Cita): boolean => {
+    const fechaCita = cita.fecha_confirmada
+      ? new Date(cita.fecha_confirmada)
+      : cita.fecha_propuesta_alumno
+        ? new Date(cita.fecha_propuesta_alumno)
+        : null;
+
+    if (!fechaCita) return true; // Sin fecha se considera pendiente
+
+    const ahora = new Date();
+    const ahoraFecha = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
+    const citaFecha = new Date(fechaCita.getFullYear(), fechaCita.getMonth(), fechaCita.getDate());
+
+    return citaFecha > ahoraFecha;
+  };
+
+  /**
+   * Filtra las citas según el filtro temporal seleccionado.
+   *
+   * Args:
+   *     citas: Array de citas
+   *
+   * Returns:
+   *     Array de citas filtradas
+   */
+  const filtrarPorEstadoTemporal = (citas: Cita[]): Cita[] => {
+    switch (filtroTemporal) {
+      case 'hoy':
+        return citas.filter(c => esCitaDeHoy(c));
+      case 'pasadas':
+        return citas.filter(c => esCitaPasada(c) && c.estado !== 'completada');
+      case 'pendientes':
+        return citas.filter(c => esCitaPendienteFutura(c) && c.estado !== 'completada');
+      case 'revision':
+        return citas.filter(c => c.estado === 'completada');
+      case 'todas':
+      default:
+        return citas;
+    }
+  };
+
+  // Aplicar filtro temporal
+  const citasFiltradas = filtrarPorEstadoTemporal(citas);
+
+  // Contadores para las pestañas
+  const contadorHoy = citas.filter(c => esCitaDeHoy(c)).length;
+  const contadorPasadas = citas.filter(c => esCitaPasada(c) && c.estado !== 'completada').length;
+  const contadorPendientes = citas.filter(c => esCitaPendienteFutura(c) && c.estado !== 'completada').length;
+  const contadorRevision = citas.filter(c => c.estado === 'completada').length;
+
   return (
     <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
       <DialogTitle>
@@ -174,11 +359,127 @@ const MisCitas: React.FC<MisCitasProps> = ({ open, onClose }) => {
           </Alert>
         )}
 
+        {/* Barra de pestañas/filtros temporales */}
+        {!loading && !error && citas.length > 0 && (
+          <Box sx={{ mb: 3 }}>
+            <Tabs
+              value={filtroTemporal}
+              onChange={(_, newValue) => setFiltroTemporal(newValue as FiltroTemporal)}
+              variant="scrollable"
+              scrollButtons="auto"
+              sx={{
+                borderBottom: 1,
+                borderColor: 'divider',
+                '& .MuiTab-root': {
+                  minHeight: 64,
+                  textTransform: 'none',
+                  fontWeight: 600
+                }
+              }}
+            >
+              <Tab
+                value="todas"
+                label={`Todas (${citas.length})`}
+                icon={<CalendarIcon />}
+                iconPosition="start"
+                sx={{
+                  '&.Mui-selected': {
+                    color: 'primary.main'
+                  }
+                }}
+              />
+              <Tab
+                value="hoy"
+                label={`Hoy (${contadorHoy})`}
+                icon={<TodayIcon />}
+                iconPosition="start"
+                sx={{
+                  color: contadorHoy > 0 ? '#4CAF50' : 'text.secondary',
+                  '&.Mui-selected': {
+                    color: '#4CAF50',
+                    fontWeight: 700
+                  }
+                }}
+              />
+              <Tab
+                value="pasadas"
+                label={`Pasadas (${contadorPasadas})`}
+                icon={<HistoryIcon />}
+                iconPosition="start"
+                sx={{
+                  color: contadorPasadas > 0 ? '#F44336' : 'text.secondary',
+                  '&.Mui-selected': {
+                    color: '#F44336',
+                    fontWeight: 700
+                  }
+                }}
+              />
+              <Tab
+                value="pendientes"
+                label={`Pendientes (${contadorPendientes})`}
+                icon={<HourglassEmptyIcon />}
+                iconPosition="start"
+                sx={{
+                  color: contadorPendientes > 0 ? '#9E9E9E' : 'text.secondary',
+                  '&.Mui-selected': {
+                    color: '#9E9E9E',
+                    fontWeight: 700
+                  }
+                }}
+              />
+              <Tab
+                value="revision"
+                label={`Revisión (${contadorRevision})`}
+                icon={<CheckCircleIcon />}
+                iconPosition="start"
+                sx={{
+                  color: contadorRevision > 0 ? '#FFC107' : 'text.secondary',
+                  '&.Mui-selected': {
+                    color: '#FFC107',
+                    fontWeight: 700
+                  }
+                }}
+              />
+            </Tabs>
+          </Box>
+        )}
+
         {!loading && !error && citas.length > 0 && (
           <Box>
-            {citas.map((cita) => (
-              <Card key={cita.id_cita} sx={{ mb: 2 }}>
-                <CardContent>
+            {citasFiltradas.length === 0 ? (
+              <Alert severity="info" sx={{ mt: 2 }}>
+                {filtroTemporal === 'hoy' && 'No tienes citas programadas para hoy.'}
+                {filtroTemporal === 'pasadas' && 'No tienes citas pasadas sin atender.'}
+                {filtroTemporal === 'pendientes' && 'No tienes citas pendientes con fecha futura.'}
+                {filtroTemporal === 'revision' && 'No tienes citas completadas/revisadas.'}
+                {filtroTemporal === 'todas' && 'No tienes citas en este momento.'}
+              </Alert>
+            ) : (
+              <>
+                {citasFiltradas.map((cita) => {
+              const barraColor = getBarraEstadoColor(cita);
+              return (
+              <Card
+                key={cita.id_cita}
+                sx={{
+                  mb: 2,
+                  position: 'relative',
+                  overflow: 'hidden'
+                }}
+              >
+                {/* Barra de estado visual */}
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '6px',
+                    height: '100%',
+                    backgroundColor: barraColor,
+                    zIndex: 1
+                  }}
+                />
+                <CardContent sx={{ pl: 3 }}>
                   <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2}>
                     <Box display="flex" alignItems="center">
                       {getTipoIcon(cita.tipo_cita)}
@@ -276,7 +577,10 @@ const MisCitas: React.FC<MisCitasProps> = ({ open, onClose }) => {
                   )}
                 </CardContent>
               </Card>
-            ))}
+              );
+            })}
+              </>
+            )}
           </Box>
         )}
       </DialogContent>

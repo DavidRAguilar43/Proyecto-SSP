@@ -22,6 +22,8 @@ import {
   Visibility as PreviewIcon,
   Edit as EditIcon
 } from '@mui/icons-material';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import TipoPreguntaSelector from './TipoPreguntaSelector';
 import ConfiguracionPreguntaComponent from './ConfiguracionPregunta';
 import VistaPreviaPregunta from './VistaPreviaPregunta';
@@ -32,6 +34,7 @@ interface PreguntaBuilderProps {
   onChange: (pregunta: Pregunta) => void;
   onDelete: () => void;
   onDuplicate?: () => void;
+  onCambioOrden?: (nuevoOrden: number) => void;
   index: number;
   totalPreguntas: number;
   errors?: string[];
@@ -45,12 +48,23 @@ const PreguntaBuilder: React.FC<PreguntaBuilderProps> = ({
   onChange,
   onDelete,
   onDuplicate,
+  onCambioOrden,
   index,
   totalPreguntas,
   errors = []
 }) => {
   const [expanded, setExpanded] = useState(false); // Colapsado por defecto
   const [showPreview, setShowPreview] = useState(false);
+
+  // Hook para drag & drop
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging
+  } = useSortable({ id: pregunta.id });
 
   const updatePregunta = (updates: Partial<Pregunta>) => {
     onChange({ ...pregunta, ...updates });
@@ -114,8 +128,17 @@ const PreguntaBuilder: React.FC<PreguntaBuilderProps> = ({
     return tipos[tipo] || tipo;
   };
 
+  // Estilos para drag & drop
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
   return (
     <Card
+      ref={setNodeRef}
+      style={style}
       sx={{
         mb: 2,
         border: hasErrors ? '2px solid' : '1px solid',
@@ -140,7 +163,21 @@ const PreguntaBuilder: React.FC<PreguntaBuilderProps> = ({
           }
         }}
       >
-        <DragIcon sx={{ color: 'grey.400' }} />
+        <Box
+          {...attributes}
+          {...listeners}
+          onClick={(e) => e.stopPropagation()}
+          sx={{
+            cursor: 'grab',
+            display: 'flex',
+            alignItems: 'center',
+            '&:active': {
+              cursor: 'grabbing'
+            }
+          }}
+        >
+          <DragIcon sx={{ color: 'grey.400' }} />
+        </Box>
 
         <Box sx={{ flex: 1 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
@@ -292,14 +329,19 @@ const PreguntaBuilder: React.FC<PreguntaBuilderProps> = ({
             )}
 
             <TextField
-              label="Orden"
+              label="Orden de pregunta"
               type="number"
-              value={pregunta.orden}
-              onChange={(e) => updatePregunta({ orden: parseInt(e.target.value) || index + 1 })}
-              helperText="Posición de la pregunta"
+              value={index + 1}
+              onChange={(e) => {
+                const nuevoOrden = parseInt(e.target.value);
+                if (onCambioOrden && !isNaN(nuevoOrden)) {
+                  onCambioOrden(nuevoOrden);
+                }
+              }}
+              helperText="Posición de la pregunta en el cuestionario"
               inputProps={{ min: 1, max: totalPreguntas }}
               size="small"
-              sx={{ maxWidth: 150 }}
+              sx={{ maxWidth: 200 }}
             />
           </Box>
         </CardContent>

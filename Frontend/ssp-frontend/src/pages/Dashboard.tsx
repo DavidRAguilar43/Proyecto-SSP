@@ -21,11 +21,10 @@ import {
   Category as CategoryIcon,
   Business as BusinessIcon,
   Schedule as ScheduleIcon,
-  Psychology as PsychologyIcon
+  CheckCircle as CheckCircleIcon
 } from '@mui/icons-material';
 import { AuthContext } from '@/contexts/AuthContext';
 import AlumnoPage from './AlumnoPage';
-import EstudiantesCuestionarios from '@/components/EstudiantesCuestionarios';
 import SolicitudesCitas from '@/components/SolicitudesCitas';
 
 const Dashboard = () => {
@@ -81,14 +80,6 @@ const Dashboard = () => {
       path: '/unidades',
       roles: ['admin', 'coordinador']
     },
-
-    {
-      title: 'Cuestionarios Pendientes',
-      description: 'Ver, revisar y gestionar cuestionarios nuevos',
-      icon: <PsychologyIcon sx={{ fontSize: 40 }} />,
-      path: '/cuestionarios-pendientes',
-      roles: ['admin', 'coordinador']
-    },
     {
       title: 'Catálogos',
       description: 'Administrar catálogos de religiones, grupos étnicos y discapacidades',
@@ -104,9 +95,16 @@ const Dashboard = () => {
       roles: ['admin', 'coordinador']
     },
     {
+      title: 'Cuestionarios Contestados',
+      description: 'Ver y revisar cuestionarios completados por los usuarios',
+      icon: <CheckCircleIcon sx={{ fontSize: 40 }} />,
+      path: '/admin/cuestionarios-contestados',
+      roles: ['admin', 'coordinador']
+    },
+    {
       title: 'Mis Cuestionarios',
       description: 'Ver y responder cuestionarios asignados',
-      icon: <PsychologyIcon sx={{ fontSize: 40 }} />,
+      icon: <AssignmentIcon sx={{ fontSize: 40 }} />,
       path: '/usuario/cuestionarios',
       roles: ['alumno', 'docente', 'personal']
     }
@@ -152,13 +150,6 @@ const Dashboard = () => {
             </Box>
           )}
         </Paper>
-
-        {/* Notificaciones de Cuestionarios (solo para admin y coordinador) */}
-        {(user?.rol === 'admin' || user?.rol === 'coordinador') && (
-          <Box sx={{ mb: 4 }}>
-            <EstudiantesCuestionarios />
-          </Box>
-        )}
 
         {/* Solicitudes de Citas (solo para admin y personal) */}
         {(user?.rol === 'admin' || user?.rol === 'personal') && (

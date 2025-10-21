@@ -63,7 +63,10 @@ def get_cuestionarios_asignados(
         )
 
     # Obtener cuestionarios asignados al tipo de usuario
-    query = db.query(CuestionarioAdmin).join(AsignacionCuestionario).filter(
+    query = db.query(CuestionarioAdmin).join(
+        AsignacionCuestionario,
+        CuestionarioAdmin.id == AsignacionCuestionario.cuestionario_id
+    ).filter(
         AsignacionCuestionario.tipo_usuario == tipo_usuario,
         CuestionarioAdmin.estado == EstadoCuestionario.ACTIVO
     ).options(
@@ -103,7 +106,7 @@ def get_cuestionarios_asignados(
     cuestionarios_asignados = []
     for cuestionario in cuestionarios:
         respuesta = respuestas_usuario.get(cuestionario.id)
-        
+
         # Determinar estado y progreso
         if respuesta:
             estado_respuesta = respuesta.estado
@@ -122,37 +125,66 @@ def get_cuestionarios_asignados(
         if estado and estado_respuesta != estado:
             continue
 
-        cuestionario_data = {
+        # Construir nombre del creador de forma segura
+        creado_por_nombre = None
+        if cuestionario.creador:
+            try:
+                nombre = getattr(cuestionario.creador, 'nombre', '')
+                apellido = getattr(cuestionario.creador, 'apellido_paterno', '')
+                if nombre or apellido:
+                    creado_por_nombre = f"{nombre} {apellido}".strip()
+            except Exception:
+                creado_por_nombre = None
+
+        # Construir objeto de cuestionario
+        cuestionario_obj = {
             "id": cuestionario.id,
             "titulo": cuestionario.titulo,
             "descripcion": cuestionario.descripcion,
-            "fecha_creacion": cuestionario.fecha_creacion,
-            "fecha_inicio": cuestionario.fecha_inicio,
-            "fecha_fin": cuestionario.fecha_fin,
-            "estado": cuestionario.estado,
+            "fecha_creacion": cuestionario.fecha_creacion.isoformat() if cuestionario.fecha_creacion else None,
+            "fecha_inicio": cuestionario.fecha_inicio.isoformat() if cuestionario.fecha_inicio else None,
+            "fecha_fin": cuestionario.fecha_fin.isoformat() if cuestionario.fecha_fin else None,
+            "estado": cuestionario.estado.value if hasattr(cuestionario.estado, 'value') else str(cuestionario.estado),
             "creado_por": cuestionario.creado_por,
-            "creado_por_nombre": f"{cuestionario.creador.nombre} {cuestionario.creador.apellido_paterno}" if cuestionario.creador else None,
+            "creado_por_nombre": creado_por_nombre,
             "total_preguntas": cuestionario.total_preguntas,
             "total_respuestas": cuestionario.total_respuestas,
             "preguntas": [],  # No incluir preguntas en el listado
-            "tipos_usuario_asignados": cuestionario.tipos_usuario_asignados,
-            "created_at": cuestionario.created_at,
-            "updated_at": cuestionario.updated_at,
-            # Información específica del usuario
-            "estado_respuesta": estado_respuesta,
-            "progreso": progreso,
-            "fecha_inicio_respuesta": fecha_inicio,
-            "fecha_completado_respuesta": fecha_completado,
+            "tipos_usuario_asignados": [t.value if hasattr(t, 'value') else str(t) for t in cuestionario.tipos_usuario_asignados],
+            "created_at": cuestionario.created_at.isoformat() if cuestionario.created_at else None,
+            "updated_at": cuestionario.updated_at.isoformat() if cuestionario.updated_at else None,
+        }
+
+        # Construir objeto de respuesta si existe
+        respuesta_obj = None
+        if respuesta:
+            respuesta_obj = {
+                "id": respuesta.id,
+                "cuestionario_id": respuesta.cuestionario_id,
+                "usuario_id": respuesta.usuario_id,
+                "estado": estado_respuesta,
+                "fecha_inicio": fecha_inicio.isoformat() if fecha_inicio else None,
+                "fecha_completado": fecha_completado.isoformat() if fecha_completado else None,
+                "progreso_porcentaje": progreso,
+                "tiempo_total_minutos": respuesta.tiempo_total_minutos,
+                "respuestas": []  # No incluir respuestas detalladas en el listado
+            }
+
+        # Construir objeto de cuestionario asignado
+        cuestionario_asignado = {
+            "cuestionario": cuestionario_obj,
+            "respuesta": respuesta_obj,
+            "estado": estado_respuesta,
+            "fecha_asignacion": cuestionario.created_at.isoformat() if cuestionario.created_at else None,
+            "fecha_limite": cuestionario.fecha_fin.isoformat() if cuestionario.fecha_fin else None,
             "puede_responder": puede_responder
         }
-        
-        cuestionarios_asignados.append(cuestionario_data)
+
+        cuestionarios_asignados.append(cuestionario_asignado)
 
     return {
-        "cuestionarios": cuestionarios_asignados,
-        "total": len(cuestionarios_asignados),
-        "skip": skip,
-        "limit": limit
+        "cuestionarios_asignados": cuestionarios_asignados,
+        "total": len(cuestionarios_asignados)
     }
 
 
@@ -176,7 +208,10 @@ def get_cuestionario_para_responder(
         )
 
     # Verificar que el cuestionario existe y está asignado al usuario
-    cuestionario = db.query(CuestionarioAdmin).join(AsignacionCuestionario).filter(
+    cuestionario = db.query(CuestionarioAdmin).join(
+        AsignacionCuestionario,
+        CuestionarioAdmin.id == AsignacionCuestionario.cuestionario_id
+    ).filter(
         CuestionarioAdmin.id == cuestionario_id,
         AsignacionCuestionario.tipo_usuario == tipo_usuario,
         CuestionarioAdmin.estado == EstadoCuestionario.ACTIVO
@@ -229,23 +264,51 @@ def get_cuestionario_para_responder(
                 "texto_otro": respuesta_pregunta.texto_otro
             }
 
+    # Construir nombre del creador de forma segura
+    creado_por_nombre = None
+    if cuestionario.creador:
+        # El modelo Persona no tiene campos nombre/apellido, usar correo_institucional
+        creado_por_nombre = cuestionario.creador.correo_institucional
+
+    # Serializar preguntas manualmente
+    preguntas_serializadas = []
+    for pregunta in sorted(cuestionario.preguntas, key=lambda p: p.orden):
+        pregunta_dict = {
+            "id": pregunta.id,
+            "cuestionario_id": pregunta.cuestionario_id,
+            "texto": pregunta.texto,
+            "tipo": pregunta.tipo.value if hasattr(pregunta.tipo, 'value') else str(pregunta.tipo),
+            "obligatoria": pregunta.obligatoria,
+            "orden": pregunta.orden,
+            "configuracion": pregunta.configuracion,
+            "created_at": pregunta.created_at.isoformat() if pregunta.created_at else None,
+            "updated_at": pregunta.updated_at.isoformat() if pregunta.updated_at else None
+        }
+        preguntas_serializadas.append(pregunta_dict)
+
+    # Serializar tipos de usuario asignados
+    tipos_usuario_serializados = [
+        tipo.value if hasattr(tipo, 'value') else str(tipo)
+        for tipo in cuestionario.tipos_usuario_asignados
+    ]
+
     # Construir respuesta
     cuestionario_data = {
         "id": cuestionario.id,
         "titulo": cuestionario.titulo,
         "descripcion": cuestionario.descripcion,
-        "fecha_creacion": cuestionario.fecha_creacion,
-        "fecha_inicio": cuestionario.fecha_inicio,
-        "fecha_fin": cuestionario.fecha_fin,
-        "estado": cuestionario.estado,
+        "fecha_creacion": cuestionario.fecha_creacion.isoformat() if cuestionario.fecha_creacion else None,
+        "fecha_inicio": cuestionario.fecha_inicio.isoformat() if cuestionario.fecha_inicio else None,
+        "fecha_fin": cuestionario.fecha_fin.isoformat() if cuestionario.fecha_fin else None,
+        "estado": cuestionario.estado.value if hasattr(cuestionario.estado, 'value') else str(cuestionario.estado),
         "creado_por": cuestionario.creado_por,
-        "creado_por_nombre": f"{cuestionario.creador.nombre} {cuestionario.creador.apellido_paterno}" if cuestionario.creador else None,
+        "creado_por_nombre": creado_por_nombre,
         "total_preguntas": cuestionario.total_preguntas,
         "total_respuestas": cuestionario.total_respuestas,
-        "preguntas": sorted(cuestionario.preguntas, key=lambda p: p.orden),
-        "tipos_usuario_asignados": cuestionario.tipos_usuario_asignados,
-        "created_at": cuestionario.created_at,
-        "updated_at": cuestionario.updated_at,
+        "preguntas": preguntas_serializadas,
+        "tipos_usuario_asignados": tipos_usuario_serializados,
+        "created_at": cuestionario.created_at.isoformat() if cuestionario.created_at else None,
+        "updated_at": cuestionario.updated_at.isoformat() if cuestionario.updated_at else None,
         # Información de respuesta
         "respuesta_id": respuesta_existente.id if respuesta_existente else None,
         "estado_respuesta": respuesta_existente.estado if respuesta_existente else "pendiente",
@@ -277,7 +340,10 @@ def guardar_respuesta_cuestionario(
         )
 
     # Verificar que el cuestionario existe y está asignado al usuario
-    cuestionario = db.query(CuestionarioAdmin).join(AsignacionCuestionario).filter(
+    cuestionario = db.query(CuestionarioAdmin).join(
+        AsignacionCuestionario,
+        CuestionarioAdmin.id == AsignacionCuestionario.cuestionario_id
+    ).filter(
         CuestionarioAdmin.id == cuestionario_id,
         AsignacionCuestionario.tipo_usuario == tipo_usuario,
         CuestionarioAdmin.estado == EstadoCuestionario.ACTIVO

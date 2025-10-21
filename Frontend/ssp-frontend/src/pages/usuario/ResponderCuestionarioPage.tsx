@@ -70,25 +70,28 @@ const ResponderCuestionarioPage: React.FC = () => {
 
       try {
         setLoading(true);
-        
-        // Cargar cuestionario
+
+        // Cargar cuestionario (ya incluye respuestas_previas)
         const cuestionarioData = await cuestionariosUsuarioApi.getCuestionarioParaResponder(id);
         setCuestionario(cuestionarioData);
 
-        // Cargar respuestas guardadas si existen
-        try {
-          const respuestasData = await cuestionariosUsuarioApi.getRespuestasGuardadas(id);
-          setRespuestasGuardadas(respuestasData);
-          
-          // Convertir respuestas a formato del formulario
-          const respuestasFormulario: { [key: string]: any } = {};
-          respuestasData.respuestas.forEach((respuesta: RespuestaPregunta) => {
-            respuestasFormulario[respuesta.pregunta_id] = respuesta.valor;
-          });
-          setRespuestas(respuestasFormulario);
-        } catch (error) {
-          // No hay respuestas guardadas, continuar normalmente
-          console.log('No hay respuestas guardadas');
+        // Cargar respuestas previas si existen (vienen en el mismo endpoint)
+        if (cuestionarioData.respuestas_previas) {
+          setRespuestas(cuestionarioData.respuestas_previas);
+        }
+
+        // Si hay un respuesta_id, crear el objeto de respuesta guardada
+        if (cuestionarioData.respuesta_id) {
+          setRespuestasGuardadas({
+            id: cuestionarioData.respuesta_id,
+            estado: cuestionarioData.estado_respuesta,
+            progreso: cuestionarioData.progreso,
+            respuestas: Object.entries(cuestionarioData.respuestas_previas || {}).map(([pregunta_id, data]: [string, any]) => ({
+              pregunta_id,
+              valor: data.valor,
+              texto_otro: data.texto_otro
+            }))
+          } as any);
         }
 
       } catch (error: any) {
@@ -101,7 +104,8 @@ const ResponderCuestionarioPage: React.FC = () => {
     };
 
     cargarDatos();
-  }, [id, navigate, showNotification]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
   // Manejar cambio de respuesta
   const handleRespuestaChange = (preguntaId: string, valor: any) => {
@@ -156,13 +160,14 @@ const ResponderCuestionarioPage: React.FC = () => {
 
     try {
       setSaving(true);
-      
+
       const respuestasArray: RespuestaPregunta[] = Object.entries(respuestas).map(([preguntaId, valor]) => ({
         pregunta_id: preguntaId,
         valor
       }));
 
-      await cuestionariosUsuarioApi.guardarRespuestas(id, respuestasArray);
+      const progreso = calcularProgreso();
+      await cuestionariosUsuarioApi.guardarRespuestas(id, respuestasArray, 'en_progreso', progreso);
       showNotification('Progreso guardado exitosamente', 'success');
     } catch (error) {
       console.error('Error al guardar progreso:', error);
@@ -193,13 +198,13 @@ const ResponderCuestionarioPage: React.FC = () => {
 
     try {
       setSubmitting(true);
-      
+
       const respuestasArray: RespuestaPregunta[] = Object.entries(respuestas).map(([preguntaId, valor]) => ({
         pregunta_id: preguntaId,
         valor
       }));
 
-      await cuestionariosUsuarioApi.completarCuestionario(id, respuestasArray);
+      await cuestionariosUsuarioApi.completarCuestionario(id, respuestasArray, 100);
       showNotification('Cuestionario completado exitosamente', 'success');
       navigate('/usuario/cuestionarios');
     } catch (error) {

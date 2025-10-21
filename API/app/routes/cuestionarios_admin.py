@@ -26,7 +26,8 @@ from app.schemas.cuestionario_admin import (
     CuestionarioBulkDelete,
     CuestionarioDuplicate,
     CuestionarioEstadoUpdate,
-    PreguntaOut
+    PreguntaOut,
+    RespuestaCuestionarioOut
 )
 from app.utils.deps import (
     get_current_active_user,
@@ -617,4 +618,114 @@ def bulk_delete_cuestionarios(
         "errors": errors,
         "total_deleted": len(deleted_ids),
         "total_errors": len(errors)
+    }
+
+
+@router.get("/respuestas/todas")
+def get_todas_las_respuestas(
+    *,
+    db: Session = Depends(get_db),
+    cuestionario_id: Optional[str] = Query(None, description="Filtrar por cuestionario específico"),
+    usuario_id: Optional[int] = Query(None, description="Filtrar por usuario específico"),
+    estado: Optional[str] = Query(None, description="Filtrar por estado (pendiente, en_progreso, completado)"),
+    fecha_desde: Optional[datetime] = Query(None, description="Filtrar desde fecha"),
+    fecha_hasta: Optional[datetime] = Query(None, description="Filtrar hasta fecha"),
+    skip: int = Query(0, ge=0, description="Número de registros a omitir"),
+    limit: int = Query(50, ge=1, le=100, description="Número máximo de registros"),
+    current_user: Persona = Depends(check_admin_or_coordinador_role)
+) -> Any:
+    """
+    Obtener todas las respuestas de cuestionarios administrativos con filtros.
+    Solo disponible para administradores y coordinadores.
+
+    Returns:
+        Lista de respuestas con información del usuario y cuestionario.
+    """
+    # Construir query base con joins para obtener información relacionada
+    query = db.query(RespuestaCuestionario).options(
+        joinedload(RespuestaCuestionario.usuario),
+        joinedload(RespuestaCuestionario.cuestionario).joinedload(CuestionarioAdmin.preguntas),
+        joinedload(RespuestaCuestionario.respuestas_preguntas).joinedload(RespuestaPregunta.pregunta)
+    )
+
+    # Aplicar filtros
+    if cuestionario_id:
+        query = query.filter(RespuestaCuestionario.cuestionario_id == cuestionario_id)
+
+    if usuario_id:
+        query = query.filter(RespuestaCuestionario.usuario_id == usuario_id)
+
+    if estado:
+        query = query.filter(RespuestaCuestionario.estado == estado)
+
+    if fecha_desde:
+        query = query.filter(RespuestaCuestionario.fecha_inicio >= fecha_desde)
+
+    if fecha_hasta:
+        query = query.filter(RespuestaCuestionario.fecha_inicio <= fecha_hasta)
+
+    # Contar total antes de aplicar paginación
+    total = query.count()
+
+    # Aplicar paginación y ordenamiento (más recientes primero)
+    respuestas = query.order_by(RespuestaCuestionario.created_at.desc()).offset(skip).limit(limit).all()
+
+    # Enriquecer datos para respuesta
+    respuestas_out = []
+    for respuesta in respuestas:
+        # Serializar respuestas_preguntas manualmente con información de la pregunta
+        respuestas_preguntas_serialized = []
+        if respuesta.respuestas_preguntas:
+            for rp in respuesta.respuestas_preguntas:
+                respuesta_pregunta_dict = {
+                    "id": rp.id,
+                    "pregunta_id": rp.pregunta_id,
+                    "valor": rp.valor,
+                    "texto_otro": rp.texto_otro,
+                    "created_at": rp.created_at.isoformat() if rp.created_at else None,
+                    "updated_at": rp.updated_at.isoformat() if rp.updated_at else None
+                }
+
+                # Agregar información de la pregunta
+                if rp.pregunta:
+                    respuesta_pregunta_dict["pregunta"] = {
+                        "id": rp.pregunta.id,
+                        "texto": rp.pregunta.texto,
+                        "descripcion": rp.pregunta.descripcion,
+                        "tipo": rp.pregunta.tipo,
+                        "obligatoria": rp.pregunta.obligatoria,
+                        "orden": rp.pregunta.orden,
+                        "configuracion": rp.pregunta.configuracion
+                    }
+
+                respuestas_preguntas_serialized.append(respuesta_pregunta_dict)
+
+        respuesta_dict = {
+            "id": respuesta.id,
+            "cuestionario_id": respuesta.cuestionario_id,
+            "usuario_id": respuesta.usuario_id,
+            "estado": respuesta.estado,
+            "fecha_inicio": respuesta.fecha_inicio.isoformat() if respuesta.fecha_inicio else None,
+            "fecha_completado": respuesta.fecha_completado.isoformat() if respuesta.fecha_completado else None,
+            "progreso": respuesta.progreso,
+            "tiempo_total_minutos": respuesta.tiempo_total_minutos,
+            "respuestas_preguntas": respuestas_preguntas_serialized,
+            "created_at": respuesta.created_at.isoformat() if respuesta.created_at else None,
+            "updated_at": respuesta.updated_at.isoformat() if respuesta.updated_at else None,
+            # Información adicional del usuario
+            "usuario_correo": respuesta.usuario.correo_institucional if respuesta.usuario else None,
+            "usuario_matricula": respuesta.usuario.matricula if respuesta.usuario else None,
+            # Nota: El modelo Persona no tiene campos de nombre, solo correo y matrícula
+            "usuario_nombre": respuesta.usuario.correo_institucional if respuesta.usuario else None,
+            # Información adicional del cuestionario
+            "cuestionario_titulo": respuesta.cuestionario.titulo if respuesta.cuestionario else None,
+            "cuestionario_descripcion": respuesta.cuestionario.descripcion if respuesta.cuestionario else None,
+        }
+        respuestas_out.append(respuesta_dict)
+
+    return {
+        "respuestas": respuestas_out,
+        "total": total,
+        "skip": skip,
+        "limit": limit
     }

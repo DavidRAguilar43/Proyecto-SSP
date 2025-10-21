@@ -23,22 +23,21 @@ import {
   Person as PersonIcon,
   School as SchoolIcon,
   Group as GroupIcon,
-  Psychology as PsychologyIcon,
   Edit as EditIcon,
   Info as InfoIcon,
   Assignment as AssignmentIcon,
-  CheckCircle as CheckCircleIcon,
   CalendarToday as CalendarIcon,
   PersonAdd as PersonAddIcon,
   Schedule as ScheduleIcon,
   Notifications as NotificationsIcon
 } from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
 import type { Persona } from '../types/index';
-import CuestionarioPsicopedagogico from './CuestionarioPsicopedagogico';
 import SolicitudCitaForm from './SolicitudCitaForm';
 import MisCitas from './MisCitas';
 import NotificacionesCitas from './NotificacionesCitas';
 import AppointmentRequestModal from './AppointmentRequestModal';
+import CuestionariosAsignadosCard from './CuestionariosAsignadosCard';
 import { api, citasApi } from '@/services/api';
 import { useNotification } from '@/hooks/useNotification';
 import { citasNotificationService } from '@/services/citasNotificationService';
@@ -49,11 +48,9 @@ interface AlumnoDashboardProps {
 }
 
 const AlumnoDashboard = ({ user, onEditProfile }: AlumnoDashboardProps) => {
-  const { notifySuccess, notifyError, notifyWarning } = useNotification();
+  const navigate = useNavigate();
+  const { notifySuccess, notifyError } = useNotification();
   const [loading, setLoading] = useState(false);
-  const [cuestionarioOpen, setCuestionarioOpen] = useState(false);
-  const [cuestionarioCompletado, setCuestionarioCompletado] = useState(false);
-  const [loadingCuestionario, setLoadingCuestionario] = useState(true);
 
   // Funciones para obtener etiquetas personalizadas según el rol
   const getFieldLabels = () => {
@@ -156,26 +153,6 @@ const AlumnoDashboard = ({ user, onEditProfile }: AlumnoDashboardProps) => {
     return info.join(' • ');
   };
 
-  // Verificar el estado del cuestionario psicopedagógico
-  useEffect(() => {
-    const verificarCuestionario = async () => {
-      try {
-        setLoadingCuestionario(true);
-        const response = await api.get(`/cuestionario-psicopedagogico/estudiante/${user.id}`);
-        setCuestionarioCompletado(response.data.completado);
-      } catch (error) {
-        console.error('Error verificando cuestionario:', error);
-        setCuestionarioCompletado(false);
-      } finally {
-        setLoadingCuestionario(false);
-      }
-    };
-
-    if (user.id) {
-      verificarCuestionario();
-    }
-  }, [user.id]);
-
   // Cargar notificaciones al montar el componente
   useEffect(() => {
     const loadInitialNotifications = async () => {
@@ -211,16 +188,6 @@ const AlumnoDashboard = ({ user, onEditProfile }: AlumnoDashboardProps) => {
     } catch (error) {
       console.error('Error marking notifications as read:', error);
     }
-  };
-
-  // Manejar éxito del cuestionario
-  const handleCuestionarioSuccess = () => {
-    setCuestionarioCompletado(true);
-    setCuestionarioOpen(false);
-    // Mostrar modal de solicitud de cita después de completar cuestionario
-    setTimeout(() => {
-      setShowAppointmentModal(true);
-    }, 1000);
   };
 
   // Manejar solicitud de cita
@@ -389,112 +356,8 @@ const AlumnoDashboard = ({ user, onEditProfile }: AlumnoDashboardProps) => {
             </CardContent>
           </Card>
 
-          {/* Cuestionario Psicopedagógico */}
-          <Card sx={{ mb: 3 }}>
-            <CardContent>
-              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
-                <PsychologyIcon sx={{ mr: 1, color: 'primary.main' }} />
-                Cuestionario Psicopedagógico
-              </Typography>
-
-              {loadingCuestionario ? (
-                <Box display="flex" justifyContent="center" alignItems="center" py={2}>
-                  <CircularProgress size={24} />
-                  <Typography variant="body2" sx={{ ml: 2 }}>
-                    Verificando estado del cuestionario...
-                  </Typography>
-                </Box>
-              ) : cuestionarioCompletado ? (
-                <Alert severity="success" sx={{ mb: 2 }}>
-                  <Typography variant="body2">
-                    ✅ Has completado el cuestionario psicopedagógico exitosamente.
-                  </Typography>
-                  <Typography variant="body2" sx={{ mt: 1 }}>
-                    El personal académico revisará tus respuestas y te contactará si es necesario.
-                  </Typography>
-                </Alert>
-              ) : (
-                <Box>
-                  <Alert severity="info" sx={{ mb: 2 }}>
-                    <Typography variant="body2">
-                      📋 El cuestionario psicopedagógico nos ayuda a entender mejor tus necesidades académicas y brindarte el apoyo adecuado.
-                    </Typography>
-                  </Alert>
-
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                    • Solo toma unos minutos completarlo
-                    • Tus respuestas son confidenciales
-                    • Te ayudará a recibir apoyo personalizado
-                  </Typography>
-                </Box>
-              )}
-            </CardContent>
-
-            {!loadingCuestionario && !cuestionarioCompletado && (
-              <CardActions sx={{ px: 2, pb: 2 }}>
-                <Button
-                  variant="contained"
-                  color="primary"
-                  startIcon={<AssignmentIcon />}
-                  onClick={() => setCuestionarioOpen(true)}
-                  size="large"
-                  fullWidth
-                >
-                  Completar Cuestionario Psicopedagógico
-                </Button>
-              </CardActions>
-            )}
-
-            {!loadingCuestionario && cuestionarioCompletado && (
-              <CardActions sx={{ px: 2, pb: 2 }}>
-                <Button
-                  variant="outlined"
-                  color="success"
-                  startIcon={<CheckCircleIcon />}
-                  disabled
-                  size="large"
-                  fullWidth
-                >
-                  Cuestionario Completado
-                </Button>
-              </CardActions>
-            )}
-          </Card>
-
-          {/* Cuestionarios Asignados */}
-          <Card sx={{ mb: 3 }}>
-            <CardContent>
-              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
-                <AssignmentIcon sx={{ mr: 1, color: 'info.main' }} />
-                Mis Cuestionarios
-              </Typography>
-
-              <Alert severity="info" sx={{ mb: 2 }}>
-                <Typography variant="body2">
-                  📝 Aquí encontrarás todos los cuestionarios que te han sido asignados según tu rol.
-                </Typography>
-              </Alert>
-
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                • Cuestionarios de evaluación académica
-                <br />
-                • Encuestas de satisfacción
-                <br />
-                • Formularios de retroalimentación
-              </Typography>
-
-              <Button
-                variant="contained"
-                color="info"
-                startIcon={<AssignmentIcon />}
-                onClick={() => window.location.href = '/usuario/cuestionarios'}
-                size="large"
-                fullWidth
-              >
-                Ver Mis Cuestionarios
-              </Button>
-            </CardContent>
-          </Card>
+          {/* Cuestionarios Asignados - Componente dinámico */}
+          <CuestionariosAsignadosCard />
 
           {/* Citas con Personal */}
           <Card sx={{ mb: 3 }}>
@@ -668,11 +531,11 @@ const AlumnoDashboard = ({ user, onEditProfile }: AlumnoDashboardProps) => {
                 <Divider />
                 <ListItem>
                   <ListItemIcon>
-                    <PsychologyIcon color="info" />
+                    <InfoIcon color="info" />
                   </ListItemIcon>
                   <ListItemText
                     primary="Servicios de Apoyo Disponibles"
-                    secondary="Recuerde que cuenta con servicios de apoyo psicopedagógico. Contacte al personal si necesita ayuda."
+                    secondary="Recuerde que cuenta con servicios de apoyo académico y psicopedagógico. Contacte al personal si necesita ayuda."
                   />
                 </ListItem>
               </List>
@@ -681,14 +544,6 @@ const AlumnoDashboard = ({ user, onEditProfile }: AlumnoDashboardProps) => {
         </Grid>
 
       </Grid>
-
-      {/* Componente del Cuestionario Psicopedagógico */}
-      <CuestionarioPsicopedagogico
-        open={cuestionarioOpen}
-        onClose={() => setCuestionarioOpen(false)}
-        personaId={user.id}
-        onSuccess={handleCuestionarioSuccess}
-      />
 
       {/* Componente de Solicitud de Cita */}
       <SolicitudCitaForm

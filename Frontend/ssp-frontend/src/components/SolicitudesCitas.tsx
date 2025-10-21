@@ -24,7 +24,9 @@ import {
   ListItemText,
   Divider,
   Badge,
-  IconButton
+  IconButton,
+  Tabs,
+  Tab
 } from '@mui/material';
 import {
   Schedule as ScheduleIcon,
@@ -41,7 +43,11 @@ import {
   Close as CloseIcon,
   Refresh as RefreshIcon,
   Visibility as VisibilityIcon,
-  NotificationImportant as NotificationImportantIcon
+  NotificationImportant as NotificationImportantIcon,
+  Today as TodayIcon,
+  History as HistoryIcon,
+  HourglassEmpty as HourglassEmptyIcon,
+  CheckCircle as CheckCircleIcon
 } from '@mui/icons-material';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -81,6 +87,10 @@ const SolicitudesCitas: React.FC<SolicitudesCitasProps> = ({ onBadgeUpdate }) =>
   // Estado para diálogo de detalles de cita confirmada
   const [detallesDialogOpen, setDetallesDialogOpen] = useState(false);
   const [citaDetalles, setCitaDetalles] = useState<SolicitudCita | null>(null);
+
+  // Estado para filtro de pestañas temporales
+  type FiltroTemporal = 'todas' | 'hoy' | 'pasadas' | 'pendientes' | 'revision';
+  const [filtroTemporal, setFiltroTemporal] = useState<FiltroTemporal>('todas');
 
   useEffect(() => {
     loadSolicitudes();
@@ -248,9 +258,184 @@ const SolicitudesCitas: React.FC<SolicitudesCitasProps> = ({ onBadgeUpdate }) =>
     }
   };
 
-  const solicitudesPendientes = solicitudes.filter(s => s.estado === 'pendiente');
-  const solicitudesConfirmadas = solicitudes.filter(s => s.estado === 'confirmada');
-  const solicitudesOtras = solicitudes.filter(s => !['pendiente', 'confirmada'].includes(s.estado));
+  /**
+   * Determina el color de la barra de estado basándose en la fecha y estado de la cita.
+   *
+   * Lógica de colores:
+   * - Verde: La fecha de la cita ya llegó (es hoy o ya pasó) y está confirmada/completada
+   * - Rojo: La fecha de la cita ya pasó y NO fue atendida/revisada
+   * - Gris: Cita pendiente (la fecha aún no llega, está en el futuro)
+   * - Amarillo: La cita ya fue revisada/atendida (completada)
+   *
+   * Args:
+   *     solicitud: Objeto de solicitud de cita con estado y fechas
+   *
+   * Returns:
+   *     string: Color en formato hexadecimal o nombre de color de MUI
+   */
+  const getBarraEstadoColor = (solicitud: SolicitudCita): string => {
+    const ahora = new Date();
+    const fechaCita = solicitud.fecha_confirmada
+      ? new Date(solicitud.fecha_confirmada)
+      : solicitud.fecha_propuesta_alumno
+        ? new Date(solicitud.fecha_propuesta_alumno)
+        : null;
+
+    // Si la cita está completada (revisada/atendida) -> Amarillo
+    if (solicitud.estado === 'completada') {
+      return '#FFC107'; // Amarillo (warning.main)
+    }
+
+    // Si la cita está cancelada -> No mostrar barra o usar color neutral
+    if (solicitud.estado === 'cancelada') {
+      return '#9E9E9E'; // Gris
+    }
+
+    // Si no hay fecha confirmada ni propuesta, usar gris por defecto
+    if (!fechaCita) {
+      return '#9E9E9E'; // Gris
+    }
+
+    // Normalizar fechas para comparación (solo fecha, sin hora)
+    const ahoraFecha = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
+    const citaFecha = new Date(fechaCita.getFullYear(), fechaCita.getMonth(), fechaCita.getDate());
+
+    // Si la fecha de la cita ya pasó
+    if (citaFecha < ahoraFecha) {
+      // Si está confirmada o completada -> Verde
+      if (solicitud.estado === 'confirmada' || solicitud.estado === 'completada') {
+        return '#4CAF50'; // Verde (success.main)
+      }
+      // Si NO fue atendida (pendiente) -> Rojo
+      return '#F44336'; // Rojo (error.main)
+    }
+
+    // Si la fecha es hoy
+    if (citaFecha.getTime() === ahoraFecha.getTime()) {
+      // Si está confirmada -> Verde
+      if (solicitud.estado === 'confirmada') {
+        return '#4CAF50'; // Verde (success.main)
+      }
+      // Si está pendiente -> Gris
+      return '#9E9E9E'; // Gris
+    }
+
+    // Si la fecha está en el futuro -> Gris (pendiente)
+    return '#9E9E9E'; // Gris
+  };
+
+  /**
+   * Determina si una cita es de hoy.
+   *
+   * Args:
+   *     solicitud: Objeto de solicitud de cita
+   *
+   * Returns:
+   *     boolean: true si la cita es de hoy
+   */
+  const esCitaDeHoy = (solicitud: SolicitudCita): boolean => {
+    const fechaCita = solicitud.fecha_confirmada
+      ? new Date(solicitud.fecha_confirmada)
+      : solicitud.fecha_propuesta_alumno
+        ? new Date(solicitud.fecha_propuesta_alumno)
+        : null;
+
+    if (!fechaCita) return false;
+
+    const ahora = new Date();
+    const ahoraFecha = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
+    const citaFecha = new Date(fechaCita.getFullYear(), fechaCita.getMonth(), fechaCita.getDate());
+
+    return citaFecha.getTime() === ahoraFecha.getTime();
+  };
+
+  /**
+   * Determina si una cita ya pasó.
+   *
+   * Args:
+   *     solicitud: Objeto de solicitud de cita
+   *
+   * Returns:
+   *     boolean: true si la fecha de la cita ya pasó
+   */
+  const esCitaPasada = (solicitud: SolicitudCita): boolean => {
+    const fechaCita = solicitud.fecha_confirmada
+      ? new Date(solicitud.fecha_confirmada)
+      : solicitud.fecha_propuesta_alumno
+        ? new Date(solicitud.fecha_propuesta_alumno)
+        : null;
+
+    if (!fechaCita) return false;
+
+    const ahora = new Date();
+    const ahoraFecha = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
+    const citaFecha = new Date(fechaCita.getFullYear(), fechaCita.getMonth(), fechaCita.getDate());
+
+    return citaFecha < ahoraFecha;
+  };
+
+  /**
+   * Determina si una cita está pendiente (fecha futura).
+   *
+   * Args:
+   *     solicitud: Objeto de solicitud de cita
+   *
+   * Returns:
+   *     boolean: true si la fecha de la cita está en el futuro
+   */
+  const esCitaPendienteFutura = (solicitud: SolicitudCita): boolean => {
+    const fechaCita = solicitud.fecha_confirmada
+      ? new Date(solicitud.fecha_confirmada)
+      : solicitud.fecha_propuesta_alumno
+        ? new Date(solicitud.fecha_propuesta_alumno)
+        : null;
+
+    if (!fechaCita) return true; // Sin fecha se considera pendiente
+
+    const ahora = new Date();
+    const ahoraFecha = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
+    const citaFecha = new Date(fechaCita.getFullYear(), fechaCita.getMonth(), fechaCita.getDate());
+
+    return citaFecha > ahoraFecha;
+  };
+
+  /**
+   * Filtra las solicitudes según el filtro temporal seleccionado.
+   *
+   * Args:
+   *     solicitudes: Array de solicitudes de citas
+   *
+   * Returns:
+   *     Array de solicitudes filtradas
+   */
+  const filtrarPorEstadoTemporal = (solicitudes: SolicitudCita[]): SolicitudCita[] => {
+    switch (filtroTemporal) {
+      case 'hoy':
+        return solicitudes.filter(s => esCitaDeHoy(s));
+      case 'pasadas':
+        return solicitudes.filter(s => esCitaPasada(s) && s.estado !== 'completada');
+      case 'pendientes':
+        return solicitudes.filter(s => esCitaPendienteFutura(s) && s.estado !== 'completada');
+      case 'revision':
+        return solicitudes.filter(s => s.estado === 'completada');
+      case 'todas':
+      default:
+        return solicitudes;
+    }
+  };
+
+  // Aplicar filtro temporal
+  const solicitudesFiltradas = filtrarPorEstadoTemporal(solicitudes);
+
+  // Contadores para las pestañas
+  const contadorHoy = solicitudes.filter(s => esCitaDeHoy(s)).length;
+  const contadorPasadas = solicitudes.filter(s => esCitaPasada(s) && s.estado !== 'completada').length;
+  const contadorPendientes = solicitudes.filter(s => esCitaPendienteFutura(s) && s.estado !== 'completada').length;
+  const contadorRevision = solicitudes.filter(s => s.estado === 'completada').length;
+
+  const solicitudesPendientes = solicitudesFiltradas.filter(s => s.estado === 'pendiente');
+  const solicitudesConfirmadas = solicitudesFiltradas.filter(s => s.estado === 'confirmada');
+  const solicitudesOtras = solicitudesFiltradas.filter(s => !['pendiente', 'confirmada'].includes(s.estado));
 
   return (
     <Box>
@@ -281,6 +466,91 @@ const SolicitudesCitas: React.FC<SolicitudesCitasProps> = ({ onBadgeUpdate }) =>
         </Alert>
       )}
 
+      {/* Barra de pestañas/filtros temporales */}
+      {!loading && !error && solicitudes.length > 0 && (
+        <Box sx={{ mb: 3 }}>
+          <Tabs
+            value={filtroTemporal}
+            onChange={(_, newValue) => setFiltroTemporal(newValue as FiltroTemporal)}
+            variant="scrollable"
+            scrollButtons="auto"
+            sx={{
+              borderBottom: 1,
+              borderColor: 'divider',
+              '& .MuiTab-root': {
+                minHeight: 64,
+                textTransform: 'none',
+                fontWeight: 600
+              }
+            }}
+          >
+            <Tab
+              value="todas"
+              label={`Todas (${solicitudes.length})`}
+              icon={<CalendarIcon />}
+              iconPosition="start"
+              sx={{
+                '&.Mui-selected': {
+                  color: 'primary.main'
+                }
+              }}
+            />
+            <Tab
+              value="hoy"
+              label={`Hoy (${contadorHoy})`}
+              icon={<TodayIcon />}
+              iconPosition="start"
+              sx={{
+                color: contadorHoy > 0 ? '#4CAF50' : 'text.secondary',
+                '&.Mui-selected': {
+                  color: '#4CAF50',
+                  fontWeight: 700
+                }
+              }}
+            />
+            <Tab
+              value="pasadas"
+              label={`Pasadas (${contadorPasadas})`}
+              icon={<HistoryIcon />}
+              iconPosition="start"
+              sx={{
+                color: contadorPasadas > 0 ? '#F44336' : 'text.secondary',
+                '&.Mui-selected': {
+                  color: '#F44336',
+                  fontWeight: 700
+                }
+              }}
+            />
+            <Tab
+              value="pendientes"
+              label={`Pendientes (${contadorPendientes})`}
+              icon={<HourglassEmptyIcon />}
+              iconPosition="start"
+              sx={{
+                color: contadorPendientes > 0 ? '#9E9E9E' : 'text.secondary',
+                '&.Mui-selected': {
+                  color: '#9E9E9E',
+                  fontWeight: 700
+                }
+              }}
+            />
+            <Tab
+              value="revision"
+              label={`Revisión (${contadorRevision})`}
+              icon={<CheckCircleIcon />}
+              iconPosition="start"
+              sx={{
+                color: contadorRevision > 0 ? '#FFC107' : 'text.secondary',
+                '&.Mui-selected': {
+                  color: '#FFC107',
+                  fontWeight: 700
+                }
+              }}
+            />
+          </Tabs>
+        </Box>
+      )}
+
       {!loading && !error && solicitudes.length > 0 && (
         <Box>
           {/* Solicitudes Pendientes */}
@@ -294,10 +564,31 @@ const SolicitudesCitas: React.FC<SolicitudesCitasProps> = ({ onBadgeUpdate }) =>
               </Typography>
               
               <Grid container spacing={2}>
-                {solicitudesPendientes.map((solicitud) => (
+                {solicitudesPendientes.map((solicitud) => {
+                  const barraColor = getBarraEstadoColor(solicitud);
+                  return (
                   <Grid size={{ xs: 12, md: 6 }} key={solicitud.id_cita}>
-                    <Card sx={{ border: '2px solid', borderColor: 'warning.main' }}>
-                      <CardContent>
+                    <Card
+                      sx={{
+                        border: '2px solid',
+                        borderColor: 'warning.main',
+                        position: 'relative',
+                        overflow: 'hidden'
+                      }}
+                    >
+                      {/* Barra de estado visual */}
+                      <Box
+                        sx={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          width: '6px',
+                          height: '100%',
+                          backgroundColor: barraColor,
+                          zIndex: 1
+                        }}
+                      />
+                      <CardContent sx={{ pl: 3 }}>
                         <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2}>
                           <Box display="flex" alignItems="center">
                             {getTipoIcon(solicitud.tipo_cita)}
@@ -418,7 +709,8 @@ const SolicitudesCitas: React.FC<SolicitudesCitasProps> = ({ onBadgeUpdate }) =>
                       </CardContent>
                     </Card>
                   </Grid>
-                ))}
+                  );
+                })}
               </Grid>
             </Box>
           )}
@@ -434,6 +726,7 @@ const SolicitudesCitas: React.FC<SolicitudesCitasProps> = ({ onBadgeUpdate }) =>
               <Grid container spacing={2}>
                 {solicitudesConfirmadas.map((solicitud) => {
                   const tipoColor = getTipoColor(solicitud.tipo_cita);
+                  const barraColor = getBarraEstadoColor(solicitud);
                   return (
                     <Grid size={{ xs: 12, md: 6 }} key={solicitud.id_cita}>
                       <Card
@@ -442,6 +735,7 @@ const SolicitudesCitas: React.FC<SolicitudesCitasProps> = ({ onBadgeUpdate }) =>
                           borderColor: tipoColor.border,
                           bgcolor: tipoColor.bg,
                           position: 'relative',
+                          overflow: 'hidden',
                           '&:hover': {
                             boxShadow: 4,
                             transform: 'translateY(-2px)',
@@ -449,7 +743,19 @@ const SolicitudesCitas: React.FC<SolicitudesCitasProps> = ({ onBadgeUpdate }) =>
                           }
                         }}
                       >
-                        <CardContent>
+                        {/* Barra de estado visual */}
+                        <Box
+                          sx={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            width: '6px',
+                            height: '100%',
+                            backgroundColor: barraColor,
+                            zIndex: 1
+                          }}
+                        />
+                        <CardContent sx={{ pl: 3 }}>
                           {/* Icono de atención en la esquina superior derecha */}
                           <Box
                             sx={{
@@ -528,6 +834,17 @@ const SolicitudesCitas: React.FC<SolicitudesCitasProps> = ({ onBadgeUpdate }) =>
                 })}
               </Grid>
             </Box>
+          )}
+
+          {/* Mensaje cuando no hay resultados para el filtro */}
+          {solicitudesPendientes.length === 0 && solicitudesConfirmadas.length === 0 && (
+            <Alert severity="info" sx={{ mt: 2 }}>
+              {filtroTemporal === 'hoy' && 'No hay citas programadas para hoy.'}
+              {filtroTemporal === 'pasadas' && 'No hay citas pasadas sin atender.'}
+              {filtroTemporal === 'pendientes' && 'No hay citas pendientes con fecha futura.'}
+              {filtroTemporal === 'revision' && 'No hay citas completadas/revisadas.'}
+              {filtroTemporal === 'todas' && 'No hay citas en este momento.'}
+            </Alert>
           )}
         </Box>
       )}

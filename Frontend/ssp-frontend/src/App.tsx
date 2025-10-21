@@ -23,6 +23,7 @@ import CuestionariosPage from './pages/admin/CuestionariosPage';
 import CrearCuestionarioPage from './pages/admin/CrearCuestionarioPage';
 import EditarCuestionarioPage from './pages/admin/EditarCuestionarioPage';
 import VerCuestionarioPage from './pages/admin/VerCuestionarioPage';
+import CuestionariosContestadosPage from './pages/admin/CuestionariosContestadosPage';
 
 // Páginas de usuario para cuestionarios
 import CuestionariosAsignadosPage from './pages/usuario/CuestionariosAsignadosPage';
@@ -152,6 +153,14 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={['admin', 'coordinador']}>
                 <EditarCuestionarioPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/cuestionarios-contestados"
+            element={
+              <ProtectedRoute allowedRoles={['admin', 'coordinador']}>
+                <CuestionariosContestadosPage />
               </ProtectedRoute>
             }
           />

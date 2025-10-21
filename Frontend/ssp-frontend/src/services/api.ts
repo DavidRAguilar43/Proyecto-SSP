@@ -710,6 +710,20 @@ export const cuestionariosAdminApi = {
   cambiarEstado: async (id: string, estado: string) => {
     const response = await api.patch(`/cuestionarios-admin/${id}/estado`, { estado });
     return response.data;
+  },
+
+  // Obtener todas las respuestas de cuestionarios administrativos
+  getAllRespuestas: async (filtros?: {
+    cuestionario_id?: string;
+    usuario_id?: number;
+    estado?: string;
+    fecha_desde?: string;
+    fecha_hasta?: string;
+    skip?: number;
+    limit?: number;
+  }) => {
+    const response = await api.get('/cuestionarios-admin/respuestas/todas', { params: filtros });
+    return response.data;
   }
 };
 
@@ -732,27 +746,29 @@ export const cuestionariosUsuarioApi = {
     return response.data;
   },
 
-  // Guardar respuestas (progreso parcial)
-  guardarRespuestas: async (cuestionarioId: string, respuestas: any) => {
-    const response = await api.post(`/cuestionarios-usuario/${cuestionarioId}/guardar-respuestas`, {
+  // Guardar respuestas (progreso parcial o completar)
+  guardarRespuestas: async (cuestionarioId: string, respuestas: any, estado: 'en_progreso' | 'completado' = 'en_progreso', progreso: number = 0) => {
+    const response = await api.post(`/cuestionarios-usuario/${cuestionarioId}/responder`, {
       respuestas,
-      estado: 'en_progreso'
+      estado,
+      progreso
     });
     return response.data;
   },
 
-  // Completar cuestionario (envío final)
-  completarCuestionario: async (cuestionarioId: string, respuestas: any) => {
-    const response = await api.post(`/cuestionarios-usuario/${cuestionarioId}/completar`, {
+  // Completar cuestionario (envío final) - usa el mismo endpoint que guardarRespuestas
+  completarCuestionario: async (cuestionarioId: string, respuestas: any, progreso: number = 100) => {
+    const response = await api.post(`/cuestionarios-usuario/${cuestionarioId}/responder`, {
       respuestas,
-      estado: 'completado'
+      estado: 'completado',
+      progreso
     });
     return response.data;
   },
 
   // Obtener respuestas guardadas de un cuestionario
   getRespuestasGuardadas: async (cuestionarioId: string) => {
-    const response = await api.get(`/cuestionarios-usuario/${cuestionarioId}/respuestas`);
+    const response = await api.get(`/cuestionarios-usuario/${cuestionarioId}/mi-respuesta`);
     return response.data;
   },
 
