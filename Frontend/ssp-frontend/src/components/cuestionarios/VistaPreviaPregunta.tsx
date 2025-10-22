@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -21,9 +21,10 @@ import type { Pregunta } from '@/types/cuestionarios';
 interface VistaPreviaPreguntaProps {
   pregunta: Pregunta;
   value?: any;
-  onChange?: (value: any) => void;
+  onChange?: (value: any, autoAvanzar?: boolean) => void;
   disabled?: boolean;
   showValidation?: boolean;
+  onSubmit?: () => void; // Callback para cuando se presiona Shift+Enter en preguntas abiertas
 }
 
 /**
@@ -34,15 +35,33 @@ const VistaPreviaPregunta: React.FC<VistaPreviaPreguntaProps> = ({
   value,
   onChange,
   disabled = false,
-  showValidation = false
+  showValidation = false,
+  onSubmit
 }) => {
   const [localValue, setLocalValue] = useState<any>(value || '');
 
-  const handleChange = (newValue: any) => {
+  // Sincronizar el estado local con el prop value cuando cambia
+  useEffect(() => {
+    setLocalValue(value || '');
+  }, [value, pregunta.id]); // Incluir pregunta.id para forzar actualización al cambiar de pregunta
+
+  const handleChange = (newValue: any, autoAvanzar: boolean = false) => {
     setLocalValue(newValue);
     if (onChange) {
-      onChange(newValue);
+      onChange(newValue, autoAvanzar);
     }
+  };
+
+  // Manejar teclas en preguntas de texto abierto
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    // Shift+Enter para continuar a la siguiente pregunta
+    if (e.key === 'Enter' && e.shiftKey) {
+      e.preventDefault();
+      if (onSubmit) {
+        onSubmit();
+      }
+    }
+    // Enter solo agrega salto de línea (comportamiento por defecto)
   };
 
   const renderPreguntaContent = () => {
@@ -51,23 +70,29 @@ const VistaPreviaPregunta: React.FC<VistaPreviaPreguntaProps> = ({
     switch (tipo) {
       case 'abierta':
         return (
-          <TextField
-            fullWidth
-            multiline
-            rows={4}
-            value={localValue}
-            onChange={(e) => handleChange(e.target.value)}
-            disabled={disabled}
-            inputProps={{
-              maxLength: configuracion.limite_caracteres
-            }}
-            helperText={
-              configuracion.limite_caracteres 
-                ? `${localValue.length}/${configuracion.limite_caracteres} caracteres`
-                : undefined
-            }
-            error={showValidation && configuracion.longitud_minima && localValue.length < configuracion.longitud_minima}
-          />
+          <Box>
+            <TextField
+              fullWidth
+              multiline
+              rows={4}
+              value={localValue}
+              onChange={(e) => handleChange(e.target.value)}
+              onKeyDown={handleKeyDown}
+              disabled={disabled}
+              inputProps={{
+                maxLength: configuracion.limite_caracteres
+              }}
+              helperText={
+                configuracion.limite_caracteres
+                  ? `${localValue.length}/${configuracion.limite_caracteres} caracteres`
+                  : undefined
+              }
+              error={showValidation && configuracion.longitud_minima && localValue.length < configuracion.longitud_minima}
+            />
+            <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block', fontStyle: 'italic' }}>
+              💡 Presiona <strong>Shift + Enter</strong> para continuar a la siguiente pregunta
+            </Typography>
+          </Box>
         );
 
       case 'opcion_multiple':
@@ -83,9 +108,9 @@ const VistaPreviaPregunta: React.FC<VistaPreviaPreguntaProps> = ({
                       onChange={(e) => {
                         const currentValues = Array.isArray(localValue) ? localValue : [];
                         if (e.target.checked) {
-                          handleChange([...currentValues, opcion]);
+                          handleChange([...currentValues, opcion], false); // No auto-avanzar en checkboxes
                         } else {
-                          handleChange(currentValues.filter(v => v !== opcion));
+                          handleChange(currentValues.filter(v => v !== opcion), false);
                         }
                       }}
                       disabled={disabled}
@@ -103,9 +128,9 @@ const VistaPreviaPregunta: React.FC<VistaPreviaPreguntaProps> = ({
                         onChange={(e) => {
                           const currentValues = Array.isArray(localValue) ? localValue : [];
                           if (e.target.checked) {
-                            handleChange([...currentValues, '__otro__']);
+                            handleChange([...currentValues, '__otro__'], false);
                           } else {
-                            handleChange(currentValues.filter(v => v !== '__otro__'));
+                            handleChange(currentValues.filter(v => v !== '__otro__'), false);
                           }
                         }}
                         disabled={disabled}
@@ -130,7 +155,7 @@ const VistaPreviaPregunta: React.FC<VistaPreviaPreguntaProps> = ({
             <FormControl component="fieldset">
               <RadioGroup
                 value={localValue}
-                onChange={(e) => handleChange(e.target.value)}
+                onChange={(e) => handleChange(e.target.value, true)} // Auto-avanzar en radio buttons
               >
                 {configuracion.opciones?.map((opcion, index) => (
                   <FormControlLabel
@@ -167,7 +192,7 @@ const VistaPreviaPregunta: React.FC<VistaPreviaPreguntaProps> = ({
           <FormControl component="fieldset">
             <RadioGroup
               value={localValue}
-              onChange={(e) => handleChange(e.target.value)}
+              onChange={(e) => handleChange(e.target.value, true)} // Auto-avanzar
             >
               <FormControlLabel
                 value="verdadero"
@@ -189,7 +214,7 @@ const VistaPreviaPregunta: React.FC<VistaPreviaPreguntaProps> = ({
             <InputLabel>Seleccione una opción</InputLabel>
             <Select
               value={localValue}
-              onChange={(e) => handleChange(e.target.value)}
+              onChange={(e) => handleChange(e.target.value, true)} // Auto-avanzar
               disabled={disabled}
               label="Seleccione una opción"
             >
@@ -220,9 +245,9 @@ const VistaPreviaPregunta: React.FC<VistaPreviaPreguntaProps> = ({
                       onChange={(e) => {
                         const currentValues = Array.isArray(localValue) ? localValue : [];
                         if (e.target.checked) {
-                          handleChange([...currentValues, opcion]);
+                          handleChange([...currentValues, opcion], false); // No auto-avanzar
                         } else {
-                          handleChange(currentValues.filter(v => v !== opcion));
+                          handleChange(currentValues.filter(v => v !== opcion), false);
                         }
                       }}
                       disabled={disabled}
@@ -246,7 +271,7 @@ const VistaPreviaPregunta: React.FC<VistaPreviaPreguntaProps> = ({
           <FormControl component="fieldset">
             <RadioGroup
               value={localValue}
-              onChange={(e) => handleChange(e.target.value)}
+              onChange={(e) => handleChange(e.target.value, true)} // Auto-avanzar
             >
               {configuracion.opciones?.map((opcion, index) => (
                 <FormControlLabel
@@ -274,7 +299,8 @@ const VistaPreviaPregunta: React.FC<VistaPreviaPreguntaProps> = ({
             </Box>
             <Slider
               value={localValue || 1}
-              onChange={(_, value) => handleChange(value)}
+              onChange={(_, value) => handleChange(value, false)} // No auto-avanzar mientras arrastra
+              onChangeCommitted={(_, value) => handleChange(value, true)} // Auto-avanzar al soltar
               min={1}
               max={puntos}
               step={1}

@@ -103,6 +103,24 @@ python scripts/migrate_cohorte_simplification.py
 
 ---
 
+### 👤 Administración de Usuarios
+
+#### `create_admin_user.py`
+**Propósito:** Crear o actualizar el usuario administrador principal.
+
+**Características:**
+- ✅ Crea el admin si no existe
+- 🔄 Actualiza contraseña y activa al admin existente
+- 🔐 Usa `admin123` como contraseña predeterminada
+
+**Uso:**
+```bash
+cd API
+python scripts/create_admin_user.py
+```
+
+---
+
 ## 🛠️ Flujo de Trabajo Recomendado
 
 ### 1. Primera Instalación
@@ -138,7 +156,8 @@ python scripts/init_database.py
 
 ### Usuario Administrador
 - **Email:** admin@uabc.edu.mx
-- **Password:** 12345678
+- **Password (init_database/reset_database):** 12345678
+- **Password (create_admin_user):** admin123
 - **Rol:** admin
 - **Matrícula:** ADMIN001
 

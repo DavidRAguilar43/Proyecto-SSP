@@ -72,7 +72,9 @@ const CuestionariosPage: React.FC = () => {
   // Estados de UI
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
   const [cuestionarioSeleccionado, setCuestionarioSeleccionado] = useState<CuestionarioAdmin | null>(null);
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [cuestionarioToDelete, setCuestionarioToDelete] = useState<CuestionarioAdmin | null>(null);
+  const [cuestionarioToActivate, setCuestionarioToActivate] = useState<CuestionarioAdmin | null>(null);
+  const [cuestionarioToDeactivate, setCuestionarioToDeactivate] = useState<CuestionarioAdmin | null>(null);
   const [showFilters, setShowFilters] = useState(false);
 
   // Cargar cuestionarios
@@ -120,9 +122,18 @@ const CuestionariosPage: React.FC = () => {
     setCuestionarioSeleccionado(null);
   };
 
-  const handleEdit = () => {
-    if (cuestionarioSeleccionado) {
-      navigate(`/admin/cuestionarios/editar/${cuestionarioSeleccionado.id}`);
+  const handleView = (cuestionario?: CuestionarioAdmin) => {
+    const target = cuestionario || cuestionarioSeleccionado;
+    if (target) {
+      navigate(`/admin/cuestionarios/ver/${target.id}`);
+    }
+    handleMenuClose();
+  };
+
+  const handleEdit = (cuestionario?: CuestionarioAdmin) => {
+    const target = cuestionario || cuestionarioSeleccionado;
+    if (target) {
+      navigate(`/admin/cuestionarios/editar/${target.id}`);
     }
     handleMenuClose();
   };
@@ -143,18 +154,58 @@ const CuestionariosPage: React.FC = () => {
     handleMenuClose();
   };
 
+  const handleDeleteClick = (cuestionario: CuestionarioAdmin) => {
+    setCuestionarioToDelete(cuestionario);
+    handleMenuClose();
+  };
+
   const handleDelete = async () => {
-    if (!cuestionarioSeleccionado) return;
+    if (!cuestionarioToDelete) return;
 
     try {
-      await cuestionariosAdminApi.delete(cuestionarioSeleccionado.id);
+      await cuestionariosAdminApi.delete(cuestionarioToDelete.id);
       showNotification('Cuestionario eliminado exitosamente', 'success');
       cargarCuestionarios();
     } catch (error) {
       showNotification('Error al eliminar cuestionario', 'error');
     }
-    setShowDeleteDialog(false);
+    setCuestionarioToDelete(null);
+  };
+
+  const handleActivateClick = (cuestionario: CuestionarioAdmin) => {
+    setCuestionarioToActivate(cuestionario);
     handleMenuClose();
+  };
+
+  const handleActivate = async () => {
+    if (!cuestionarioToActivate) return;
+
+    try {
+      await cuestionariosAdminApi.cambiarEstado(cuestionarioToActivate.id, 'activo');
+      showNotification('Cuestionario activado exitosamente', 'success');
+      cargarCuestionarios();
+    } catch (error) {
+      showNotification('Error al activar cuestionario', 'error');
+    }
+    setCuestionarioToActivate(null);
+  };
+
+  const handleDeactivateClick = (cuestionario: CuestionarioAdmin) => {
+    setCuestionarioToDeactivate(cuestionario);
+    handleMenuClose();
+  };
+
+  const handleDeactivate = async () => {
+    if (!cuestionarioToDeactivate) return;
+
+    try {
+      await cuestionariosAdminApi.cambiarEstado(cuestionarioToDeactivate.id, 'inactivo');
+      showNotification('Cuestionario desactivado exitosamente', 'success');
+      cargarCuestionarios();
+    } catch (error) {
+      showNotification('Error al desactivar cuestionario', 'error');
+    }
+    setCuestionarioToDeactivate(null);
   };
 
   const handleChangeStatus = async (estado: EstadoCuestionario) => {
@@ -393,6 +444,53 @@ const CuestionariosPage: React.FC = () => {
                         Por: {cuestionario.creado_por_nombre}
                       </Typography>
                     )}
+
+                    {/* Botones de acción */}
+                    <Box sx={{ display: 'flex', gap: 1, mt: 2, pt: 2, borderTop: '1px solid', borderColor: 'divider' }}>
+                      <IconButton
+                        size="small"
+                        color="primary"
+                        onClick={() => handleView(cuestionario)}
+                        title="Ver detalles"
+                      >
+                        <ViewIcon fontSize="small" />
+                      </IconButton>
+                      <IconButton
+                        size="small"
+                        color="primary"
+                        onClick={() => handleEdit(cuestionario)}
+                        title="Editar"
+                      >
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                      {cuestionario.estado === 'activo' ? (
+                        <IconButton
+                          size="small"
+                          color="error"
+                          onClick={() => handleDeactivateClick(cuestionario)}
+                          title="Desactivar"
+                        >
+                          <DesactivarIcon fontSize="small" />
+                        </IconButton>
+                      ) : (
+                        <IconButton
+                          size="small"
+                          color="success"
+                          onClick={() => handleActivateClick(cuestionario)}
+                          title="Activar"
+                        >
+                          <ActivarIcon fontSize="small" />
+                        </IconButton>
+                      )}
+                      <IconButton
+                        size="small"
+                        color="error"
+                        onClick={() => handleDeleteClick(cuestionario)}
+                        title="Eliminar"
+                      >
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </Box>
                   </CardContent>
                 </Card>
               </Grid>
@@ -419,11 +517,11 @@ const CuestionariosPage: React.FC = () => {
         open={Boolean(menuAnchor)}
         onClose={handleMenuClose}
       >
-        <MenuItem onClick={() => navigate(`/admin/cuestionarios/ver/${cuestionarioSeleccionado?.id}`)}>
+        <MenuItem onClick={() => handleView()}>
           <ViewIcon sx={{ mr: 1 }} />
           Ver detalles
         </MenuItem>
-        <MenuItem onClick={handleEdit}>
+        <MenuItem onClick={() => handleEdit()}>
           <EditIcon sx={{ mr: 1 }} />
           Editar
         </MenuItem>
@@ -432,17 +530,26 @@ const CuestionariosPage: React.FC = () => {
           Duplicar
         </MenuItem>
         {cuestionarioSeleccionado?.estado === 'activo' ? (
-          <MenuItem onClick={() => handleChangeStatus('inactivo')} sx={{ color: 'error.main' }}>
+          <MenuItem
+            onClick={() => cuestionarioSeleccionado && handleDeactivateClick(cuestionarioSeleccionado)}
+            sx={{ color: 'error.main' }}
+          >
             <DesactivarIcon sx={{ mr: 1 }} />
             Desactivar
           </MenuItem>
         ) : (
-          <MenuItem onClick={() => handleChangeStatus('activo')} sx={{ color: 'success.main' }}>
+          <MenuItem
+            onClick={() => cuestionarioSeleccionado && handleActivateClick(cuestionarioSeleccionado)}
+            sx={{ color: 'success.main' }}
+          >
             <ActivarIcon sx={{ mr: 1 }} />
             Activar
           </MenuItem>
         )}
-        <MenuItem onClick={() => setShowDeleteDialog(true)} sx={{ color: 'error.main' }}>
+        <MenuItem
+          onClick={() => cuestionarioSeleccionado && handleDeleteClick(cuestionarioSeleccionado)}
+          sx={{ color: 'error.main' }}
+        >
           <DeleteIcon sx={{ mr: 1 }} />
           Eliminar
         </MenuItem>
@@ -450,14 +557,38 @@ const CuestionariosPage: React.FC = () => {
 
       {/* Diálogo de confirmación de eliminación */}
       <ConfirmDialog
-        open={showDeleteDialog}
-        onClose={() => setShowDeleteDialog(false)}
+        open={cuestionarioToDelete !== null}
+        onCancel={() => setCuestionarioToDelete(null)}
         onConfirm={handleDelete}
         title="Eliminar Cuestionario"
-        message={`¿Está seguro de que desea eliminar el cuestionario "${cuestionarioSeleccionado?.titulo}"? Esta acción no se puede deshacer.`}
+        message={`¿Está seguro de que desea eliminar el cuestionario "${cuestionarioToDelete?.titulo}"? Esta acción no se puede deshacer.`}
         confirmText="Eliminar"
         cancelText="Cancelar"
         severity="error"
+      />
+
+      {/* Diálogo de confirmación de activación */}
+      <ConfirmDialog
+        open={cuestionarioToActivate !== null}
+        onCancel={() => setCuestionarioToActivate(null)}
+        onConfirm={handleActivate}
+        title="Activar Cuestionario"
+        message={`¿Está seguro de que desea activar el cuestionario "${cuestionarioToActivate?.titulo}"? Estará disponible para los usuarios asignados.`}
+        confirmText="Activar"
+        cancelText="Cancelar"
+        severity="info"
+      />
+
+      {/* Diálogo de confirmación de desactivación */}
+      <ConfirmDialog
+        open={cuestionarioToDeactivate !== null}
+        onCancel={() => setCuestionarioToDeactivate(null)}
+        onConfirm={handleDeactivate}
+        title="Desactivar Cuestionario"
+        message={`¿Está seguro de que desea desactivar el cuestionario "${cuestionarioToDeactivate?.titulo}"? Ya no estará disponible para los usuarios.`}
+        confirmText="Desactivar"
+        cancelText="Cancelar"
+        severity="warning"
       />
     </Box>
   );

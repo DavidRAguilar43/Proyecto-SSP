@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Box,
@@ -54,6 +54,7 @@ const ResponderCuestionarioPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [autoSaving, setAutoSaving] = useState(false);
 
   // Estados de navegación
   const [preguntaActual, setPreguntaActual] = useState(0);
@@ -62,6 +63,10 @@ const ResponderCuestionarioPage: React.FC = () => {
   // Estados de UI
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [showExitDialog, setShowExitDialog] = useState(false);
+
+  // Refs para debounce del auto-guardado
+  const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastSavedRespuestasRef = useRef<string>('');
 
   // Cargar cuestionario y respuestas guardadas
   useEffect(() => {
@@ -73,11 +78,48 @@ const ResponderCuestionarioPage: React.FC = () => {
 
         // Cargar cuestionario (ya incluye respuestas_previas)
         const cuestionarioData = await cuestionariosUsuarioApi.getCuestionarioParaResponder(id);
+        console.log('📋 Cuestionario cargado:', {
+          titulo: cuestionarioData.titulo,
+          totalPreguntas: cuestionarioData.preguntas?.length,
+          respuestasPrevias: cuestionarioData.respuestas_previas
+        });
         setCuestionario(cuestionarioData);
 
         // Cargar respuestas previas si existen (vienen en el mismo endpoint)
+        // El formato del backend es: {pregunta_id: {valor, texto_otro}}
+        // Necesitamos convertirlo a: {pregunta_id: valor}
         if (cuestionarioData.respuestas_previas) {
-          setRespuestas(cuestionarioData.respuestas_previas);
+          // Crear un Set con los IDs de preguntas válidas
+          const preguntasValidasIds = new Set(cuestionarioData.preguntas.map((p: any) => p.id));
+          console.log('✅ IDs de preguntas válidas:', Array.from(preguntasValidasIds));
+
+          const respuestasFormateadas: { [preguntaId: string]: any } = {};
+          Object.entries(cuestionarioData.respuestas_previas).forEach(([preguntaId, data]: [string, any]) => {
+            // Solo incluir respuestas que corresponden a preguntas válidas del cuestionario
+            if (preguntasValidasIds.has(preguntaId)) {
+              const valor = data.valor;
+
+              // Solo incluir respuestas que tienen un valor válido (no vacío)
+              // Permitir false, 0, arrays vacíos, pero NO strings vacíos, null o undefined
+              const esValorValido = valor !== undefined &&
+                                    valor !== null &&
+                                    !(typeof valor === 'string' && valor.trim() === '');
+
+              if (esValorValido) {
+                respuestasFormateadas[preguntaId] = valor;
+                console.log(`✓ Respuesta válida cargada: ${preguntaId} = ${valor}`);
+              } else {
+                console.log(`⏭️ Respuesta vacía ignorada: ${preguntaId} = "${valor}"`);
+              }
+            } else {
+              console.warn(`⚠️ Respuesta ignorada (pregunta no existe): ${preguntaId}`);
+            }
+          });
+          console.log('📝 Respuestas formateadas:', respuestasFormateadas);
+          setRespuestas(respuestasFormateadas);
+
+          // Actualizar la referencia de última respuesta guardada para evitar guardado innecesario
+          lastSavedRespuestasRef.current = JSON.stringify(respuestasFormateadas);
         }
 
         // Si hay un respuesta_id, crear el objeto de respuesta guardada
@@ -107,40 +149,202 @@ const ResponderCuestionarioPage: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  // Manejar cambio de respuesta
-  const handleRespuestaChange = (preguntaId: string, valor: any) => {
-    setRespuestas(prev => ({
-      ...prev,
-      [preguntaId]: valor
-    }));
+  // Auto-guardado con debounce
+  const autoGuardarRespuestas = useCallback(async (respuestasActuales: { [preguntaId: string]: any }) => {
+    if (!cuestionario || !id) return;
+
+    // Verificar si las respuestas han cambiado
+    const respuestasString = JSON.stringify(respuestasActuales);
+    if (respuestasString === lastSavedRespuestasRef.current) {
+      console.log('⏭️ Auto-guardado omitido: sin cambios');
+      return; // No hay cambios, no guardar
+    }
+
+    try {
+      setAutoSaving(true);
+
+      // Filtrar solo respuestas con valores válidos (no vacíos)
+      const respuestasArray: RespuestaPregunta[] = Object.entries(respuestasActuales)
+        .filter(([preguntaId, valor]) => {
+          // Excluir valores vacíos, null, undefined, y strings vacíos
+          if (valor === undefined || valor === null) return false;
+          if (typeof valor === 'string' && valor.trim() === '') return false;
+          // Incluir todo lo demás (false, 0, arrays vacíos, etc.)
+          return true;
+        })
+        .map(([preguntaId, valor]) => ({
+          pregunta_id: preguntaId,
+          valor
+        }));
+
+      const progreso = calcularProgresoFromRespuestas(respuestasActuales);
+      console.log('💾 Auto-guardando respuestas:', {
+        totalRespuestas: respuestasArray.length,
+        progreso: progreso,
+        respuestas: respuestasArray
+      });
+
+      await cuestionariosUsuarioApi.guardarRespuestas(id, respuestasArray, 'en_progreso', progreso);
+      console.log('✅ Auto-guardado exitoso');
+
+      // Actualizar la referencia de última respuesta guardada
+      lastSavedRespuestasRef.current = respuestasString;
+    } catch (error) {
+      console.error('❌ Error en auto-guardado:', error);
+      // No mostrar notificación para no interrumpir al usuario
+    } finally {
+      setAutoSaving(false);
+    }
+  }, [cuestionario, id]);
+
+  // Contar respuestas válidas (no vacías)
+  const contarRespuestasValidas = (respuestasObj: { [preguntaId: string]: any }) => {
+    if (!cuestionario) return 0;
+
+    // Crear un Set con los IDs de preguntas válidas del cuestionario
+    const preguntasValidasIds = new Set(cuestionario.preguntas.map(p => p.id));
+
+    // Contar solo respuestas que corresponden a preguntas válidas y no están vacías
+    return Object.keys(respuestasObj).filter(
+      preguntaId => {
+        // Verificar que la pregunta existe en el cuestionario
+        if (!preguntasValidasIds.has(preguntaId)) return false;
+
+        // Verificar que la respuesta no esté vacía
+        const valor = respuestasObj[preguntaId];
+        if (valor === undefined || valor === null) return false;
+        if (typeof valor === 'string' && valor.trim() === '') return false;
+        return true;
+      }
+    ).length;
   };
 
-  // Calcular progreso
-  const calcularProgreso = () => {
+  // Calcular progreso desde un objeto de respuestas
+  const calcularProgresoFromRespuestas = (respuestasObj: { [preguntaId: string]: any }) => {
     if (!cuestionario) return 0;
-    const preguntasRespondidas = Object.keys(respuestas).filter(
-      preguntaId => respuestas[preguntaId] !== undefined && respuestas[preguntaId] !== ''
-    ).length;
+    const preguntasRespondidas = contarRespuestasValidas(respuestasObj);
     return Math.round((preguntasRespondidas / cuestionario.preguntas.length) * 100);
   };
 
-  // Validar pregunta actual
-  const validarPreguntaActual = () => {
+  // Manejar cambio de respuesta con auto-guardado
+  const handleRespuestaChange = (preguntaId: string, valor: any, autoAvanzar: boolean = false) => {
+    console.log('📝 handleRespuestaChange llamado:', {
+      preguntaId,
+      valor,
+      tipoValor: typeof valor,
+      autoAvanzar,
+      respuestasActuales: respuestas
+    });
+
+    const nuevasRespuestas = {
+      ...respuestas,
+      [preguntaId]: valor
+    };
+
+    console.log('📦 Nuevas respuestas creadas:', nuevasRespuestas);
+
+    setRespuestas(nuevasRespuestas);
+
+    // Cancelar timeout anterior si existe
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current);
+    }
+
+    // Si va a auto-avanzar, guardar inmediatamente
+    if (autoAvanzar && modoVisualizacion === 'paso_a_paso') {
+      console.log('⏩ Auto-avanzar activado, guardando inmediatamente...');
+      // Guardar inmediatamente antes de avanzar
+      autoGuardarRespuestas(nuevasRespuestas);
+
+      // Esperar un momento para que el usuario vea su selección
+      setTimeout(() => {
+        console.log('🚀 Intentando avanzar a siguiente pregunta...');
+        // Pasar las nuevas respuestas para validación correcta
+        handleSiguientePregunta(nuevasRespuestas);
+      }, 500);
+    } else {
+      // Programar auto-guardado con debounce de 2 segundos para otros casos
+      autoSaveTimeoutRef.current = setTimeout(() => {
+        autoGuardarRespuestas(nuevasRespuestas);
+      }, 2000);
+    }
+  };
+
+  // Limpiar timeout al desmontar
+  useEffect(() => {
+    return () => {
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Calcular progreso (usa la función auxiliar)
+  const calcularProgreso = () => {
+    return calcularProgresoFromRespuestas(respuestas);
+  };
+
+  // Validar pregunta actual (puede recibir respuestas personalizadas para validación)
+  const validarPreguntaActual = (respuestasParaValidar?: { [preguntaId: string]: any }) => {
     if (!cuestionario) return true;
     const pregunta = cuestionario.preguntas[preguntaActual];
     if (!pregunta.obligatoria) return true;
-    
-    const respuesta = respuestas[pregunta.id];
-    return respuesta !== undefined && respuesta !== '' && respuesta !== null;
+
+    const respuestasAUsar = respuestasParaValidar || respuestas;
+    const respuesta = respuestasAUsar[pregunta.id];
+
+    console.log('🔍 Validando pregunta:', {
+      preguntaActualIndex: preguntaActual,
+      preguntaId: pregunta.id,
+      preguntaTexto: pregunta.texto,
+      tipo: pregunta.tipo,
+      respuesta: respuesta,
+      tipoRespuesta: typeof respuesta,
+      esArray: Array.isArray(respuesta),
+      todasLasRespuestas: respuestasAUsar
+    });
+
+    // Validación según el tipo de respuesta
+    if (respuesta === undefined || respuesta === null) {
+      console.log('❌ Validación falló: respuesta undefined o null');
+      return false;
+    }
+
+    // Para strings, verificar que no esté vacío
+    if (typeof respuesta === 'string' && respuesta.trim() === '') {
+      console.log('❌ Validación falló: string vacío');
+      return false;
+    }
+
+    // Para arrays (checkboxes), verificar que tenga al menos un elemento
+    if (Array.isArray(respuesta) && respuesta.length === 0) {
+      console.log('❌ Validación falló: array vacío');
+      return false;
+    }
+
+    console.log('✅ Validación exitosa');
+    return true;
   };
 
-  // Navegación entre preguntas
-  const handleSiguientePregunta = () => {
+  // Navegación entre preguntas (puede recibir respuestas personalizadas para validación)
+  const handleSiguientePregunta = (respuestasParaValidar?: { [preguntaId: string]: any }) => {
     if (!cuestionario) return;
-    
-    if (!validarPreguntaActual()) {
-      showNotification('Esta pregunta es obligatoria', 'warning');
-      return;
+
+    console.log('🚀 handleSiguientePregunta llamado:', {
+      tieneRespuestasParaValidar: !!respuestasParaValidar,
+      respuestasParaValidar: respuestasParaValidar
+    });
+
+    // Solo validar si se proporcionaron respuestas para validar (auto-avance)
+    // Si no se proporcionaron, es navegación manual y no validamos
+    if (respuestasParaValidar) {
+      console.log('⚠️ Validando porque se proporcionaron respuestas...');
+      if (!validarPreguntaActual(respuestasParaValidar)) {
+        showNotification('Esta pregunta es obligatoria', 'warning');
+        return;
+      }
+    } else {
+      console.log('✅ Navegación manual - sin validación');
     }
 
     if (preguntaActual < cuestionario.preguntas.length - 1) {
@@ -161,10 +365,18 @@ const ResponderCuestionarioPage: React.FC = () => {
     try {
       setSaving(true);
 
-      const respuestasArray: RespuestaPregunta[] = Object.entries(respuestas).map(([preguntaId, valor]) => ({
-        pregunta_id: preguntaId,
-        valor
-      }));
+      // Filtrar solo respuestas con valores válidos (no vacíos)
+      const respuestasArray: RespuestaPregunta[] = Object.entries(respuestas)
+        .filter(([preguntaId, valor]) => {
+          // Excluir valores vacíos, null, undefined, y strings vacíos
+          if (valor === undefined || valor === null) return false;
+          if (typeof valor === 'string' && valor.trim() === '') return false;
+          return true;
+        })
+        .map(([preguntaId, valor]) => ({
+          pregunta_id: preguntaId,
+          valor
+        }));
 
       const progreso = calcularProgreso();
       await cuestionariosUsuarioApi.guardarRespuestas(id, respuestasArray, 'en_progreso', progreso);
@@ -185,7 +397,10 @@ const ResponderCuestionarioPage: React.FC = () => {
     const preguntasObligatorias = cuestionario.preguntas.filter(p => p.obligatoria);
     const preguntasSinResponder = preguntasObligatorias.filter(p => {
       const respuesta = respuestas[p.id];
-      return respuesta === undefined || respuesta === '' || respuesta === null;
+      // Validar que la respuesta no esté vacía
+      if (respuesta === undefined || respuesta === null) return true;
+      if (typeof respuesta === 'string' && respuesta.trim() === '') return true;
+      return false;
     });
 
     if (preguntasSinResponder.length > 0) {
@@ -199,10 +414,17 @@ const ResponderCuestionarioPage: React.FC = () => {
     try {
       setSubmitting(true);
 
-      const respuestasArray: RespuestaPregunta[] = Object.entries(respuestas).map(([preguntaId, valor]) => ({
-        pregunta_id: preguntaId,
-        valor
-      }));
+      // Filtrar solo respuestas con valores válidos (no vacíos)
+      const respuestasArray: RespuestaPregunta[] = Object.entries(respuestas)
+        .filter(([preguntaId, valor]) => {
+          if (valor === undefined || valor === null) return false;
+          if (typeof valor === 'string' && valor.trim() === '') return false;
+          return true;
+        })
+        .map(([preguntaId, valor]) => ({
+          pregunta_id: preguntaId,
+          valor
+        }));
 
       await cuestionariosUsuarioApi.completarCuestionario(id, respuestasArray, 100);
       showNotification('Cuestionario completado exitosamente', 'success');
@@ -268,9 +490,19 @@ const ResponderCuestionarioPage: React.FC = () => {
             <Typography variant="h6" component="div">
               {cuestionario.titulo}
             </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Progreso: {progreso}% ({Object.keys(respuestas).length}/{cuestionario.preguntas.length})
-            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography variant="body2" color="text.secondary">
+                Progreso: {progreso}% ({contarRespuestasValidas(respuestas)}/{cuestionario.preguntas.length})
+              </Typography>
+              {autoSaving && (
+                <Chip
+                  label="Guardando..."
+                  size="small"
+                  color="info"
+                  sx={{ height: 20 }}
+                />
+              )}
+            </Box>
           </Box>
           <Chip
             label={modoVisualizacion === 'paso_a_paso' ? 'Paso a paso' : 'Vista completa'}
@@ -306,6 +538,9 @@ const ResponderCuestionarioPage: React.FC = () => {
         <Alert severity="info" sx={{ mb: 3 }}>
           <Typography variant="body2">
             {cuestionario.descripcion}
+          </Typography>
+          <Typography variant="body2" sx={{ mt: 1 }}>
+            <strong>💾 Auto-guardado:</strong> Tus respuestas se guardan automáticamente mientras contestas.
           </Typography>
           {respuestasGuardadas && (
             <Typography variant="body2" sx={{ mt: 1 }}>
@@ -349,7 +584,8 @@ const ResponderCuestionarioPage: React.FC = () => {
                 <VistaPreviaPregunta
                   pregunta={preguntaActualData}
                   value={respuestas[preguntaActualData.id]}
-                  onChange={(valor) => handleRespuestaChange(preguntaActualData.id, valor)}
+                  onChange={(valor, autoAvanzar) => handleRespuestaChange(preguntaActualData.id, valor, autoAvanzar)}
+                  onSubmit={() => handleSiguientePregunta()}
                   showValidation={preguntaActualData.obligatoria}
                 />
               </CardContent>
@@ -389,7 +625,7 @@ const ResponderCuestionarioPage: React.FC = () => {
               ) : (
                 <Button
                   endIcon={<NextIcon />}
-                  onClick={handleSiguientePregunta}
+                  onClick={() => handleSiguientePregunta()}
                   variant="contained"
                 >
                   Siguiente
@@ -409,7 +645,7 @@ const ResponderCuestionarioPage: React.FC = () => {
                   <VistaPreviaPregunta
                     pregunta={pregunta}
                     value={respuestas[pregunta.id]}
-                    onChange={(valor) => handleRespuestaChange(pregunta.id, valor)}
+                    onChange={(valor, autoAvanzar) => handleRespuestaChange(pregunta.id, valor, false)} // No auto-avanzar en vista completa
                     showValidation={pregunta.obligatoria}
                   />
                 </CardContent>
@@ -451,7 +687,7 @@ const ResponderCuestionarioPage: React.FC = () => {
             Una vez completado, no podrá modificar sus respuestas.
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-            Progreso actual: {progreso}% ({Object.keys(respuestas).length}/{cuestionario.preguntas.length} preguntas respondidas)
+            Progreso actual: {progreso}% ({contarRespuestasValidas(respuestas)}/{cuestionario.preguntas.length} preguntas respondidas)
           </Typography>
         </DialogContent>
         <DialogActions>
