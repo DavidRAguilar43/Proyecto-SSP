@@ -127,46 +127,7 @@ export interface GrupoCreate {
   cohorte?: string;
 }
 
-// Atención
-export interface Atencion {
-  id: number;
-  id_personal?: number;
-  fecha_atencion: string;
-  motivo_psicologico: boolean;
-  motivo_academico: boolean;
-  salud_en_general: boolean;
-  id_cuestionario?: number;
-  requiere_seguimiento: boolean;
-  requiere_canalizacion_externa: boolean;
-  estatus_canalizacion_externa?: string;
-  observaciones?: string;
-  fecha_proxima_sesion?: string;
-  id_persona?: number;
-  id_grupo?: number;
-  atendido: boolean;
-  ultima_fecha_contacto?: string;
-  persona?: Persona;
-}
-
-export interface AtencionCreate {
-  id_personal?: number;
-  fecha_atencion: string;
-  motivo_psicologico: boolean;
-  motivo_academico: boolean;
-  salud_en_general: boolean;
-  id_cuestionario?: number;
-  requiere_seguimiento: boolean;
-  requiere_canalizacion_externa: boolean;
-  estatus_canalizacion_externa?: string;
-  observaciones?: string;
-  fecha_proxima_sesion?: string;
-  id_persona?: number;
-  id_grupo?: number;
-  atendido: boolean;
-  ultima_fecha_contacto?: string;
-}
-
-// Tipos para el sistema de citas
+// Sistema de citas (fusionado con atenciones)
 export type EstadoCita = 'pendiente' | 'confirmada' | 'cancelada' | 'completada';
 export type TipoCita = 'psicologica' | 'academica' | 'general';
 
@@ -183,12 +144,25 @@ export interface CitaUpdate {
   observaciones_personal?: string;
   ubicacion?: string;
   id_personal?: number;
+  // Campos de atención (cuando la cita está completada)
+  motivo_psicologico?: boolean;
+  motivo_academico?: boolean;
+  salud_en_general_vulnerable?: boolean;
+  requiere_seguimiento?: boolean;
+  requiere_canalizacion_externa?: boolean;
+  estatus_canalizacion_externa?: string;
+  fecha_proxima_sesion?: string;
+  ultima_fecha_contacto?: string;
+  id_grupo?: number;
+  id_cuestionario?: number;
 }
 
 export interface Cita {
   id_cita: number;
   id_alumno: number;
   id_personal?: number;
+  id_grupo?: number;
+  id_cuestionario?: number;
   tipo_cita: TipoCita;
   motivo: string;
   estado: EstadoCita;
@@ -201,6 +175,16 @@ export interface Cita {
   ubicacion?: string;
   fecha_creacion: string;
   fecha_actualizacion?: string;
+
+  // Campos de atención (cuando la cita está completada)
+  motivo_psicologico?: boolean;
+  motivo_academico?: boolean;
+  salud_en_general_vulnerable?: boolean;
+  requiere_seguimiento?: boolean;
+  requiere_canalizacion_externa?: boolean;
+  estatus_canalizacion_externa?: string;
+  fecha_proxima_sesion?: string;
+  ultima_fecha_contacto?: string;
 
   // Información del alumno
   alumno_nombre?: string;

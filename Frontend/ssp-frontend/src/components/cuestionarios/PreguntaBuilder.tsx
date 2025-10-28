@@ -73,22 +73,22 @@ const PreguntaBuilder: React.FC<PreguntaBuilderProps> = ({
   const handleTipoChange = (tipo: TipoPregunta) => {
     // Limpiar configuración cuando cambia el tipo
     const nuevaConfiguracion: ConfiguracionPregunta = {};
-    
+
     // Configuración por defecto según el tipo
     switch (tipo) {
       case 'opcion_multiple':
-        nuevaConfiguracion.opciones = ['Opción 1', 'Opción 2'];
+        nuevaConfiguracion.opciones = ['', ''];
         nuevaConfiguracion.seleccion_multiple = false;
         break;
       case 'select':
-        nuevaConfiguracion.opciones = ['Opción 1', 'Opción 2'];
+        nuevaConfiguracion.opciones = ['', ''];
         break;
       case 'checkbox':
-        nuevaConfiguracion.opciones = ['Opción 1', 'Opción 2'];
+        nuevaConfiguracion.opciones = ['', ''];
         nuevaConfiguracion.minimo_selecciones = 1;
         break;
       case 'radio_button':
-        nuevaConfiguracion.opciones = ['Opción 1', 'Opción 2'];
+        nuevaConfiguracion.opciones = ['', ''];
         break;
       case 'escala_likert':
         nuevaConfiguracion.puntos_escala = 5;

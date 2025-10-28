@@ -100,13 +100,30 @@ const PersonasTable = ({
 
   return (
     <>
-      <Paper sx={{ width: '100%', overflow: 'hidden' }}>
-      
+      <Paper
+        sx={{
+          width: '100%',
+          overflow: 'hidden',
+          borderRadius: 2,
+          boxShadow: 2
+        }}
+      >
+
       <TableContainer sx={{ maxHeight: 440 }}>
         <Table stickyHeader aria-label="tabla de personas">
           <TableHead>
-            <TableRow>
-              <TableCell padding="checkbox">
+            <TableRow
+              sx={{
+                '& .MuiTableCell-head': {
+                  backgroundColor: 'background.secondary',
+                  fontWeight: 600,
+                  color: 'text.primary',
+                  whiteSpace: 'nowrap',
+                  minWidth: 'fit-content'
+                }
+              }}
+            >
+              <TableCell padding="checkbox" sx={{ minWidth: 60 }}>
                 <Checkbox
                   color="primary"
                   indeterminate={bulkSelection.isIndeterminate}
@@ -114,12 +131,12 @@ const PersonasTable = ({
                   onChange={bulkSelection.handleSelectAll}
                 />
               </TableCell>
-              <TableCell>ID</TableCell>
-              <TableCell>Correo Institucional</TableCell>
-              <TableCell>Matrícula</TableCell>
-              <TableCell>Rol</TableCell>
-              <TableCell>Estado</TableCell>
-              <TableCell>Acciones</TableCell>
+              <TableCell sx={{ minWidth: 60 }}>ID</TableCell>
+              <TableCell sx={{ minWidth: 220 }}>Correo Institucional</TableCell>
+              <TableCell sx={{ minWidth: 120 }}>Matrícula</TableCell>
+              <TableCell sx={{ minWidth: 120 }}>Rol</TableCell>
+              <TableCell sx={{ minWidth: 100 }}>Estado</TableCell>
+              <TableCell sx={{ minWidth: 180 }}>Acciones</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>

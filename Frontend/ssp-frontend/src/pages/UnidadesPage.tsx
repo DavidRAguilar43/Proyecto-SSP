@@ -21,6 +21,7 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  AppBar,
   IconButton
 } from '@mui/material';
 import {
@@ -181,29 +182,36 @@ export const UnidadesPage = () => {
   );
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Box display="flex" alignItems="center">
-          <IconButton
+    <Box sx={{ flexGrow: 1 }}>
+      {/* App Bar */}
+      <AppBar position="static">
+        <Toolbar>
+          <Button
+            color="inherit"
+            startIcon={<ArrowBackIcon />}
             onClick={() => navigate('/dashboard')}
             sx={{ mr: 2 }}
-            aria-label="Regresar al dashboard"
           >
-            <ArrowBackIcon />
-          </IconButton>
-          <Typography variant="h4" component="h1">
+            Volver
+          </Button>
+
+          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
             Unidades
           </Typography>
-        </Box>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={handleCreate}
-          disabled={loading}
-        >
-          Nueva Unidad
-        </Button>
-      </Box>
+
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={handleCreate}
+            disabled={loading}
+            sx={{ backgroundColor: 'white', color: 'primary.main', '&:hover': { backgroundColor: 'grey.100' } }}
+          >
+            Nueva Unidad
+          </Button>
+        </Toolbar>
+      </AppBar>
+
+      <Box sx={{ p: 3 }}>
 
       {/* Barra de búsqueda */}
       <Paper sx={{ mb: 3 }}>
@@ -226,10 +234,20 @@ export const UnidadesPage = () => {
       <TableContainer component={Paper}>
         <Table>
           <TableHead>
-            <TableRow>
-              <TableCell>ID</TableCell>
-              <TableCell>Nombre</TableCell>
-              <TableCell align="center">Acciones</TableCell>
+            <TableRow
+              sx={{
+                '& .MuiTableCell-head': {
+                  backgroundColor: 'background.secondary',
+                  fontWeight: 600,
+                  color: 'text.primary',
+                  whiteSpace: 'nowrap',
+                  minWidth: 'fit-content'
+                }
+              }}
+            >
+              <TableCell sx={{ minWidth: 60 }}>ID</TableCell>
+              <TableCell sx={{ minWidth: 250 }}>Nombre</TableCell>
+              <TableCell align="center" sx={{ minWidth: 150 }}>Acciones</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -338,6 +356,7 @@ export const UnidadesPage = () => {
         severity="error"
         loading={loading}
       />
+      </Box>
     </Box>
   );
 };

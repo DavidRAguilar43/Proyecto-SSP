@@ -8,7 +8,6 @@ from app.models.unidad import Unidad
 from app.models.grupo import Grupo
 from app.models.personal import Personal
 from app.models.contacto_emergencia import ContactoEmergencia
-from app.models.atencion import Atencion
 from app.models.cuestionario import Cuestionario
 from app.models.cuestionario_admin import (
     CuestionarioAdmin,

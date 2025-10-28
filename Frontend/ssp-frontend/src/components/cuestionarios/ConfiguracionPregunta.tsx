@@ -252,7 +252,7 @@ const ConfiguracionPreguntaComponent: React.FC<ConfiguracionPreguntaProps> = ({
               size="small"
               value={opcion}
               onChange={(e) => actualizarOpcion(index, e.target.value)}
-              placeholder={`Opción ${index + 1}`}
+              placeholder={`Escriba aquí opción ${index + 1}`}
               error={!opcion.trim()}
               helperText={!opcion.trim() ? 'La opción no puede estar vacía' : ''}
             />

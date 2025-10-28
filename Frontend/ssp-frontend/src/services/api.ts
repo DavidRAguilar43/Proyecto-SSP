@@ -489,39 +489,115 @@ export const atencionesApi = {
     return response.data;
   },
 
-  // Crear una nueva atención
+  // DEPRECATED: Usar citasApi en su lugar
+  // Estas funciones se mantienen temporalmente para compatibilidad
   create: async (atencion: any) => {
-    const response = await api.post('/atenciones/', atencion);
+    console.warn('atencionesApi.create está deprecado. Usar citasApi.create');
+    const response = await api.post('/citas/', atencion);
     return response.data;
   },
 
-  // Actualizar una atención
   update: async (id: number, atencion: any) => {
+    console.warn('atencionesApi.update está deprecado. Usar citasApi.update');
     const cleanData = Object.fromEntries(
       Object.entries(atencion).filter(([key, value]) =>
         value !== '' && value !== null && value !== undefined
       )
     );
-
-    const response = await api.put(`/atenciones/${id}`, cleanData);
+    const response = await api.put(`/citas/${id}`, cleanData);
     return response.data;
   },
 
-  // Eliminar una atención
   delete: async (id: number) => {
-    const response = await api.delete(`/atenciones/${id}`);
+    console.warn('atencionesApi.delete está deprecado. Usar citasApi.delete');
+    const response = await api.delete(`/citas/${id}`);
     return response.data;
   },
 
-  // Eliminar múltiples atenciones
   bulkDelete: async (ids: number[]) => {
-    const response = await api.post('/atenciones/bulk-delete', { ids });
+    console.warn('atencionesApi.bulkDelete está deprecado. Usar citasApi.bulkDelete');
+    const response = await api.post('/citas/bulk-delete', { ids });
     return response.data;
   },
 };
 
-// API para gestión de citas
+// API para gestión de citas (fusionado con atenciones)
 export const citasApi = {
+  // ============================================================================
+  // ENDPOINTS CRUD COMPLETOS
+  // ============================================================================
+
+  // Obtener todas las citas con filtros
+  getAll: async (params?: {
+    skip?: number;
+    limit?: number;
+    estado?: string;
+    tipo_cita?: string;
+    id_alumno?: number;
+    id_personal?: number;
+    id_grupo?: number;
+    fecha_desde?: string;
+    fecha_hasta?: string;
+  }) => {
+    const response = await api.get('/citas/', { params });
+    return response.data;
+  },
+
+  // Obtener una cita por ID
+  getById: async (citaId: number) => {
+    const response = await api.get(`/citas/${citaId}`);
+    return response.data;
+  },
+
+  // Crear una nueva cita (admin/coordinador)
+  create: async (data: any) => {
+    const response = await api.post('/citas/', data);
+    return response.data;
+  },
+
+  // Actualizar una cita (admin/coordinador)
+  update: async (citaId: number, data: any) => {
+    const cleanData = Object.fromEntries(
+      Object.entries(data).filter(([key, value]) =>
+        value !== '' && value !== null && value !== undefined
+      )
+    );
+    const response = await api.put(`/citas/${citaId}`, cleanData);
+    return response.data;
+  },
+
+  // Eliminar una cita (solo admin)
+  delete: async (citaId: number) => {
+    const response = await api.delete(`/citas/${citaId}`);
+    return response.data;
+  },
+
+  // Buscar citas por texto
+  search: async (query: string) => {
+    const response = await api.get('/citas/search/', { params: { q: query } });
+    return response.data;
+  },
+
+  // Operaciones masivas
+  bulkCreate: async (items: any[]) => {
+    const response = await api.post('/citas/bulk-create', { items });
+    return response.data;
+  },
+
+  bulkUpdate: async (items: any[]) => {
+    const response = await api.put('/citas/bulk-update', { items });
+    return response.data;
+  },
+
+  bulkDelete: async (ids: number[]) => {
+    const response = await api.post('/citas/bulk-delete', { ids });
+    return response.data;
+  },
+
+  // ============================================================================
+  // ENDPOINTS ESPECÍFICOS DEL FLUJO DE CITAS
+  // ============================================================================
+
   // Solicitar una cita (solo alumnos)
   solicitar: async (data: any) => {
     const response = await api.post('/citas/solicitar', data);

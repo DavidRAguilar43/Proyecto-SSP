@@ -15,6 +15,3 @@ class Personal(Base):
     # Relación con Persona
     id_persona = Column(Integer, ForeignKey("personas.id"), unique=True)
     persona = relationship("Persona", back_populates="personal")
-
-    # Relación con Atencion
-    atenciones = relationship("Atencion", back_populates="personal")

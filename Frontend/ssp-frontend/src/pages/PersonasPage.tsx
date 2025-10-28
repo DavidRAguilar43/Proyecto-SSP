@@ -15,7 +15,7 @@ import {
   MenuItem,
   CircularProgress,
   Backdrop,
-  IconButton
+  AppBar
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -303,23 +303,29 @@ const PersonasPage = () => {
   });
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Box display="flex" alignItems="center" mb={2}>
-        <IconButton
-          onClick={() => navigate('/dashboard')}
-          sx={{ mr: 2 }}
-          aria-label="Regresar al dashboard"
-        >
-          <ArrowBackIcon />
-        </IconButton>
-        <Typography variant="h4" component="h1">
-          Gestión de Personas
-        </Typography>
-      </Box>
-
-      {/* Barra de herramientas */}
-      <Paper sx={{ mb: 2 }}>
+    <Box sx={{ flexGrow: 1 }}>
+      {/* App Bar */}
+      <AppBar position="static">
         <Toolbar>
+          <Button
+            color="inherit"
+            startIcon={<ArrowBackIcon />}
+            onClick={() => navigate('/dashboard')}
+            sx={{ mr: 2 }}
+          >
+            Volver
+          </Button>
+
+          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+            Gestión de Personas
+          </Typography>
+        </Toolbar>
+      </AppBar>
+
+      <Box sx={{ p: 3 }}>
+        {/* Barra de herramientas */}
+        <Paper sx={{ mb: 2 }}>
+          <Toolbar>
           <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap', flex: 1 }}>
             <TextField
               size="small"
@@ -334,15 +340,20 @@ const PersonasPage = () => {
                   </InputAdornment>
                 ),
               }}
-              sx={{ minWidth: 300 }}
+              sx={{ minWidth: 320, flexGrow: 1, maxWidth: 400 }}
             />
 
-            <FormControl size="small" sx={{ minWidth: 150 }}>
+            <FormControl size="small" sx={{ minWidth: 180 }}>
               <InputLabel>Rol</InputLabel>
               <Select
                 value={filterRol}
                 onChange={(e) => setFilterRol(e.target.value)}
                 label="Rol"
+                MenuProps={{
+                  PaperProps: {
+                    sx: { maxHeight: 300 }
+                  }
+                }}
               >
                 <MenuItem value="">Todos</MenuItem>
                 <MenuItem value="admin">Admin</MenuItem>
@@ -485,6 +496,7 @@ const PersonasPage = () => {
       >
         <CircularProgress color="inherit" />
       </Backdrop>
+      </Box>
     </Box>
   );
 };

@@ -10,13 +10,15 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  IconButton,
   TextField,
   InputAdornment,
   Chip,
   Snackbar,
   Alert,
   CircularProgress,
+  AppBar,
+  Toolbar,
+  IconButton,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -160,29 +162,36 @@ export const ProgramasEducativosPage: React.FC = () => {
   );
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Box display="flex" alignItems="center">
-          <IconButton
+    <Box sx={{ flexGrow: 1 }}>
+      {/* App Bar */}
+      <AppBar position="static">
+        <Toolbar>
+          <Button
+            color="inherit"
+            startIcon={<ArrowBackIcon />}
             onClick={() => navigate('/dashboard')}
             sx={{ mr: 2 }}
-            aria-label="Regresar al dashboard"
           >
-            <ArrowBackIcon />
-          </IconButton>
-          <Typography variant="h4" component="h1">
+            Volver
+          </Button>
+
+          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
             Programas Educativos
           </Typography>
-        </Box>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={handleCreate}
-          disabled={loading}
-        >
-          Nuevo Programa
-        </Button>
-      </Box>
+
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={handleCreate}
+            disabled={loading}
+            sx={{ backgroundColor: 'white', color: 'primary.main', '&:hover': { backgroundColor: 'grey.100' } }}
+          >
+            Nuevo Programa
+          </Button>
+        </Toolbar>
+      </AppBar>
+
+      <Box sx={{ p: 3 }}>
 
       <Box sx={{ mb: 3 }}>
         <TextField
@@ -203,11 +212,21 @@ export const ProgramasEducativosPage: React.FC = () => {
       <TableContainer component={Paper}>
         <Table>
           <TableHead>
-            <TableRow>
-              <TableCell>ID</TableCell>
-              <TableCell>Nombre del Programa</TableCell>
-              <TableCell>Clave</TableCell>
-              <TableCell align="center">Acciones</TableCell>
+            <TableRow
+              sx={{
+                '& .MuiTableCell-head': {
+                  backgroundColor: 'background.secondary',
+                  fontWeight: 600,
+                  color: 'text.primary',
+                  whiteSpace: 'nowrap',
+                  minWidth: 'fit-content'
+                }
+              }}
+            >
+              <TableCell sx={{ minWidth: 60 }}>ID</TableCell>
+              <TableCell sx={{ minWidth: 250 }}>Nombre del Programa</TableCell>
+              <TableCell sx={{ minWidth: 120 }}>Clave</TableCell>
+              <TableCell align="center" sx={{ minWidth: 150 }}>Acciones</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -292,6 +311,7 @@ export const ProgramasEducativosPage: React.FC = () => {
           {snackbar.message}
         </Alert>
       </Snackbar>
+      </Box>
     </Box>
   );
 };

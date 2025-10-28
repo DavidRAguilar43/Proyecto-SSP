@@ -21,6 +21,7 @@ import {
 import type { Persona, PersonaCreate, Cohorte } from '../types/index';
 import { cohortesApi } from '@/services/api';
 import { useNotification } from '@/hooks/useNotification';
+import { parseObservaciones, buildObservaciones, type CamposAlumno, type CamposDocente, type CamposPersonal } from '@/utils/observacionesParser';
 
 interface AlumnoPerfilFormProps {
   open: boolean;
@@ -35,18 +36,30 @@ const AlumnoPerfilForm = ({ open, onClose, onSubmit, persona, loading = false }:
   const { notifyValidationError } = useNotification();
 
   const [formData, setFormData] = useState<Partial<PersonaCreate>>({});
-  
+
   // Estados para cohortes
   const [cohortes, setCohortes] = useState<Cohorte[]>([]);
   const [selectedCohorte, setSelectedCohorte] = useState<Cohorte | null>(null);
 
   // Estados para campos de cohorte simplificados
-  const [cohorteAno, setCohorteAno] = useState<number | ''>('');
+  // Reason: Establecer el año actual del sistema como valor predeterminado
+  const [cohorteAno, setCohorteAno] = useState<number | ''>(new Date().getFullYear());
   const [cohortePeriodo, setCohortePeriodo] = useState<number>(1);
 
   // Estado para confirmación de contraseña
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
+
+  // Reason: Estados para campos específicos por rol
+  const [programaEducativo, setProgramaEducativo] = useState('');
+  const [grupo, setGrupo] = useState('');
+  const [facultad, setFacultad] = useState('');
+  const [materiasAsignadas, setMateriasAsignadas] = useState('');
+  const [carrerasAsignadas, setCarrerasAsignadas] = useState('');
+  const [departamento, setDepartamento] = useState('');
+  const [puesto, setPuesto] = useState('');
+  const [extension, setExtension] = useState('');
+  const [observacionesGenerales, setObservacionesGenerales] = useState('');
 
   // Funciones para obtener etiquetas personalizadas según el rol
   const getFieldLabels = () => {
@@ -124,6 +137,31 @@ const AlumnoPerfilForm = ({ open, onClose, onSubmit, persona, loading = false }:
       // Inicializar campos de cohorte
       setCohorteAno(persona.cohorte_ano || '');
       setCohortePeriodo(persona.cohorte_periodo || 1);
+
+      // Reason: Parsear observaciones para extraer campos específicos
+      const { campos, observacionesRestantes } = parseObservaciones(
+        persona.observaciones,
+        persona.rol as 'alumno' | 'docente' | 'personal'
+      );
+
+      // Reason: Inicializar campos específicos según el rol
+      if (persona.rol === 'alumno') {
+        const camposAlumno = campos as CamposAlumno;
+        setProgramaEducativo(camposAlumno.programaEducativo || '');
+        setGrupo(camposAlumno.grupo || '');
+      } else if (persona.rol === 'docente') {
+        const camposDocente = campos as CamposDocente;
+        setFacultad(camposDocente.facultad || '');
+        setMateriasAsignadas(camposDocente.materiasAsignadas || '');
+        setCarrerasAsignadas(camposDocente.carrerasAsignadas || '');
+      } else if (persona.rol === 'personal') {
+        const camposPersonal = campos as CamposPersonal;
+        setDepartamento(camposPersonal.departamento || '');
+        setPuesto(camposPersonal.puesto || '');
+        setExtension(camposPersonal.extension || '');
+      }
+
+      setObservacionesGenerales(observacionesRestantes);
 
       setFormData({
         sexo: persona.sexo || 'masculino',
@@ -232,9 +270,28 @@ const AlumnoPerfilForm = ({ open, onClose, onSubmit, persona, loading = false }:
       }
     }
 
+    // Reason: Construir observaciones con campos específicos según el rol
+    let camposEspecificos: any = {};
+    if (persona.rol === 'alumno') {
+      camposEspecificos = { programaEducativo, grupo };
+    } else if (persona.rol === 'docente') {
+      camposEspecificos = { facultad, materiasAsignadas, carrerasAsignadas };
+    } else if (persona.rol === 'personal') {
+      camposEspecificos = { departamento, puesto, extension };
+    }
+
+    const observacionesCompletas = buildObservaciones(
+      camposEspecificos,
+      persona.rol as 'alumno' | 'docente' | 'personal',
+      observacionesGenerales
+    );
+
     // Filtrar campos vacíos y asegurar tipos correctos
     const cleanData = Object.fromEntries(
-      Object.entries(formData).filter(([key, value]) =>
+      Object.entries({
+        ...formData,
+        observaciones: observacionesCompletas
+      }).filter(([key, value]) =>
         value !== '' && value !== null && value !== undefined
       )
     );
@@ -434,21 +491,116 @@ const AlumnoPerfilForm = ({ open, onClose, onSubmit, persona, loading = false }:
             {/* Información Académica */}
             <Grid size={{ xs: 12 }}>
               <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>
-                Información Académica
+                Información Académica del Usuario
               </Typography>
             </Grid>
 
-            <Grid size={{ xs: 12, sm: 6 }}>
-              <TextField
-                fullWidth
-                label={getFieldLabels().semestre}
-                type="number"
-                value={formData.semestre || 1}
-                onChange={handleChange('semestre')}
-                helperText={getFieldHelperTexts().semestre}
-                inputProps={{ min: 1, max: 12 }}
-              />
-            </Grid>
+            {/* Campos específicos para ALUMNO */}
+            {persona.rol === 'alumno' && (
+              <>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextField
+                    fullWidth
+                    label="Programa Educativo / Carrera"
+                    value={programaEducativo}
+                    onChange={(e) => setProgramaEducativo(e.target.value)}
+                    helperText="Ingrese su programa educativo o carrera"
+                  />
+                </Grid>
+
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextField
+                    fullWidth
+                    label="Grupo"
+                    value={grupo}
+                    onChange={(e) => setGrupo(e.target.value)}
+                    helperText="Ingrese su grupo"
+                  />
+                </Grid>
+
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextField
+                    fullWidth
+                    label="Semestre"
+                    type="number"
+                    value={formData.semestre || 1}
+                    onChange={handleChange('semestre')}
+                    helperText="Semestre actual que cursa"
+                    slotProps={{ htmlInput: { min: 1, max: 12 } }}
+                  />
+                </Grid>
+              </>
+            )}
+
+            {/* Campos específicos para DOCENTE */}
+            {persona.rol === 'docente' && (
+              <>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextField
+                    fullWidth
+                    label="Facultad"
+                    value={facultad}
+                    onChange={(e) => setFacultad(e.target.value)}
+                    helperText="Ingrese la facultad a la que pertenece"
+                  />
+                </Grid>
+
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextField
+                    fullWidth
+                    label="Materias Asignadas"
+                    value={materiasAsignadas}
+                    onChange={(e) => setMateriasAsignadas(e.target.value)}
+                    helperText="Ingrese las materias que imparte (separadas por comas)"
+                  />
+                </Grid>
+
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextField
+                    fullWidth
+                    label="Carreras Asignadas"
+                    value={carrerasAsignadas}
+                    onChange={(e) => setCarrerasAsignadas(e.target.value)}
+                    helperText="Ingrese las carreras en las que imparte (separadas por comas)"
+                  />
+                </Grid>
+              </>
+            )}
+
+            {/* Campos específicos para PERSONAL ADMINISTRATIVO */}
+            {persona.rol === 'personal' && (
+              <>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextField
+                    fullWidth
+                    label="Departamento"
+                    value={departamento}
+                    onChange={(e) => setDepartamento(e.target.value)}
+                    helperText="Ingrese el departamento al que pertenece"
+                  />
+                </Grid>
+
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextField
+                    fullWidth
+                    label="Puesto"
+                    value={puesto}
+                    onChange={(e) => setPuesto(e.target.value)}
+                    helperText="Ingrese su puesto o cargo"
+                  />
+                </Grid>
+
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextField
+                    fullWidth
+                    label="Extensión (Lugar de Contacto)"
+                    value={extension}
+                    onChange={(e) => setExtension(e.target.value)}
+                    helperText="Ingrese su extensión telefónica o lugar de contacto"
+                  />
+                </Grid>
+              </>
+            )}
 
             <Grid size={{ xs: 12, sm: 6 }}>
               <Autocomplete
@@ -523,6 +675,18 @@ const AlumnoPerfilForm = ({ open, onClose, onSubmit, persona, loading = false }:
                 label="Grupo Étnico"
                 value={formData.grupo_etnico || ''}
                 onChange={handleChange('grupo_etnico')}
+              />
+            </Grid>
+
+            <Grid size={{ xs: 12 }}>
+              <TextField
+                fullWidth
+                multiline
+                rows={3}
+                label="Observaciones Generales"
+                value={observacionesGenerales}
+                onChange={(e) => setObservacionesGenerales(e.target.value)}
+                helperText="Información adicional que desee agregar"
               />
             </Grid>
 

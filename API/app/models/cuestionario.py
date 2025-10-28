@@ -22,5 +22,5 @@ class Cuestionario(Base):
     id_persona = Column(Integer, ForeignKey("personas.id"), nullable=True)
     persona = relationship("Persona", back_populates="cuestionarios_completados")
 
-    # Relaciones
-    atenciones = relationship("Atencion", back_populates="cuestionario")
+    # Relaciones con citas
+    citas = relationship("Cita", back_populates="cuestionario")

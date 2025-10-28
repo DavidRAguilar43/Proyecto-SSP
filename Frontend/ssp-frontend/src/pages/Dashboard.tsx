@@ -53,10 +53,10 @@ const Dashboard = () => {
       roles: ['admin', 'coordinador']
     },
     {
-      title: 'Atenciones',
-      description: 'Ver, editar y eliminar solicitudes de citas',
+      title: 'Citas',
+      description: 'Gestionar solicitudes y atenciones de citas',
       icon: <AssignmentIcon sx={{ fontSize: 40 }} />,
-      path: '/atenciones',
+      path: '/citas',
       roles: ['admin', 'coordinador']
     },
     {
@@ -115,22 +115,46 @@ const Dashboard = () => {
   );
 
   return (
-    <Box sx={{ flexGrow: 1 }}>
-      <AppBar position="static">
+    <Box sx={{ flexGrow: 1, minHeight: '100vh', backgroundColor: 'background.default' }}>
+      <AppBar position="static" elevation={2}>
         <Toolbar>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+          <Typography variant="h6" component="div" sx={{ flexGrow: 1, fontWeight: 600 }}>
             Sistema de Seguimiento Psicopedagógico
           </Typography>
-          <Button color="inherit" onClick={logout}>
+          <Button
+            color="inherit"
+            onClick={logout}
+            sx={{
+              fontWeight: 500,
+              '&:hover': {
+                backgroundColor: 'rgba(255, 255, 255, 0.1)'
+              }
+            }}
+          >
             Cerrar Sesión
           </Button>
         </Toolbar>
       </AppBar>
 
-      <Container maxWidth="lg" sx={{ mt: 4 }}>
+      <Container maxWidth="lg" sx={{ mt: 4, pb: 4 }}>
         {/* Información del usuario */}
-        <Paper elevation={3} sx={{ p: 3, mb: 4 }}>
-          <Typography variant="h4" component="h1" gutterBottom>
+        <Paper
+          elevation={2}
+          sx={{
+            p: 3,
+            mb: 4,
+            borderRadius: 2,
+            backgroundColor: 'background.paper',
+            borderLeft: 4,
+            borderColor: 'primary.main'
+          }}
+        >
+          <Typography
+            variant="h4"
+            component="h1"
+            gutterBottom
+            sx={{ color: 'primary.main', fontWeight: 600 }}
+          >
             Bienvenido al Dashboard
           </Typography>
 
@@ -159,7 +183,15 @@ const Dashboard = () => {
         )}
 
         {/* Menú de funcionalidades */}
-        <Typography variant="h5" gutterBottom>
+        <Typography
+          variant="h5"
+          gutterBottom
+          sx={{
+            mb: 3,
+            color: 'text.primary',
+            fontWeight: 600
+          }}
+        >
           Funcionalidades Disponibles
         </Typography>
 
@@ -172,10 +204,12 @@ const Dashboard = () => {
                   display: 'flex',
                   flexDirection: 'column',
                   cursor: 'pointer',
+                  borderRadius: 2,
+                  backgroundColor: 'background.paper',
+                  transition: 'all 0.3s ease-in-out',
                   '&:hover': {
-                    elevation: 8,
-                    transform: 'translateY(-2px)',
-                    transition: 'all 0.3s ease-in-out'
+                    transform: 'translateY(-4px)',
+                    boxShadow: 4
                   }
                 }}
                 onClick={() => navigate(item.path)}

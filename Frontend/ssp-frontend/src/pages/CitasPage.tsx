@@ -24,7 +24,13 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  TextField
+  TextField,
+  Grid,
+  MenuItem,
+  Select,
+  FormControl,
+  InputLabel,
+  InputAdornment
 } from '@mui/material';
 import {
   ArrowBack as ArrowBackIcon,
@@ -36,7 +42,10 @@ import {
   Close as CloseIcon,
   Psychology as PsychologyIcon,
   School as SchoolIcon,
-  Help as HelpIcon
+  Help as HelpIcon,
+  FilterList as FilterListIcon,
+  Clear as ClearIcon,
+  Search as SearchIcon
 } from '@mui/icons-material';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -49,7 +58,7 @@ import type { SolicitudCita, CitaUpdate, EstadoCita, TipoCita } from '../types';
 import { useNotification } from '../hooks/useNotification';
 import ConfirmDialog from '../components/ConfirmDialog';
 
-const AtencionesPage: React.FC = () => {
+const CitasPage: React.FC = () => {
   const { user, logout } = useContext(AuthContext);
   const navigate = useNavigate();
   const { notifySuccess, notifyError } = useNotification();
@@ -59,6 +68,13 @@ const AtencionesPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+
+  // Estados para filtros
+  const [filterEstado, setFilterEstado] = useState<string>('todas');
+  const [filterTipo, setFilterTipo] = useState<string>('todas');
+  const [filterSearch, setFilterSearch] = useState<string>('');
+  const [filterFechaDesde, setFilterFechaDesde] = useState<Date | null>(null);
+  const [filterFechaHasta, setFilterFechaHasta] = useState<Date | null>(null);
 
   // Estados para diálogos
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
@@ -227,6 +243,66 @@ const AtencionesPage: React.FC = () => {
     }
   };
 
+  // Función para limpiar filtros
+  const handleClearFilters = () => {
+    setFilterEstado('todas');
+    setFilterTipo('todas');
+    setFilterSearch('');
+    setFilterFechaDesde(null);
+    setFilterFechaHasta(null);
+    setPage(0);
+  };
+
+  // Función para filtrar solicitudes
+  const getFilteredSolicitudes = () => {
+    return solicitudes.filter((solicitud) => {
+      // Filtro por estado
+      if (filterEstado !== 'todas' && solicitud.estado !== filterEstado) {
+        return false;
+      }
+
+      // Filtro por tipo
+      if (filterTipo !== 'todas' && solicitud.tipo_cita !== filterTipo) {
+        return false;
+      }
+
+      // Filtro por búsqueda (nombre, email, matrícula)
+      if (filterSearch) {
+        const searchLower = filterSearch.toLowerCase();
+        const matchesName = solicitud.alumno_nombre?.toLowerCase().includes(searchLower);
+        const matchesEmail = solicitud.alumno_email?.toLowerCase().includes(searchLower);
+        const matchesMatricula = solicitud.alumno_matricula?.toLowerCase().includes(searchLower);
+
+        if (!matchesName && !matchesEmail && !matchesMatricula) {
+          return false;
+        }
+      }
+
+      // Filtro por fecha desde
+      if (filterFechaDesde) {
+        const solicitudDate = new Date(solicitud.fecha_solicitud);
+        if (solicitudDate < filterFechaDesde) {
+          return false;
+        }
+      }
+
+      // Filtro por fecha hasta
+      if (filterFechaHasta) {
+        const solicitudDate = new Date(solicitud.fecha_solicitud);
+        // Agregar 23:59:59 al día seleccionado para incluir todo el día
+        const fechaHastaEnd = new Date(filterFechaHasta);
+        fechaHastaEnd.setHours(23, 59, 59, 999);
+        if (solicitudDate > fechaHastaEnd) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  };
+
+  const filteredSolicitudes = getFilteredSolicitudes();
+
 
 
   return (
@@ -244,7 +320,12 @@ const AtencionesPage: React.FC = () => {
           </Button>
 
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            Gestión de Solicitudes de Citas ({solicitudes.length})
+            Gestión de Citas
+            {solicitudes.length > 0 && (
+              <Typography component="span" variant="body2" sx={{ ml: 1, opacity: 0.8 }}>
+                ({filteredSolicitudes.length} de {solicitudes.length})
+              </Typography>
+            )}
           </Typography>
 
           {/* Botón de actualizar */}
@@ -273,21 +354,178 @@ const AtencionesPage: React.FC = () => {
           </Alert>
         )}
 
+        {/* Panel de Filtros */}
+        <Paper sx={{ p: 3, mb: 3 }}>
+          <Box display="flex" alignItems="center" mb={2}>
+            <FilterListIcon sx={{ mr: 1 }} />
+            <Typography variant="h6">Filtros</Typography>
+          </Box>
+
+          <Grid container spacing={2}>
+            {/* Filtro por Estado */}
+            <Grid item xs={12} sm={6} md={3} lg={2.4}>
+              <FormControl fullWidth size="small" sx={{ minWidth: 180 }}>
+                <InputLabel>Estado</InputLabel>
+                <Select
+                  value={filterEstado}
+                  label="Estado"
+                  onChange={(e) => {
+                    setFilterEstado(e.target.value);
+                    setPage(0);
+                  }}
+                  MenuProps={{
+                    PaperProps: {
+                      sx: { maxHeight: 300 }
+                    }
+                  }}
+                >
+                  <MenuItem value="todas">Todas</MenuItem>
+                  <MenuItem value="pendiente">Pendiente</MenuItem>
+                  <MenuItem value="confirmada">Confirmada</MenuItem>
+                  <MenuItem value="completada">Completada</MenuItem>
+                  <MenuItem value="cancelada">Cancelada</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+
+            {/* Filtro por Tipo */}
+            <Grid item xs={12} sm={6} md={3} lg={2.4}>
+              <FormControl fullWidth size="small" sx={{ minWidth: 180 }}>
+                <InputLabel>Tipo de Cita</InputLabel>
+                <Select
+                  value={filterTipo}
+                  label="Tipo de Cita"
+                  onChange={(e) => {
+                    setFilterTipo(e.target.value);
+                    setPage(0);
+                  }}
+                  MenuProps={{
+                    PaperProps: {
+                      sx: { maxHeight: 300 }
+                    }
+                  }}
+                >
+                  <MenuItem value="todas">Todas</MenuItem>
+                  <MenuItem value="psicologica">Psicológica</MenuItem>
+                  <MenuItem value="academica">Académica</MenuItem>
+                  <MenuItem value="general">General</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+
+            {/* Búsqueda por Usuario */}
+            <Grid item xs={12} sm={6} md={3} lg={2.4}>
+              <TextField
+                fullWidth
+                size="small"
+                label="Buscar usuario"
+                placeholder="Nombre, email..."
+                value={filterSearch}
+                onChange={(e) => {
+                  setFilterSearch(e.target.value);
+                  setPage(0);
+                }}
+                sx={{ minWidth: 180 }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            </Grid>
+
+            {/* Fecha Desde */}
+            <Grid item xs={12} sm={6} md={3} lg={2.4}>
+              <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={es}>
+                <DateTimePicker
+                  label="Fecha desde"
+                  value={filterFechaDesde}
+                  onChange={(newValue) => {
+                    setFilterFechaDesde(newValue);
+                    setPage(0);
+                  }}
+                  slotProps={{
+                    textField: {
+                      size: 'small',
+                      fullWidth: true,
+                      sx: { minWidth: 180 }
+                    },
+                  }}
+                />
+              </LocalizationProvider>
+            </Grid>
+
+            {/* Fecha Hasta */}
+            <Grid item xs={12} sm={6} md={3} lg={2.4}>
+              <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={es}>
+                <DateTimePicker
+                  label="Fecha hasta"
+                  value={filterFechaHasta}
+                  onChange={(newValue) => {
+                    setFilterFechaHasta(newValue);
+                    setPage(0);
+                  }}
+                  slotProps={{
+                    textField: {
+                      size: 'small',
+                      fullWidth: true,
+                      sx: { minWidth: 180 }
+                    },
+                  }}
+                />
+              </LocalizationProvider>
+            </Grid>
+
+            {/* Botón Limpiar Filtros */}
+            <Grid item xs={12}>
+              <Button
+                variant="outlined"
+                startIcon={<ClearIcon />}
+                onClick={handleClearFilters}
+                disabled={
+                  filterEstado === 'todas' &&
+                  filterTipo === 'todas' &&
+                  filterSearch === '' &&
+                  !filterFechaDesde &&
+                  !filterFechaHasta
+                }
+              >
+                Limpiar Filtros
+              </Button>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                Mostrando {filteredSolicitudes.length} de {solicitudes.length} citas
+              </Typography>
+            </Grid>
+          </Grid>
+        </Paper>
+
         <Paper>
           <TableContainer sx={{ maxHeight: 600 }}>
             <Table stickyHeader aria-label="tabla de solicitudes de citas">
               <TableHead>
-                <TableRow>
-                  <TableCell>ID</TableCell>
-                  <TableCell>Tipo</TableCell>
-                  <TableCell>Estudiante</TableCell>
-                  <TableCell>Email</TableCell>
-                  <TableCell>Matrícula</TableCell>
-                  <TableCell>Motivo</TableCell>
-                  <TableCell>Fecha Solicitud</TableCell>
-                  <TableCell>Fecha Preferida</TableCell>
-                  <TableCell>Estado</TableCell>
-                  <TableCell align="center">Acciones</TableCell>
+                <TableRow
+                  sx={{
+                    '& .MuiTableCell-head': {
+                      backgroundColor: 'background.secondary',
+                      fontWeight: 600,
+                      color: 'text.primary',
+                      whiteSpace: 'nowrap',
+                      minWidth: 'fit-content'
+                    }
+                  }}
+                >
+                  <TableCell sx={{ minWidth: 60 }}>ID</TableCell>
+                  <TableCell sx={{ minWidth: 140 }}>Tipo</TableCell>
+                  <TableCell sx={{ minWidth: 180 }}>Estudiante</TableCell>
+                  <TableCell sx={{ minWidth: 200 }}>Email</TableCell>
+                  <TableCell sx={{ minWidth: 120 }}>Matrícula</TableCell>
+                  <TableCell sx={{ minWidth: 200 }}>Motivo</TableCell>
+                  <TableCell sx={{ minWidth: 160 }}>Fecha Solicitud</TableCell>
+                  <TableCell sx={{ minWidth: 160 }}>Fecha Preferida</TableCell>
+                  <TableCell sx={{ minWidth: 120 }}>Estado</TableCell>
+                  <TableCell align="center" sx={{ minWidth: 150 }}>Acciones</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -302,18 +540,21 @@ const AtencionesPage: React.FC = () => {
                       </Box>
                     </TableCell>
                   </TableRow>
-                ) : solicitudes.length === 0 ? (
+                ) : filteredSolicitudes.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={10} align="center">
                       <Box py={2}>
                         <Typography variant="body2" color="text.secondary">
-                          No hay solicitudes de citas registradas
+                          {solicitudes.length === 0
+                            ? 'No hay solicitudes de citas registradas'
+                            : 'No se encontraron citas con los filtros aplicados'
+                          }
                         </Typography>
                       </Box>
                     </TableCell>
                   </TableRow>
                 ) : (
-                  solicitudes
+                  filteredSolicitudes
                     .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
                     .map((solicitud) => (
                       <TableRow key={solicitud.id_cita} hover>
@@ -388,7 +629,7 @@ const AtencionesPage: React.FC = () => {
           <TablePagination
             rowsPerPageOptions={[5, 10, 25, 50]}
             component="div"
-            count={solicitudes.length}
+            count={filteredSolicitudes.length}
             rowsPerPage={rowsPerPage}
             page={page}
             onPageChange={handleChangePage}
@@ -527,5 +768,5 @@ const AtencionesPage: React.FC = () => {
   );
 };
 
-export { AtencionesPage };
-export default AtencionesPage;
+export { CitasPage };
+export default CitasPage;

@@ -16,5 +16,5 @@ class Grupo(Base):
 
     # Relaciones
     personas = relationship("Persona", secondary=persona_grupo, back_populates="grupos")
-    atenciones = relationship("Atencion", back_populates="grupo")
+    citas = relationship("Cita", back_populates="grupo")
     cohorte = relationship("Cohorte", back_populates="grupos")

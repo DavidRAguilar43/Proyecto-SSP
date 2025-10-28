@@ -41,6 +41,7 @@ import CuestionariosAsignadosCard from './CuestionariosAsignadosCard';
 import { api, citasApi } from '@/services/api';
 import { useNotification } from '@/hooks/useNotification';
 import { citasNotificationService } from '@/services/citasNotificationService';
+import { parseObservaciones, type CamposAlumno, type CamposDocente, type CamposPersonal } from '@/utils/observacionesParser';
 
 interface AlumnoDashboardProps {
   user: Persona;
@@ -51,6 +52,9 @@ const AlumnoDashboard = ({ user, onEditProfile }: AlumnoDashboardProps) => {
   const navigate = useNavigate();
   const { notifySuccess, notifyError } = useNotification();
   const [loading, setLoading] = useState(false);
+
+  // Reason: Parsear observaciones para extraer campos específicos por rol
+  const { campos: camposEspecificos } = parseObservaciones(user.observaciones, user.rol as 'alumno' | 'docente' | 'personal');
 
   // Funciones para obtener etiquetas personalizadas según el rol
   const getFieldLabels = () => {
@@ -64,8 +68,8 @@ const AlumnoDashboard = ({ user, onEditProfile }: AlumnoDashboardProps) => {
       case 'docente':
         return {
           semestre: 'Facultad',
-          programa: 'Carrera',
-          grupo: 'Materias asignadas'
+          programa: 'Carreras Asignadas',
+          grupo: 'Materias Asignadas'
         };
       case 'alumno':
       default:
@@ -80,37 +84,31 @@ const AlumnoDashboard = ({ user, onEditProfile }: AlumnoDashboardProps) => {
   const getFieldValues = () => {
     const labels = getFieldLabels();
     switch (user.rol) {
-      case 'personal':
+      case 'personal': {
+        const camposPersonal = camposEspecificos as CamposPersonal;
         return {
-          semestre: user.semestre ? `Departamento ${user.semestre}` : 'No especificado',
-          programa: user.programas && user.programas.length > 0
-            ? user.programas[0].nombre_programa
-            : 'Pendiente de asignación',
-          grupo: user.grupos && user.grupos.length > 0
-            ? user.grupos[0].nombre_grupo
-            : 'Pendiente de asignación'
+          semestre: camposPersonal.departamento || 'Complete su información académica en Editar Perfil',
+          programa: camposPersonal.puesto || 'Complete su información académica en Editar Perfil',
+          grupo: camposPersonal.extension || 'Complete su información académica en Editar Perfil'
         };
-      case 'docente':
+      }
+      case 'docente': {
+        const camposDocente = camposEspecificos as CamposDocente;
         return {
-          semestre: user.semestre ? `Facultad ${user.semestre}` : 'No especificado',
-          programa: user.programas && user.programas.length > 0
-            ? user.programas[0].nombre_programa
-            : 'Pendiente de asignación',
-          grupo: user.grupos && user.grupos.length > 0
-            ? user.grupos[0].nombre_grupo
-            : 'Pendiente de asignación'
+          semestre: camposDocente.facultad || 'Complete su información académica en Editar Perfil',
+          programa: camposDocente.carrerasAsignadas || 'Complete su información académica en Editar Perfil',
+          grupo: camposDocente.materiasAsignadas || 'Complete su información académica en Editar Perfil'
         };
+      }
       case 'alumno':
-      default:
+      default: {
+        const camposAlumno = camposEspecificos as CamposAlumno;
         return {
           semestre: user.semestre ? `${user.semestre}° Semestre` : 'No especificado',
-          programa: user.programas && user.programas.length > 0
-            ? user.programas[0].nombre_programa
-            : 'Pendiente de asignación',
-          grupo: user.grupos && user.grupos.length > 0
-            ? user.grupos[0].nombre_grupo
-            : 'Pendiente de asignación'
+          programa: camposAlumno.programaEducativo || 'Complete su información académica en Editar Perfil',
+          grupo: camposAlumno.grupo || 'Complete su información académica en Editar Perfil'
         };
+      }
     }
   };
 

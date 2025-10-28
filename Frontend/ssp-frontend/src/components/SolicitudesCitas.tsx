@@ -47,7 +47,8 @@ import {
   Today as TodayIcon,
   History as HistoryIcon,
   HourglassEmpty as HourglassEmptyIcon,
-  CheckCircle as CheckCircleIcon
+  CheckCircle as CheckCircleIcon,
+  Cancel as CancelIcon
 } from '@mui/icons-material';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -89,7 +90,7 @@ const SolicitudesCitas: React.FC<SolicitudesCitasProps> = ({ onBadgeUpdate }) =>
   const [citaDetalles, setCitaDetalles] = useState<SolicitudCita | null>(null);
 
   // Estado para filtro de pestañas temporales
-  type FiltroTemporal = 'todas' | 'hoy' | 'pasadas' | 'pendientes' | 'revision';
+  type FiltroTemporal = 'todas' | 'hoy' | 'pasadas' | 'pendientes' | 'revision' | 'canceladas';
   const [filtroTemporal, setFiltroTemporal] = useState<FiltroTemporal>('todas');
 
   useEffect(() => {
@@ -101,9 +102,19 @@ const SolicitudesCitas: React.FC<SolicitudesCitasProps> = ({ onBadgeUpdate }) =>
       setLoading(true);
       setError(null);
       const data = await citasApi.getSolicitudes();
-      setSolicitudes(data);
-      
-      // Actualizar badge con solicitudes pendientes
+
+      // Ordenar por fecha de solicitud descendente (más recientes primero)
+      const sortedData = data.sort((a, b) => {
+        const dateA = new Date(a.fecha_solicitud).getTime();
+        const dateB = new Date(b.fecha_solicitud).getTime();
+        return dateB - dateA; // Orden descendente
+      });
+
+      // Limitar a las últimas 5 citas para el dashboard
+      const last5Citas = sortedData.slice(0, 5);
+      setSolicitudes(last5Citas);
+
+      // Actualizar badge con solicitudes pendientes (de todas, no solo las 5)
       const pendientes = data.filter(s => s.estado === 'pendiente').length;
       if (onBadgeUpdate) {
         onBadgeUpdate(pendientes);
@@ -418,6 +429,8 @@ const SolicitudesCitas: React.FC<SolicitudesCitasProps> = ({ onBadgeUpdate }) =>
         return solicitudes.filter(s => esCitaPendienteFutura(s) && s.estado !== 'completada');
       case 'revision':
         return solicitudes.filter(s => s.estado === 'completada');
+      case 'canceladas':
+        return solicitudes.filter(s => s.estado === 'cancelada');
       case 'todas':
       default:
         return solicitudes;
@@ -432,6 +445,7 @@ const SolicitudesCitas: React.FC<SolicitudesCitasProps> = ({ onBadgeUpdate }) =>
   const contadorPasadas = solicitudes.filter(s => esCitaPasada(s) && s.estado !== 'completada').length;
   const contadorPendientes = solicitudes.filter(s => esCitaPendienteFutura(s) && s.estado !== 'completada').length;
   const contadorRevision = solicitudes.filter(s => s.estado === 'completada').length;
+  const contadorCanceladas = solicitudes.filter(s => s.estado === 'cancelada').length;
 
   const solicitudesPendientes = solicitudesFiltradas.filter(s => s.estado === 'pendiente');
   const solicitudesConfirmadas = solicitudesFiltradas.filter(s => s.estado === 'confirmada');
@@ -440,12 +454,26 @@ const SolicitudesCitas: React.FC<SolicitudesCitasProps> = ({ onBadgeUpdate }) =>
   return (
     <Box>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h5" component="h2">
-          Solicitudes de Citas
-        </Typography>
-        <IconButton onClick={loadSolicitudes} disabled={loading}>
-          <RefreshIcon />
-        </IconButton>
+        <Box>
+          <Typography variant="h5" component="h2">
+            Últimas 5 Solicitudes de Citas
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Mostrando las citas más recientes
+          </Typography>
+        </Box>
+        <Box display="flex" gap={1}>
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={() => window.location.href = '/citas'}
+          >
+            Ver Todas
+          </Button>
+          <IconButton onClick={loadSolicitudes} disabled={loading}>
+            <RefreshIcon />
+          </IconButton>
+        </Box>
       </Box>
 
       {loading && (
@@ -514,9 +542,9 @@ const SolicitudesCitas: React.FC<SolicitudesCitasProps> = ({ onBadgeUpdate }) =>
               icon={<HistoryIcon />}
               iconPosition="start"
               sx={{
-                color: contadorPasadas > 0 ? '#F44336' : 'text.secondary',
+                color: contadorPasadas > 0 ? '#FF9800' : 'text.secondary',
                 '&.Mui-selected': {
-                  color: '#F44336',
+                  color: '#FF9800',
                   fontWeight: 700
                 }
               }}
@@ -543,6 +571,19 @@ const SolicitudesCitas: React.FC<SolicitudesCitasProps> = ({ onBadgeUpdate }) =>
                 color: contadorRevision > 0 ? '#FFC107' : 'text.secondary',
                 '&.Mui-selected': {
                   color: '#FFC107',
+                  fontWeight: 700
+                }
+              }}
+            />
+            <Tab
+              value="canceladas"
+              label={`Canceladas (${contadorCanceladas})`}
+              icon={<CancelIcon />}
+              iconPosition="start"
+              sx={{
+                color: contadorCanceladas > 0 ? '#D32F2F' : 'text.secondary',
+                '&.Mui-selected': {
+                  color: '#D32F2F',
                   fontWeight: 700
                 }
               }}

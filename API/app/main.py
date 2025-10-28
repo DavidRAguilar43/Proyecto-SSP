@@ -4,7 +4,7 @@ from sqlalchemy.exc import OperationalError
 
 from app.core.config import settings
 from app.db.database import engine, Base
-from app.routes import auth_router, persona_router, atencion_router, grupo_router, personal_router, contacto_emergencia_router, programa_educativo_router, unidad_router, cuestionario_router, cuestionario_psicopedagogico_router, citas_router
+from app.routes import auth_router, persona_router, grupo_router, personal_router, contacto_emergencia_router, programa_educativo_router, unidad_router, cuestionario_router, cuestionario_psicopedagogico_router, citas_router
 from app.routes import cuestionarios_admin, cuestionarios_usuario
 # cohorte_router comentado temporalmente debido a simplificación del sistema
 from app.routes.catalogos import router as catalogos_router
@@ -32,7 +32,6 @@ app.add_middleware(
 # Incluir rutas
 app.include_router(auth_router, prefix=settings.API_V1_STR)
 app.include_router(persona_router, prefix=settings.API_V1_STR)
-app.include_router(atencion_router, prefix=settings.API_V1_STR)
 app.include_router(grupo_router, prefix=settings.API_V1_STR)
 app.include_router(personal_router, prefix=settings.API_V1_STR)
 app.include_router(contacto_emergencia_router, prefix=settings.API_V1_STR)

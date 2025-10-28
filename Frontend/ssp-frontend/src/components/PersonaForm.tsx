@@ -59,14 +59,15 @@ const PersonaForm = ({ open, onClose, onSubmit, persona, loading = false }: Pers
     numero_hijos: 0,
     grupo_etnico: '',
     is_active: true,  // Por defecto activo
-    cohorte_ano: undefined,
+    cohorte_ano: new Date().getFullYear(), // Reason: Año actual del sistema como valor predeterminado
     cohorte_periodo: 1,
     programas_ids: [],
     grupos_ids: [],
   });
 
   // Estados para cohorte simplificada (campos separados)
-  const [cohorteAno, setCohorteAno] = useState<number | ''>('');
+  // Reason: Establecer el año actual del sistema como valor predeterminado
+  const [cohorteAno, setCohorteAno] = useState<number | ''>(new Date().getFullYear());
   const [cohortePeriodo, setCohortePeriodo] = useState<number>(1);
 
   // Estado para confirmación de contraseña
@@ -161,10 +162,11 @@ const PersonaForm = ({ open, onClose, onSubmit, persona, loading = false }: Pers
       });
     } else {
       // Reset form for new persona
+      const currentYear = new Date().getFullYear(); // Reason: Obtener año actual para reset
       setTipoUsuario('alumno');
       setConfirmPassword('');
       setPasswordError('');
-      setCohorteAno('');
+      setCohorteAno(currentYear); // Reason: Establecer año actual en el estado local
       setCohortePeriodo(1);
 
       setFormData({
@@ -189,7 +191,7 @@ const PersonaForm = ({ open, onClose, onSubmit, persona, loading = false }: Pers
         numero_hijos: 0,
         grupo_etnico: '',
         is_active: true,  // Por defecto activo para nuevas personas
-        cohorte_ano: undefined,
+        cohorte_ano: currentYear, // Reason: Año actual del sistema como valor predeterminado
         cohorte_periodo: 1,
         programas_ids: [],
         grupos_ids: [],

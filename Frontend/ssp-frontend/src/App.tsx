@@ -1,8 +1,9 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { CssBaseline } from '@mui/material';
+import { CssBaseline, ThemeProvider } from '@mui/material';
 import { AuthProvider } from './contexts/AuthContext';
 import { NotificationProvider } from './contexts/NotificationContext';
 import NotificationContainer from './components/NotificationContainer';
+import theme from './theme';
 import LoginPage from './pages/LoginPage';
 import RegistroAlumnoPage from './pages/RegistroAlumnoPage';
 import Dashboard from './pages/Dashboard';
@@ -10,7 +11,7 @@ import PersonasPage from './pages/PersonasPage';
 import { ProgramasEducativosPage } from './pages/ProgramasEducativosPage';
 import { UnidadesPage } from './pages/UnidadesPage';
 import { GruposPage } from './pages/GruposPage';
-import AtencionesPage from './pages/AtencionesPage';
+import CitasPage from './pages/CitasPage';
 import AlumnoPage from './pages/AlumnoPage';
 import CatalogosPage from './pages/CatalogosPage';
 import CuestionariosCompletadosPage from './pages/CuestionariosCompletadosPage';
@@ -33,11 +34,12 @@ import ResponderCuestionarioPage from './pages/usuario/ResponderCuestionarioPage
 
 function App() {
   return (
-    <AuthProvider>
-      <NotificationProvider>
-        <CssBaseline />
-        <NotificationContainer />
-        <Router>
+    <ThemeProvider theme={theme}>
+      <AuthProvider>
+        <NotificationProvider>
+          <CssBaseline />
+          <NotificationContainer />
+          <Router>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/registro-alumno" element={<RegistroAlumnoPage />} />
@@ -82,10 +84,10 @@ function App() {
             }
           />
           <Route
-            path="/atenciones"
+            path="/citas"
             element={
               <ProtectedRoute>
-                <AtencionesPage />
+                <CitasPage />
               </ProtectedRoute>
             }
           />
@@ -186,8 +188,9 @@ function App() {
           <Route path="/" element={<Navigate to="/login" replace />} />
         </Routes>
         </Router>
-      </NotificationProvider>
-    </AuthProvider>
+        </NotificationProvider>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
 

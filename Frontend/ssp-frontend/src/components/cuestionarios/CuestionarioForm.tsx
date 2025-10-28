@@ -90,6 +90,112 @@ const CuestionarioForm: React.FC<CuestionarioFormProps> = ({
   const [fechaFin, setFechaFin] = useState<Date | null>(
     cuestionario?.fecha_fin ? new Date(cuestionario.fecha_fin) : null
   );
+
+  /**
+   * Convierte una fecha a formato datetime-local (YYYY-MM-DDTHH:mm) en zona horaria local
+   * Reason: Evitar problemas de desfase de zona horaria al usar toISOString() que convierte a UTC
+   */
+  const formatearFechaParaInput = (fecha: Date | null): string => {
+    if (!fecha) return '';
+
+    const year = fecha.getFullYear();
+    const month = String(fecha.getMonth() + 1).padStart(2, '0');
+    const day = String(fecha.getDate()).padStart(2, '0');
+
+    return `${year}-${month}-${day}`;
+  };
+
+  /**
+   * Extrae la hora en formato 12 horas de una fecha
+   */
+  const getHora12 = (fecha: Date | null): number => {
+    if (!fecha) return 12;
+    const hours = fecha.getHours();
+    return hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
+  };
+
+  /**
+   * Extrae el periodo AM/PM de una fecha
+   */
+  const getPeriodo = (fecha: Date | null): 'AM' | 'PM' => {
+    if (!fecha) return 'AM';
+    return fecha.getHours() >= 12 ? 'PM' : 'AM';
+  };
+
+  /**
+   * Extrae los minutos redondeados a múltiplos de 10
+   */
+  const getMinutos = (fecha: Date | null): number => {
+    if (!fecha) return 0;
+    const minutos = fecha.getMinutes();
+    return Math.round(minutos / 10) * 10;
+  };
+
+  /**
+   * Actualiza la fecha de inicio con nuevos valores
+   */
+  const actualizarFechaInicio = (
+    fecha?: string,
+    hora?: number,
+    minutos?: number,
+    periodo?: 'AM' | 'PM'
+  ) => {
+    const fechaActual = fechaInicio || new Date();
+    const nuevaFecha = new Date(fechaActual);
+
+    if (fecha) {
+      const [year, month, day] = fecha.split('-').map(Number);
+      nuevaFecha.setFullYear(year);
+      nuevaFecha.setMonth(month - 1);
+      nuevaFecha.setDate(day);
+    }
+
+    if (hora !== undefined && periodo !== undefined) {
+      let hours24 = hora;
+      if (periodo === 'PM' && hora !== 12) hours24 = hora + 12;
+      if (periodo === 'AM' && hora === 12) hours24 = 0;
+      nuevaFecha.setHours(hours24);
+    }
+
+    if (minutos !== undefined) {
+      nuevaFecha.setMinutes(minutos);
+    }
+
+    setFechaInicio(nuevaFecha);
+  };
+
+  /**
+   * Actualiza la fecha de fin con nuevos valores
+   */
+  const actualizarFechaFin = (
+    fecha?: string,
+    hora?: number,
+    minutos?: number,
+    periodo?: 'AM' | 'PM'
+  ) => {
+    const fechaActual = fechaFin || new Date();
+    const nuevaFecha = new Date(fechaActual);
+
+    if (fecha) {
+      const [year, month, day] = fecha.split('-').map(Number);
+      nuevaFecha.setFullYear(year);
+      nuevaFecha.setMonth(month - 1);
+      nuevaFecha.setDate(day);
+    }
+
+    if (hora !== undefined && periodo !== undefined) {
+      let hours24 = hora;
+      if (periodo === 'PM' && hora !== 12) hours24 = hora + 12;
+      if (periodo === 'AM' && hora === 12) hours24 = 0;
+      nuevaFecha.setHours(hours24);
+    }
+
+    if (minutos !== undefined) {
+      nuevaFecha.setMinutes(minutos);
+    }
+
+    setFechaFin(nuevaFecha);
+  };
   const [estado, setEstado] = useState<EstadoCuestionario>(
     cuestionario?.estado || 'borrador'
   );
@@ -395,24 +501,135 @@ const CuestionarioForm: React.FC<CuestionarioFormProps> = ({
                 </Select>
               </FormControl>
 
+              {/* Fecha de inicio */}
+              <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>
+                Fecha de inicio
+              </Typography>
               <TextField
                 fullWidth
-                label="Fecha de inicio"
-                type="datetime-local"
-                value={fechaInicio ? fechaInicio.toISOString().slice(0, 16) : ''}
-                onChange={(e) => setFechaInicio(e.target.value ? new Date(e.target.value) : null)}
+                type="date"
+                value={formatearFechaParaInput(fechaInicio)}
+                onChange={(e) => actualizarFechaInicio(e.target.value)}
                 InputLabelProps={{ shrink: true }}
-                sx={{ mb: 2 }}
+                sx={{ mb: 1 }}
               />
+              <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+                <FormControl sx={{ flex: 1 }}>
+                  <InputLabel>Hora</InputLabel>
+                  <Select
+                    value={getHora12(fechaInicio)}
+                    label="Hora"
+                    onChange={(e) => actualizarFechaInicio(
+                      undefined,
+                      Number(e.target.value),
+                      undefined,
+                      getPeriodo(fechaInicio)
+                    )}
+                  >
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(h => (
+                      <MenuItem key={h} value={h}>{h}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                <FormControl sx={{ flex: 1 }}>
+                  <InputLabel>Min</InputLabel>
+                  <Select
+                    value={getMinutos(fechaInicio)}
+                    label="Min"
+                    onChange={(e) => actualizarFechaInicio(
+                      undefined,
+                      undefined,
+                      Number(e.target.value),
+                      undefined
+                    )}
+                  >
+                    {[0, 10, 20, 30, 40, 50].map(m => (
+                      <MenuItem key={m} value={m}>{String(m).padStart(2, '0')}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                <FormControl sx={{ flex: 1 }}>
+                  <InputLabel>AM/PM</InputLabel>
+                  <Select
+                    value={getPeriodo(fechaInicio)}
+                    label="AM/PM"
+                    onChange={(e) => actualizarFechaInicio(
+                      undefined,
+                      getHora12(fechaInicio),
+                      undefined,
+                      e.target.value as 'AM' | 'PM'
+                    )}
+                  >
+                    <MenuItem value="AM">AM</MenuItem>
+                    <MenuItem value="PM">PM</MenuItem>
+                  </Select>
+                </FormControl>
+              </Box>
 
+              {/* Fecha de fin */}
+              <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>
+                Fecha de fin
+              </Typography>
               <TextField
                 fullWidth
-                label="Fecha de fin"
-                type="datetime-local"
-                value={fechaFin ? fechaFin.toISOString().slice(0, 16) : ''}
-                onChange={(e) => setFechaFin(e.target.value ? new Date(e.target.value) : null)}
+                type="date"
+                value={formatearFechaParaInput(fechaFin)}
+                onChange={(e) => actualizarFechaFin(e.target.value)}
                 InputLabelProps={{ shrink: true }}
+                sx={{ mb: 1 }}
               />
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <FormControl sx={{ flex: 1 }}>
+                  <InputLabel>Hora</InputLabel>
+                  <Select
+                    value={getHora12(fechaFin)}
+                    label="Hora"
+                    onChange={(e) => actualizarFechaFin(
+                      undefined,
+                      Number(e.target.value),
+                      undefined,
+                      getPeriodo(fechaFin)
+                    )}
+                  >
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(h => (
+                      <MenuItem key={h} value={h}>{h}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                <FormControl sx={{ flex: 1 }}>
+                  <InputLabel>Min</InputLabel>
+                  <Select
+                    value={getMinutos(fechaFin)}
+                    label="Min"
+                    onChange={(e) => actualizarFechaFin(
+                      undefined,
+                      undefined,
+                      Number(e.target.value),
+                      undefined
+                    )}
+                  >
+                    {[0, 10, 20, 30, 40, 50].map(m => (
+                      <MenuItem key={m} value={m}>{String(m).padStart(2, '0')}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                <FormControl sx={{ flex: 1 }}>
+                  <InputLabel>AM/PM</InputLabel>
+                  <Select
+                    value={getPeriodo(fechaFin)}
+                    label="AM/PM"
+                    onChange={(e) => actualizarFechaFin(
+                      undefined,
+                      getHora12(fechaFin),
+                      undefined,
+                      e.target.value as 'AM' | 'PM'
+                    )}
+                  >
+                    <MenuItem value="AM">AM</MenuItem>
+                    <MenuItem value="PM">PM</MenuItem>
+                  </Select>
+                </FormControl>
+              </Box>
             </CardContent>
           </Card>
 

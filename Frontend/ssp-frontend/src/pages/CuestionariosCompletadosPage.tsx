@@ -178,17 +178,19 @@ const CuestionariosCompletadosPage: React.FC = () => {
     <Box sx={{ flexGrow: 1 }}>
       <AppBar position="static">
         <Toolbar>
-          <IconButton
-            edge="start"
+          <Button
             color="inherit"
+            startIcon={<ArrowBackIcon />}
             onClick={() => navigate('/dashboard')}
             sx={{ mr: 2 }}
           >
-            <ArrowBackIcon />
-          </IconButton>
+            Volver
+          </Button>
+
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
             Cuestionarios Completados
           </Typography>
+
           <Button color="inherit" onClick={logout}>
             Cerrar Sesión
           </Button>

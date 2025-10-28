@@ -118,13 +118,30 @@ function GenericTableWithBulkDelete<T>({
 
   return (
     <>
-      <Paper sx={{ width: '100%', overflow: 'hidden' }}>
+      <Paper
+        sx={{
+          width: '100%',
+          overflow: 'hidden',
+          borderRadius: 2,
+          boxShadow: 2
+        }}
+      >
         <TableContainer sx={{ maxHeight: 600 }}>
           <Table stickyHeader aria-label={`tabla de ${entityName}`}>
             <TableHead>
-              <TableRow>
+              <TableRow
+                sx={{
+                  '& .MuiTableCell-head': {
+                    backgroundColor: 'background.secondary',
+                    fontWeight: 600,
+                    color: 'text.primary',
+                    whiteSpace: 'nowrap',
+                    minWidth: 'fit-content'
+                  }
+                }}
+              >
                 {showBulkDelete && (
-                  <TableCell padding="checkbox">
+                  <TableCell padding="checkbox" sx={{ minWidth: 60 }}>
                     <Checkbox
                       color="primary"
                       indeterminate={bulkSelection.isIndeterminate}
@@ -134,12 +151,16 @@ function GenericTableWithBulkDelete<T>({
                   </TableCell>
                 )}
                 {columns.map((column) => (
-                  <TableCell key={column.id} align={column.align || 'left'}>
+                  <TableCell
+                    key={column.id}
+                    align={column.align || 'left'}
+                    sx={{ minWidth: column.minWidth || 120 }}
+                  >
                     {column.label}
                   </TableCell>
                 ))}
                 {allActions.length > 0 && (
-                  <TableCell align="center">Acciones</TableCell>
+                  <TableCell align="center" sx={{ minWidth: 150 }}>Acciones</TableCell>
                 )}
               </TableRow>
             </TableHead>

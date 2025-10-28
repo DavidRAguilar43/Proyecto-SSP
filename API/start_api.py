@@ -23,7 +23,7 @@ def main():
         import app.models.grupo
         import app.models.personal
         import app.models.contacto_emergencia
-        import app.models.atencion
+        import app.models.cita
         import app.models.cuestionario
         import app.models.cuestionario_admin
         import app.models.notificacion

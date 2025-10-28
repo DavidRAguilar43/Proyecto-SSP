@@ -40,7 +40,6 @@ class Persona(Base):
     programas = relationship("ProgramaEducativo", secondary=persona_programa, back_populates="personas")
     personal = relationship("Personal", back_populates="persona", uselist=False)
     contactos_emergencia = relationship("ContactoEmergencia", back_populates="persona")
-    atenciones = relationship("Atencion", back_populates="persona")
     cuestionarios_completados = relationship("Cuestionario", back_populates="persona")
 
     # Relaciones para cuestionarios administrativos
@@ -51,8 +50,6 @@ class Persona(Base):
     notificaciones_enviadas = relationship("NotificacionRegistro", foreign_keys="NotificacionRegistro.usuario_solicitante_id", back_populates="usuario_solicitante")
     notificaciones_recibidas = relationship("NotificacionRegistro", foreign_keys="NotificacionRegistro.usuario_destinatario_id", back_populates="usuario_destinatario")
 
-
-
-    # Relaciones de citas
+    # Relaciones de citas (sistema unificado)
     citas_como_alumno = relationship("Cita", foreign_keys="Cita.id_alumno", back_populates="alumno")
-    citas_como_personal = relationship("Cita", foreign_keys="Cita.id_personal", back_populates="personal")
+    citas_como_personal = relationship("Cita", foreign_keys="Cita.id_personal", back_populates="personal_asignado")

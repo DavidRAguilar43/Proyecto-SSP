@@ -24,7 +24,6 @@ import {
 import {
   Add as AddIcon,
   Search as SearchIcon,
-  FilterList as FilterIcon,
   MoreVert as MoreIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
@@ -75,7 +74,6 @@ const CuestionariosPage: React.FC = () => {
   const [cuestionarioToDelete, setCuestionarioToDelete] = useState<CuestionarioAdmin | null>(null);
   const [cuestionarioToActivate, setCuestionarioToActivate] = useState<CuestionarioAdmin | null>(null);
   const [cuestionarioToDeactivate, setCuestionarioToDeactivate] = useState<CuestionarioAdmin | null>(null);
-  const [showFilters, setShowFilters] = useState(false);
 
   // Cargar cuestionarios
   const cargarCuestionarios = async () => {
@@ -241,24 +239,27 @@ const CuestionariosPage: React.FC = () => {
   return (
     <Box>
       {/* Header */}
-      <AppBar position="static" color="default" elevation={1}>
+      <AppBar position="static">
         <Toolbar>
-          <IconButton
+          <Button
             color="inherit"
+            startIcon={<ArrowBackIcon />}
             onClick={() => navigate('/dashboard')}
             sx={{ mr: 2 }}
-            aria-label="Regresar al dashboard"
           >
-            <ArrowBackIcon />
-          </IconButton>
+            Volver
+          </Button>
+
           <AssignmentIcon sx={{ mr: 2 }} />
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
             Gestión de Cuestionarios
           </Typography>
+
           <Button
             variant="contained"
             startIcon={<AddIcon />}
             onClick={() => navigate('/admin/cuestionarios/crear')}
+            sx={{ backgroundColor: 'white', color: 'primary.main', '&:hover': { backgroundColor: 'grey.100' } }}
           >
             Crear Cuestionario
           </Button>
@@ -276,19 +277,25 @@ const CuestionariosPage: React.FC = () => {
                   placeholder="Buscar por título..."
                   value={filtros.titulo || ''}
                   onChange={(e) => handleSearch(e.target.value)}
+                  sx={{ minWidth: 200 }}
                   InputProps={{
                     startAdornment: <SearchIcon sx={{ mr: 1, color: 'text.secondary' }} />
                   }}
                 />
               </Grid>
-              
-              <Grid item xs={12} md={2}>
-                <FormControl fullWidth>
+
+              <Grid item xs={12} sm={6} md={3}>
+                <FormControl fullWidth sx={{ minWidth: 180 }}>
                   <InputLabel>Estado</InputLabel>
                   <Select
                     value={filtros.estado || ''}
                     label="Estado"
                     onChange={(e) => handleFilterChange('estado', e.target.value || undefined)}
+                    MenuProps={{
+                      PaperProps: {
+                        sx: { maxHeight: 300 }
+                      }
+                    }}
                   >
                     <MenuItem value="">Todos</MenuItem>
                     <MenuItem value="activo">Activo</MenuItem>
@@ -297,14 +304,19 @@ const CuestionariosPage: React.FC = () => {
                   </Select>
                 </FormControl>
               </Grid>
-              
-              <Grid item xs={12} md={2}>
-                <FormControl fullWidth>
+
+              <Grid item xs={12} sm={6} md={3}>
+                <FormControl fullWidth sx={{ minWidth: 180 }}>
                   <InputLabel>Tipo Usuario</InputLabel>
                   <Select
                     value={filtros.tipo_usuario || ''}
                     label="Tipo Usuario"
                     onChange={(e) => handleFilterChange('tipo_usuario', e.target.value || undefined)}
+                    MenuProps={{
+                      PaperProps: {
+                        sx: { maxHeight: 300 }
+                      }
+                    }}
                   >
                     <MenuItem value="">Todos</MenuItem>
                     <MenuItem value="alumno">Alumnos</MenuItem>
@@ -312,18 +324,6 @@ const CuestionariosPage: React.FC = () => {
                     <MenuItem value="personal">Personal</MenuItem>
                   </Select>
                 </FormControl>
-              </Grid>
-              
-              <Grid item xs={12} md={4}>
-                <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
-                  <Button
-                    startIcon={<FilterIcon />}
-                    onClick={() => setShowFilters(!showFilters)}
-                    variant={showFilters ? 'contained' : 'outlined'}
-                  >
-                    Filtros
-                  </Button>
-                </Box>
               </Grid>
             </Grid>
           </CardContent>

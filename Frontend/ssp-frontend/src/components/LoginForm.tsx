@@ -26,11 +26,36 @@ const LoginForm = () => {
 
   return (
     <Container maxWidth="sm">
-      <Paper elevation={3} sx={{ p: 4, mt: 8 }}>
-        <Typography variant="h4" component="h1" align="center" gutterBottom>
-          Sistema de Seguimiento Psicopedagógico
-        </Typography>
-        <Typography variant="h5" component="h2" align="center" gutterBottom>
+      <Paper
+        elevation={3}
+        sx={{
+          p: 4,
+          mt: 8,
+          borderRadius: 2,
+          backgroundColor: 'background.paper'
+        }}
+      >
+        <Box
+          sx={{
+            mb: 3,
+            p: 2,
+            backgroundColor: 'primary.main',
+            borderRadius: 1,
+            color: 'white'
+          }}
+        >
+          <Typography variant="h4" component="h1" align="center" gutterBottom sx={{ mb: 0 }}>
+            Sistema de Seguimiento Psicopedagógico
+          </Typography>
+        </Box>
+
+        <Typography
+          variant="h5"
+          component="h2"
+          align="center"
+          gutterBottom
+          sx={{ color: 'text.primary', mb: 3 }}
+        >
           Iniciar Sesión
         </Typography>
 
@@ -69,13 +94,20 @@ const LoginForm = () => {
             type="submit"
             fullWidth
             variant="contained"
-            sx={{ mt: 3, mb: 2 }}
+            color="primary"
+            size="large"
+            sx={{
+              mt: 3,
+              mb: 2,
+              py: 1.5,
+              fontWeight: 600
+            }}
             disabled={!username || !password}
           >
             Iniciar Sesión
           </Button>
 
-          <Divider sx={{ my: 2 }}>
+          <Divider sx={{ my: 3 }}>
             <Typography variant="body2" color="text.secondary">
               ¿No tienes cuenta?
             </Typography>
@@ -84,8 +116,14 @@ const LoginForm = () => {
           <Button
             fullWidth
             variant="outlined"
+            color="secondary"
+            size="large"
             onClick={() => navigate('/registro-alumno')}
-            sx={{ mt: 1 }}
+            sx={{
+              mt: 1,
+              py: 1.5,
+              fontWeight: 600
+            }}
           >
             Registrate aquí
           </Button>

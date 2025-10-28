@@ -54,14 +54,30 @@ const RegistroUsuarioForm = ({ open, onClose, onSubmit, loading = false }: Regis
     semestre: 1,
     numero_hijos: 0,
     grupo_etnico: '',
-    cohorte_ano: undefined,
+    cohorte_ano: new Date().getFullYear(), // Reason: Año actual del sistema como valor predeterminado
     cohorte_periodo: 1,
     programas_ids: [],
     grupos_ids: [],
   });
 
+  // Estados para campos específicos por rol
+  // Reason: Campos específicos para docentes
+  const [facultad, setFacultad] = useState('');
+  const [materiasAsignadas, setMateriasAsignadas] = useState('');
+  const [carrerasAsignadas, setCarrerasAsignadas] = useState('');
+
+  // Reason: Campos específicos para personal administrativo
+  const [departamento, setDepartamento] = useState('');
+  const [puesto, setPuesto] = useState('');
+  const [extension, setExtension] = useState('');
+
+  // Reason: Campos específicos para alumnos
+  const [programaEducativo, setProgramaEducativo] = useState('');
+  const [grupo, setGrupo] = useState('');
+
   // Estados para cohorte simplificada (campos separados)
-  const [cohorteAno, setCohorteAno] = useState<number | ''>('');
+  // Reason: Establecer el año actual del sistema como valor predeterminado
+  const [cohorteAno, setCohorteAno] = useState<number | ''>(new Date().getFullYear());
   const [cohortePeriodo, setCohortePeriodo] = useState<number>(1);
 
   // Estado para confirmación de contraseña
@@ -88,11 +104,28 @@ const RegistroUsuarioForm = ({ open, onClose, onSubmit, loading = false }: Regis
       // Solo limpiar semestre si no es alumno, mantener matrícula para todos
       semestre: tipo === 'alumno' ? prev.semestre : undefined,
     }));
+
+    // Reason: Limpiar campos específicos del rol anterior para evitar datos inconsistentes
+    if (tipo !== 'docente') {
+      setFacultad('');
+      setMateriasAsignadas('');
+      setCarrerasAsignadas('');
+    }
+    if (tipo !== 'personal') {
+      setDepartamento('');
+      setPuesto('');
+      setExtension('');
+    }
+    if (tipo !== 'alumno') {
+      setProgramaEducativo('');
+      setGrupo('');
+    }
   };
 
   // Reset form when dialog closes
   useEffect(() => {
     if (!open) {
+      const currentYear = new Date().getFullYear(); // Reason: Obtener año actual para reset
       setTipoUsuario('alumno');
       setFormData({
         // SEGURIDAD: Solo rol, sin tipo_persona
@@ -115,17 +148,27 @@ const RegistroUsuarioForm = ({ open, onClose, onSubmit, loading = false }: Regis
         semestre: 1,
         numero_hijos: 0,
         grupo_etnico: '',
-        cohorte_ano: undefined,
+        cohorte_ano: currentYear, // Reason: Año actual del sistema como valor predeterminado
         cohorte_periodo: 1,
         programas_ids: [],
         grupos_ids: [],
       });
-      setCohorteAno('');
+      setCohorteAno(currentYear); // Reason: Establecer año actual en el estado local
       setCohortePeriodo(1);
       setConfirmPassword('');
       setPasswordError('');
       setEmailError('');
       setMatriculaError('');
+
+      // Reason: Limpiar campos específicos por rol
+      setFacultad('');
+      setMateriasAsignadas('');
+      setCarrerasAsignadas('');
+      setDepartamento('');
+      setPuesto('');
+      setExtension('');
+      setProgramaEducativo('');
+      setGrupo('');
     }
   }, [open]);
 
@@ -290,6 +333,34 @@ const RegistroUsuarioForm = ({ open, onClose, onSubmit, loading = false }: Regis
       return;
     }
 
+    // Reason: Construir observaciones con campos específicos del rol
+    let observacionesCompletas = formData.observaciones || '';
+
+    if (tipoUsuario === 'alumno') {
+      const infoAlumno = [];
+      if (programaEducativo) infoAlumno.push(`Programa Educativo: ${programaEducativo}`);
+      if (grupo) infoAlumno.push(`Grupo: ${grupo}`);
+      if (infoAlumno.length > 0) {
+        observacionesCompletas = infoAlumno.join(' | ') + (observacionesCompletas ? ' | ' + observacionesCompletas : '');
+      }
+    } else if (tipoUsuario === 'docente') {
+      const infoDocente = [];
+      if (facultad) infoDocente.push(`Facultad: ${facultad}`);
+      if (materiasAsignadas) infoDocente.push(`Materias: ${materiasAsignadas}`);
+      if (carrerasAsignadas) infoDocente.push(`Carreras: ${carrerasAsignadas}`);
+      if (infoDocente.length > 0) {
+        observacionesCompletas = infoDocente.join(' | ') + (observacionesCompletas ? ' | ' + observacionesCompletas : '');
+      }
+    } else if (tipoUsuario === 'personal') {
+      const infoPersonal = [];
+      if (departamento) infoPersonal.push(`Departamento: ${departamento}`);
+      if (puesto) infoPersonal.push(`Puesto: ${puesto}`);
+      if (extension) infoPersonal.push(`Extensión: ${extension}`);
+      if (infoPersonal.length > 0) {
+        observacionesCompletas = infoPersonal.join(' | ') + (observacionesCompletas ? ' | ' + observacionesCompletas : '');
+      }
+    }
+
     // Limpiar y preparar los datos antes de enviar
     const cleanedData = {
       ...formData,
@@ -297,7 +368,7 @@ const RegistroUsuarioForm = ({ open, onClose, onSubmit, loading = false }: Regis
       religion: formData.religion || '',
       lugar_trabajo: formData.lugar_trabajo || '',
       discapacidad: formData.discapacidad || '',
-      observaciones: formData.observaciones || '',
+      observaciones: observacionesCompletas,
       matricula: formData.matricula || '',
       grupo_etnico: formData.grupo_etnico || '',
       // colonia_residencia_actual es requerido, no usar valor por defecto
@@ -529,13 +600,34 @@ const RegistroUsuarioForm = ({ open, onClose, onSubmit, loading = false }: Regis
               />
             </Grid>
 
-            {/* Información Académica - solo para alumnos */}
+            {/* Información Académica del Usuario - campos específicos por rol */}
+            <Grid size={{ xs: 12 }}>
+              <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>
+                Información Académica del Usuario
+              </Typography>
+            </Grid>
+
+            {/* Campos específicos para ALUMNO */}
             {tipoUsuario === 'alumno' && (
               <>
-                <Grid size={{ xs: 12 }}>
-                  <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>
-                    Información Académica
-                  </Typography>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextField
+                    fullWidth
+                    label="Programa Educativo / Carrera"
+                    value={programaEducativo}
+                    onChange={(e) => setProgramaEducativo(e.target.value)}
+                    helperText="Ingrese su programa educativo o carrera"
+                  />
+                </Grid>
+
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextField
+                    fullWidth
+                    label="Grupo"
+                    value={grupo}
+                    onChange={(e) => setGrupo(e.target.value)}
+                    helperText="Ingrese su grupo"
+                  />
                 </Grid>
 
                 <Grid size={{ xs: 12, sm: 6 }}>
@@ -546,6 +638,76 @@ const RegistroUsuarioForm = ({ open, onClose, onSubmit, loading = false }: Regis
                     value={formData.semestre}
                     onChange={handleChange('semestre')}
                     slotProps={{ htmlInput: { min: 1, max: 12 } }}
+                  />
+                </Grid>
+              </>
+            )}
+
+            {/* Campos específicos para DOCENTE */}
+            {tipoUsuario === 'docente' && (
+              <>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextField
+                    fullWidth
+                    label="Facultad"
+                    value={facultad}
+                    onChange={(e) => setFacultad(e.target.value)}
+                    helperText="Ingrese la facultad a la que pertenece"
+                  />
+                </Grid>
+
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextField
+                    fullWidth
+                    label="Materias Asignadas"
+                    value={materiasAsignadas}
+                    onChange={(e) => setMateriasAsignadas(e.target.value)}
+                    helperText="Ingrese las materias que imparte (separadas por comas)"
+                  />
+                </Grid>
+
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextField
+                    fullWidth
+                    label="Carreras Asignadas"
+                    value={carrerasAsignadas}
+                    onChange={(e) => setCarrerasAsignadas(e.target.value)}
+                    helperText="Ingrese las carreras en las que imparte (separadas por comas)"
+                  />
+                </Grid>
+              </>
+            )}
+
+            {/* Campos específicos para PERSONAL ADMINISTRATIVO */}
+            {tipoUsuario === 'personal' && (
+              <>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextField
+                    fullWidth
+                    label="Departamento"
+                    value={departamento}
+                    onChange={(e) => setDepartamento(e.target.value)}
+                    helperText="Ingrese el departamento al que pertenece"
+                  />
+                </Grid>
+
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextField
+                    fullWidth
+                    label="Puesto"
+                    value={puesto}
+                    onChange={(e) => setPuesto(e.target.value)}
+                    helperText="Ingrese su puesto o cargo"
+                  />
+                </Grid>
+
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextField
+                    fullWidth
+                    label="Extensión (Lugar de Contacto)"
+                    value={extension}
+                    onChange={(e) => setExtension(e.target.value)}
+                    helperText="Ingrese su extensión telefónica o lugar de contacto"
                   />
                 </Grid>
               </>
