@@ -2,6 +2,11 @@
 """
 Script para resetear la contraseña de Juan Pérez.
 """
+import sys
+import os
+from datetime import datetime, timezone
+# Agregar el directorio padre al path para importar módulos de la app
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from sqlalchemy.orm import Session
 from app.db.database import SessionLocal

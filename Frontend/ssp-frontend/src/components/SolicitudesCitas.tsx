@@ -26,7 +26,8 @@ import {
   Badge,
   IconButton,
   Tabs,
-  Tab
+  Tab,
+  Collapse
 } from '@mui/material';
 import {
   Schedule as ScheduleIcon,
@@ -48,7 +49,10 @@ import {
   History as HistoryIcon,
   HourglassEmpty as HourglassEmptyIcon,
   CheckCircle as CheckCircleIcon,
-  Cancel as CancelIcon
+  Cancel as CancelIcon,
+  EventAvailable as EventAvailableIcon,
+  ExpandMore as ExpandMoreIcon,
+  ExpandLess as ExpandLessIcon
 } from '@mui/icons-material';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -90,8 +94,41 @@ const SolicitudesCitas: React.FC<SolicitudesCitasProps> = ({ onBadgeUpdate }) =>
   const [citaDetalles, setCitaDetalles] = useState<SolicitudCita | null>(null);
 
   // Estado para filtro de pestañas temporales
-  type FiltroTemporal = 'todas' | 'hoy' | 'pasadas' | 'pendientes' | 'revision' | 'canceladas';
+  type FiltroTemporal = 'todas' | 'hoy' | 'confirmadas' | 'pasadas' | 'pendientes' | 'revision' | 'canceladas';
   const [filtroTemporal, setFiltroTemporal] = useState<FiltroTemporal>('todas');
+
+  // Estados para colapsar secciones (empiezan colapsadas)
+  const [pendientesExpanded, setPendientesExpanded] = useState(false);
+  const [confirmadasExpanded, setConfirmadasExpanded] = useState(false);
+  const [otrasExpanded, setOtrasExpanded] = useState(false);
+
+  // Estado para controlar qué textos están expandidos (por id de cita)
+  const [expandedTexts, setExpandedTexts] = useState<Record<string | number, boolean>>({});
+
+  // Estado para controlar qué detalles de estudiante están expandidos (empiezan colapsados)
+  const [expandedDetails, setExpandedDetails] = useState<Record<string | number, boolean>>({});
+
+  // Función para alternar el estado de un texto
+  const toggleText = (citaId: string | number) => {
+    setExpandedTexts(prev => ({
+      ...prev,
+      [citaId]: !prev[citaId]
+    }));
+  };
+
+  // Función para alternar el estado de detalles de estudiante
+  const toggleDetails = (citaId: string | number) => {
+    setExpandedDetails(prev => ({
+      ...prev,
+      [citaId]: !prev[citaId]
+    }));
+  };
+
+  // Función para truncar texto
+  const truncateText = (text: string, maxLength: number = 100) => {
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength) + '...';
+  };
 
   useEffect(() => {
     loadSolicitudes();
@@ -422,11 +459,16 @@ const SolicitudesCitas: React.FC<SolicitudesCitasProps> = ({ onBadgeUpdate }) =>
   const filtrarPorEstadoTemporal = (solicitudes: SolicitudCita[]): SolicitudCita[] => {
     switch (filtroTemporal) {
       case 'hoy':
+        // Solo citas de hoy (sin importar el estado)
         return solicitudes.filter(s => esCitaDeHoy(s));
+      case 'confirmadas':
+        // Solo citas confirmadas
+        return solicitudes.filter(s => s.estado === 'confirmada');
       case 'pasadas':
         return solicitudes.filter(s => esCitaPasada(s) && s.estado !== 'completada');
       case 'pendientes':
-        return solicitudes.filter(s => esCitaPendienteFutura(s) && s.estado !== 'completada');
+        // Solo citas con estado pendiente
+        return solicitudes.filter(s => s.estado === 'pendiente');
       case 'revision':
         return solicitudes.filter(s => s.estado === 'completada');
       case 'canceladas':
@@ -442,8 +484,9 @@ const SolicitudesCitas: React.FC<SolicitudesCitasProps> = ({ onBadgeUpdate }) =>
 
   // Contadores para las pestañas
   const contadorHoy = solicitudes.filter(s => esCitaDeHoy(s)).length;
+  const contadorConfirmadas = solicitudes.filter(s => s.estado === 'confirmada').length;
   const contadorPasadas = solicitudes.filter(s => esCitaPasada(s) && s.estado !== 'completada').length;
-  const contadorPendientes = solicitudes.filter(s => esCitaPendienteFutura(s) && s.estado !== 'completada').length;
+  const contadorPendientes = solicitudes.filter(s => s.estado === 'pendiente').length;
   const contadorRevision = solicitudes.filter(s => s.estado === 'completada').length;
   const contadorCanceladas = solicitudes.filter(s => s.estado === 'cancelada').length;
 
@@ -537,6 +580,19 @@ const SolicitudesCitas: React.FC<SolicitudesCitasProps> = ({ onBadgeUpdate }) =>
               }}
             />
             <Tab
+              value="confirmadas"
+              label={`Confirmadas (${contadorConfirmadas})`}
+              icon={<EventAvailableIcon />}
+              iconPosition="start"
+              sx={{
+                color: contadorConfirmadas > 0 ? '#2196F3' : 'text.secondary',
+                '&.Mui-selected': {
+                  color: '#2196F3',
+                  fontWeight: 700
+                }
+              }}
+            />
+            <Tab
               value="pasadas"
               label={`Pasadas (${contadorPasadas})`}
               icon={<HistoryIcon />}
@@ -597,14 +653,36 @@ const SolicitudesCitas: React.FC<SolicitudesCitasProps> = ({ onBadgeUpdate }) =>
           {/* Solicitudes Pendientes */}
           {solicitudesPendientes.length > 0 && (
             <Box mb={4}>
-              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
-                <Badge badgeContent={solicitudesPendientes.length} color="warning">
-                  <ScheduleIcon sx={{ mr: 1 }} />
-                </Badge>
-                Solicitudes Pendientes
-              </Typography>
-              
-              <Grid container spacing={2}>
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  mb: 2,
+                  cursor: 'pointer',
+                  '&:hover': {
+                    bgcolor: 'action.hover',
+                    borderRadius: 1,
+                    transition: 'background-color 0.2s'
+                  },
+                  p: 1,
+                  ml: -1
+                }}
+                onClick={() => setPendientesExpanded(!pendientesExpanded)}
+              >
+                <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center' }}>
+                  <Badge badgeContent={solicitudesPendientes.length} color="warning">
+                    <ScheduleIcon sx={{ mr: 1 }} />
+                  </Badge>
+                  Solicitudes Pendientes
+                </Typography>
+                <IconButton size="small">
+                  {pendientesExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                </IconButton>
+              </Box>
+
+              <Collapse in={pendientesExpanded}>
+                <Grid container spacing={2}>
                 {solicitudesPendientes.map((solicitud) => {
                   const barraColor = getBarraEstadoColor(solicitud);
                   return (
@@ -644,60 +722,37 @@ const SolicitudesCitas: React.FC<SolicitudesCitasProps> = ({ onBadgeUpdate }) =>
                           />
                         </Box>
 
-                        <Typography variant="body2" sx={{ mb: 2 }}>
-                          <strong>Motivo:</strong> {solicitud.motivo}
-                        </Typography>
-
-                        <List dense>
-                          <ListItem disablePadding>
-                            <ListItemIcon>
-                              <PersonIcon fontSize="small" />
-                            </ListItemIcon>
-                            <ListItemText 
-                              primary="Estudiante"
-                              secondary={solicitud.alumno_nombre}
-                            />
-                          </ListItem>
-
-                          <ListItem disablePadding>
-                            <ListItemIcon>
-                              <EmailIcon fontSize="small" />
-                            </ListItemIcon>
-                            <ListItemText 
-                              primary="Email"
-                              secondary={solicitud.alumno_email}
-                            />
-                          </ListItem>
-
-                          {solicitud.alumno_celular && (
-                            <ListItem disablePadding>
-                              <ListItemIcon>
-                                <PhoneIcon fontSize="small" />
-                              </ListItemIcon>
-                              <ListItemText 
-                                primary="Celular"
-                                secondary={solicitud.alumno_celular}
-                              />
-                            </ListItem>
+                        <Box sx={{ mb: 2 }}>
+                          <Typography variant="body2" component="span">
+                            <strong>Motivo:</strong>{' '}
+                            {expandedTexts[solicitud.id_cita] || solicitud.motivo.length <= 100
+                              ? solicitud.motivo
+                              : truncateText(solicitud.motivo, 100)}
+                          </Typography>
+                          {solicitud.motivo.length > 100 && (
+                            <Button
+                              size="small"
+                              onClick={() => toggleText(solicitud.id_cita)}
+                              sx={{
+                                ml: 1,
+                                textTransform: 'none',
+                                minWidth: 'auto',
+                                p: 0,
+                                fontSize: '0.875rem'
+                              }}
+                            >
+                              {expandedTexts[solicitud.id_cita] ? 'Ver menos' : 'Ver más'}
+                            </Button>
                           )}
+                        </Box>
 
-                          {solicitud.alumno_matricula && (
-                            <ListItem disablePadding>
-                              <ListItemIcon>
-                                <BadgeIcon fontSize="small" />
-                              </ListItemIcon>
-                              <ListItemText 
-                                primary="Matrícula"
-                                secondary={solicitud.alumno_matricula}
-                              />
-                            </ListItem>
-                          )}
-
+                        {/* Fechas fuera del collapse */}
+                        <List dense sx={{ mb: 1 }}>
                           <ListItem disablePadding>
                             <ListItemIcon>
                               <CalendarIcon fontSize="small" />
                             </ListItemIcon>
-                            <ListItemText 
+                            <ListItemText
                               primary="Fecha de solicitud"
                               secondary={formatDate(solicitud.fecha_solicitud)}
                             />
@@ -708,20 +763,112 @@ const SolicitudesCitas: React.FC<SolicitudesCitasProps> = ({ onBadgeUpdate }) =>
                               <ListItemIcon>
                                 <ScheduleIcon fontSize="small" />
                               </ListItemIcon>
-                              <ListItemText 
-                                primary="Fecha preferida"
+                              <ListItemText
+                                primary="Fecha preferida del alumno"
                                 secondary={formatDate(solicitud.fecha_propuesta_alumno)}
                               />
                             </ListItem>
                           )}
                         </List>
 
+                        {/* Encabezado de detalles del estudiante - colapsable */}
+                        <Box
+                          sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            cursor: 'pointer',
+                            '&:hover': {
+                              bgcolor: 'action.hover',
+                              borderRadius: 1
+                            },
+                            p: 0.5,
+                            mb: 1
+                          }}
+                          onClick={() => toggleDetails(solicitud.id_cita)}
+                        >
+                          <Typography variant="body2" fontWeight="bold" color="text.secondary">
+                            Detalles del Estudiante
+                          </Typography>
+                          <IconButton size="small">
+                            {expandedDetails[solicitud.id_cita] ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
+                          </IconButton>
+                        </Box>
+
+                        <Collapse in={expandedDetails[solicitud.id_cita]}>
+                          <List dense>
+                            <ListItem disablePadding>
+                              <ListItemIcon>
+                                <PersonIcon fontSize="small" />
+                              </ListItemIcon>
+                              <ListItemText
+                                primary="Estudiante"
+                                secondary={solicitud.alumno_nombre}
+                              />
+                            </ListItem>
+
+                            <ListItem disablePadding>
+                              <ListItemIcon>
+                                <EmailIcon fontSize="small" />
+                              </ListItemIcon>
+                              <ListItemText
+                                primary="Email"
+                                secondary={solicitud.alumno_email}
+                              />
+                            </ListItem>
+
+                            {solicitud.alumno_celular && (
+                              <ListItem disablePadding>
+                                <ListItemIcon>
+                                  <PhoneIcon fontSize="small" />
+                                </ListItemIcon>
+                                <ListItemText
+                                  primary="Celular"
+                                  secondary={solicitud.alumno_celular}
+                                />
+                              </ListItem>
+                            )}
+
+                            {solicitud.alumno_matricula && (
+                              <ListItem disablePadding>
+                                <ListItemIcon>
+                                  <BadgeIcon fontSize="small" />
+                                </ListItemIcon>
+                                <ListItemText
+                                  primary="Matrícula"
+                                  secondary={solicitud.alumno_matricula}
+                                />
+                              </ListItem>
+                            )}
+                          </List>
+                        </Collapse>
+
                         {solicitud.observaciones_alumno && (
                           <>
                             <Divider sx={{ my: 2 }} />
-                            <Typography variant="body2" color="text.secondary">
-                              <strong>Observaciones del estudiante:</strong> {solicitud.observaciones_alumno}
-                            </Typography>
+                            <Box>
+                              <Typography variant="body2" color="text.secondary" component="span">
+                                <strong>Observaciones del estudiante:</strong>{' '}
+                                {expandedTexts[`obs-${solicitud.id_cita}`] || solicitud.observaciones_alumno.length <= 100
+                                  ? solicitud.observaciones_alumno
+                                  : truncateText(solicitud.observaciones_alumno, 100)}
+                              </Typography>
+                              {solicitud.observaciones_alumno.length > 100 && (
+                                <Button
+                                  size="small"
+                                  onClick={() => toggleText(`obs-${solicitud.id_cita}` as any)}
+                                  sx={{
+                                    ml: 1,
+                                    textTransform: 'none',
+                                    minWidth: 'auto',
+                                    p: 0,
+                                    fontSize: '0.875rem'
+                                  }}
+                                >
+                                  {expandedTexts[`obs-${solicitud.id_cita}`] ? 'Ver menos' : 'Ver más'}
+                                </Button>
+                              )}
+                            </Box>
                           </>
                         )}
 
@@ -753,18 +900,41 @@ const SolicitudesCitas: React.FC<SolicitudesCitasProps> = ({ onBadgeUpdate }) =>
                   );
                 })}
               </Grid>
+              </Collapse>
             </Box>
           )}
 
           {/* Citas Confirmadas */}
           {solicitudesConfirmadas.length > 0 && (
             <Box mb={4}>
-              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
-                <CheckIcon sx={{ mr: 1, color: 'success.main' }} />
-                Citas Confirmadas ({solicitudesConfirmadas.length})
-              </Typography>
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  mb: 2,
+                  cursor: 'pointer',
+                  '&:hover': {
+                    bgcolor: 'action.hover',
+                    borderRadius: 1,
+                    transition: 'background-color 0.2s'
+                  },
+                  p: 1,
+                  ml: -1
+                }}
+                onClick={() => setConfirmadasExpanded(!confirmadasExpanded)}
+              >
+                <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center' }}>
+                  <CheckIcon sx={{ mr: 1, color: 'success.main' }} />
+                  Citas Confirmadas ({solicitudesConfirmadas.length})
+                </Typography>
+                <IconButton size="small">
+                  {confirmadasExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                </IconButton>
+              </Box>
 
-              <Grid container spacing={2}>
+              <Collapse in={confirmadasExpanded}>
+                <Grid container spacing={2}>
                 {solicitudesConfirmadas.map((solicitud) => {
                   const tipoColor = getTipoColor(solicitud.tipo_cita);
                   const barraColor = getBarraEstadoColor(solicitud);
@@ -797,22 +967,6 @@ const SolicitudesCitas: React.FC<SolicitudesCitasProps> = ({ onBadgeUpdate }) =>
                           }}
                         />
                         <CardContent sx={{ pl: 3 }}>
-                          {/* Icono de atención en la esquina superior derecha */}
-                          <Box
-                            sx={{
-                              position: 'absolute',
-                              top: 8,
-                              right: 8
-                            }}
-                          >
-                            <NotificationImportantIcon
-                              sx={{
-                                color: tipoColor.border,
-                                fontSize: 28
-                              }}
-                            />
-                          </Box>
-
                           <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2}>
                             <Box display="flex" alignItems="center">
                               {getTipoIcon(solicitud.tipo_cita)}
@@ -874,16 +1028,141 @@ const SolicitudesCitas: React.FC<SolicitudesCitasProps> = ({ onBadgeUpdate }) =>
                   );
                 })}
               </Grid>
+              </Collapse>
+            </Box>
+          )}
+
+          {/* Citas Completadas/Canceladas (solo para tabs revision y canceladas) */}
+          {solicitudesOtras.length > 0 && (filtroTemporal === 'revision' || filtroTemporal === 'canceladas') && (
+            <Box mb={4}>
+              <Box
+                onClick={() => setOtrasExpanded(!otrasExpanded)}
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  cursor: 'pointer',
+                  p: 1.5,
+                  borderRadius: 1,
+                  '&:hover': {
+                    bgcolor: 'rgba(0, 0, 0, 0.04)'
+                  }
+                }}
+              >
+                <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center' }}>
+                  <Badge badgeContent={solicitudesOtras.length} color={filtroTemporal === 'revision' ? 'success' : 'error'}>
+                    {filtroTemporal === 'revision' ? <CheckCircleIcon sx={{ mr: 1 }} /> : <CancelIcon sx={{ mr: 1 }} />}
+                  </Badge>
+                  {filtroTemporal === 'revision' ? 'Citas Completadas' : 'Citas Canceladas'}
+                </Typography>
+                <IconButton size="small">
+                  {otrasExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                </IconButton>
+              </Box>
+              <Collapse in={otrasExpanded}>
+              <Grid container spacing={2} sx={{ mt: 0.5 }}>
+                {solicitudesOtras.map((solicitud) => {
+                  const tipoColor = getTipoColor(solicitud.tipo_cita);
+                  const barraColor = getBarraEstadoColor(solicitud);
+
+                  return (
+                    <Grid item xs={12} key={solicitud.id_cita}>
+                      <Card
+                        sx={{
+                          position: 'relative',
+                          overflow: 'visible',
+                          boxShadow: 2,
+                          '&:hover': {
+                            boxShadow: 4
+                          }
+                        }}
+                      >
+                        <Box
+                          sx={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            width: '6px',
+                            height: '100%',
+                            backgroundColor: barraColor,
+                            zIndex: 1
+                          }}
+                        />
+                        <CardContent sx={{ pl: 3 }}>
+                          <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2}>
+                            <Box display="flex" alignItems="center">
+                              {getTipoIcon(solicitud.tipo_cita)}
+                              <Typography variant="h6" sx={{ ml: 1 }}>
+                                {solicitud.alumno_nombre}
+                              </Typography>
+                            </Box>
+                            <Chip
+                              label={getEstadoLabel(solicitud.estado)}
+                              color={getEstadoColor(solicitud.estado)}
+                              size="small"
+                            />
+                          </Box>
+
+                          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                            Cita {getTipoLabel(solicitud.tipo_cita)} • {solicitud.alumno_email}
+                          </Typography>
+
+                          {solicitud.fecha_confirmada && (
+                            <Box display="flex" alignItems="center" mb={1}>
+                              <CalendarIcon sx={{ fontSize: 16, mr: 0.5, color: 'text.secondary' }} />
+                              <Typography variant="body2" color="text.secondary">
+                                {format(new Date(solicitud.fecha_confirmada), "dd/MM/yyyy HH:mm", { locale: es })}
+                              </Typography>
+                            </Box>
+                          )}
+
+                          {solicitud.ubicacion && (
+                            <Box display="flex" alignItems="center" mb={2}>
+                              <LocationIcon sx={{ fontSize: 16, mr: 0.5, color: 'text.secondary' }} />
+                              <Typography variant="body2" color="text.secondary">
+                                {solicitud.ubicacion}
+                              </Typography>
+                            </Box>
+                          )}
+
+                          {/* Botón Ver */}
+                          <Button
+                            fullWidth
+                            variant="contained"
+                            startIcon={<VisibilityIcon />}
+                            onClick={() => {
+                              setCitaDetalles(solicitud);
+                              setDetallesDialogOpen(true);
+                            }}
+                            sx={{
+                              bgcolor: tipoColor.border,
+                              '&:hover': {
+                                bgcolor: tipoColor.border,
+                                filter: 'brightness(0.9)'
+                              }
+                            }}
+                          >
+                            Ver Detalles
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                  );
+                })}
+              </Grid>
+              </Collapse>
             </Box>
           )}
 
           {/* Mensaje cuando no hay resultados para el filtro */}
-          {solicitudesPendientes.length === 0 && solicitudesConfirmadas.length === 0 && (
+          {solicitudesPendientes.length === 0 && solicitudesConfirmadas.length === 0 && solicitudesOtras.length === 0 && (
             <Alert severity="info" sx={{ mt: 2 }}>
               {filtroTemporal === 'hoy' && 'No hay citas programadas para hoy.'}
               {filtroTemporal === 'pasadas' && 'No hay citas pasadas sin atender.'}
               {filtroTemporal === 'pendientes' && 'No hay citas pendientes con fecha futura.'}
               {filtroTemporal === 'revision' && 'No hay citas completadas/revisadas.'}
+              {filtroTemporal === 'confirmadas' && 'No hay citas confirmadas.'}
+              {filtroTemporal === 'canceladas' && 'No hay citas canceladas.'}
               {filtroTemporal === 'todas' && 'No hay citas en este momento.'}
             </Alert>
           )}

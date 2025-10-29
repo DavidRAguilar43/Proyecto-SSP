@@ -34,7 +34,8 @@ import {
   Today as TodayIcon,
   History as HistoryIcon,
   HourglassEmpty as HourglassEmptyIcon,
-  CheckCircle as CheckCircleIcon
+  CheckCircle as CheckCircleIcon,
+  EventAvailable as EventAvailableIcon
 } from '@mui/icons-material';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -52,7 +53,7 @@ const MisCitas: React.FC<MisCitasProps> = ({ open, onClose }) => {
   const [error, setError] = useState<string | null>(null);
 
   // Estado para filtro de pestañas temporales
-  type FiltroTemporal = 'todas' | 'hoy' | 'pasadas' | 'pendientes' | 'revision';
+  type FiltroTemporal = 'todas' | 'hoy' | 'confirmadas' | 'pasadas' | 'pendientes' | 'revision';
   const [filtroTemporal, setFiltroTemporal] = useState<FiltroTemporal>('todas');
 
   useEffect(() => {
@@ -296,11 +297,16 @@ const MisCitas: React.FC<MisCitasProps> = ({ open, onClose }) => {
   const filtrarPorEstadoTemporal = (citas: Cita[]): Cita[] => {
     switch (filtroTemporal) {
       case 'hoy':
+        // Solo citas de hoy (sin importar el estado)
         return citas.filter(c => esCitaDeHoy(c));
+      case 'confirmadas':
+        // Solo citas confirmadas
+        return citas.filter(c => c.estado === 'confirmada');
       case 'pasadas':
         return citas.filter(c => esCitaPasada(c) && c.estado !== 'completada');
       case 'pendientes':
-        return citas.filter(c => esCitaPendienteFutura(c) && c.estado !== 'completada');
+        // Solo citas con estado pendiente
+        return citas.filter(c => c.estado === 'pendiente');
       case 'revision':
         return citas.filter(c => c.estado === 'completada');
       case 'todas':
@@ -314,8 +320,9 @@ const MisCitas: React.FC<MisCitasProps> = ({ open, onClose }) => {
 
   // Contadores para las pestañas
   const contadorHoy = citas.filter(c => esCitaDeHoy(c)).length;
+  const contadorConfirmadas = citas.filter(c => c.estado === 'confirmada').length;
   const contadorPasadas = citas.filter(c => esCitaPasada(c) && c.estado !== 'completada').length;
-  const contadorPendientes = citas.filter(c => esCitaPendienteFutura(c) && c.estado !== 'completada').length;
+  const contadorPendientes = citas.filter(c => c.estado === 'pendiente').length;
   const contadorRevision = citas.filter(c => c.estado === 'completada').length;
 
   return (
@@ -402,6 +409,19 @@ const MisCitas: React.FC<MisCitasProps> = ({ open, onClose }) => {
                 }}
               />
               <Tab
+                value="confirmadas"
+                label={`Confirmadas (${contadorConfirmadas})`}
+                icon={<EventAvailableIcon />}
+                iconPosition="start"
+                sx={{
+                  color: contadorConfirmadas > 0 ? '#2196F3' : 'text.secondary',
+                  '&.Mui-selected': {
+                    color: '#2196F3',
+                    fontWeight: 700
+                  }
+                }}
+              />
+              <Tab
                 value="pasadas"
                 label={`Pasadas (${contadorPasadas})`}
                 icon={<HistoryIcon />}
@@ -449,6 +469,7 @@ const MisCitas: React.FC<MisCitasProps> = ({ open, onClose }) => {
             {citasFiltradas.length === 0 ? (
               <Alert severity="info" sx={{ mt: 2 }}>
                 {filtroTemporal === 'hoy' && 'No tienes citas programadas para hoy.'}
+                {filtroTemporal === 'confirmadas' && 'No tienes citas confirmadas.'}
                 {filtroTemporal === 'pasadas' && 'No tienes citas pasadas sin atender.'}
                 {filtroTemporal === 'pendientes' && 'No tienes citas pendientes con fecha futura.'}
                 {filtroTemporal === 'revision' && 'No tienes citas completadas/revisadas.'}

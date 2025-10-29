@@ -21,7 +21,9 @@ import {
   CircularProgress,
   Tabs,
   Tab,
-  Alert
+  Alert,
+  Collapse,
+  IconButton
 } from '@mui/material';
 import {
   Schedule as ScheduleIcon,
@@ -38,7 +40,10 @@ import {
   Today as TodayIcon,
   History as HistoryIcon,
   HourglassEmpty as HourglassEmptyIcon,
-  CheckCircle as CheckCircleIcon
+  CheckCircle as CheckCircleIcon,
+  EventAvailable as EventAvailableIcon,
+  ExpandMore as ExpandMoreIcon,
+  ExpandLess as ExpandLessIcon
 } from '@mui/icons-material';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -78,8 +83,40 @@ const SolicitudesPendientesCards: React.FC<SolicitudesPendientesCardsProps> = ({
   const [solicitudToCancel, setSolicitudToCancel] = useState<SolicitudCita | null>(null);
 
   // Estado para filtro de pestañas temporales
-  type FiltroTemporal = 'todas' | 'hoy' | 'pasadas' | 'pendientes' | 'revision';
+  type FiltroTemporal = 'todas' | 'hoy' | 'confirmadas' | 'pasadas' | 'pendientes' | 'revision';
   const [filtroTemporal, setFiltroTemporal] = useState<FiltroTemporal>('todas');
+
+  // Estados para colapsar secciones (empiezan colapsadas)
+  const [listExpanded, setListExpanded] = useState(false);
+  const [confirmadasExpanded, setConfirmadasExpanded] = useState(false);
+
+  // Estado para controlar qué textos están expandidos (por id de cita)
+  const [expandedTexts, setExpandedTexts] = useState<Record<string | number, boolean>>({});
+
+  // Estado para controlar qué detalles de estudiante están expandidos (empiezan colapsados)
+  const [expandedDetails, setExpandedDetails] = useState<Record<string | number, boolean>>({});
+
+  // Función para alternar el estado de un texto
+  const toggleText = (citaId: string | number) => {
+    setExpandedTexts(prev => ({
+      ...prev,
+      [citaId]: !prev[citaId]
+    }));
+  };
+
+  // Función para alternar el estado de detalles de estudiante
+  const toggleDetails = (citaId: string | number) => {
+    setExpandedDetails(prev => ({
+      ...prev,
+      [citaId]: !prev[citaId]
+    }));
+  };
+
+  // Función para truncar texto
+  const truncateText = (text: string, maxLength: number = 100) => {
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength) + '...';
+  };
 
   const handleConfirmarCita = (solicitud: SolicitudCita) => {
     setSelectedSolicitud(solicitud);
@@ -354,11 +391,16 @@ const SolicitudesPendientesCards: React.FC<SolicitudesPendientesCardsProps> = ({
   const filtrarPorEstadoTemporal = (solicitudes: SolicitudCita[]): SolicitudCita[] => {
     switch (filtroTemporal) {
       case 'hoy':
+        // Solo citas de hoy (sin importar el estado)
         return solicitudes.filter(s => esCitaDeHoy(s));
+      case 'confirmadas':
+        // Solo citas confirmadas
+        return solicitudes.filter(s => s.estado === 'confirmada');
       case 'pasadas':
         return solicitudes.filter(s => esCitaPasada(s) && s.estado !== 'completada');
       case 'pendientes':
-        return solicitudes.filter(s => esCitaPendienteFutura(s) && s.estado !== 'completada');
+        // Solo citas con estado pendiente
+        return solicitudes.filter(s => s.estado === 'pendiente');
       case 'revision':
         return solicitudes.filter(s => s.estado === 'completada');
       case 'todas':
@@ -372,8 +414,9 @@ const SolicitudesPendientesCards: React.FC<SolicitudesPendientesCardsProps> = ({
 
   // Contadores para las pestañas
   const contadorHoy = solicitudes.filter(s => esCitaDeHoy(s)).length;
+  const contadorConfirmadas = solicitudes.filter(s => s.estado === 'confirmada').length;
   const contadorPasadas = solicitudes.filter(s => esCitaPasada(s) && s.estado !== 'completada').length;
-  const contadorPendientes = solicitudes.filter(s => esCitaPendienteFutura(s) && s.estado !== 'completada').length;
+  const contadorPendientes = solicitudes.filter(s => s.estado === 'pendiente').length;
   const contadorRevision = solicitudes.filter(s => s.estado === 'completada').length;
 
   const solicitudesPendientes = solicitudesFiltradas.filter(s => s.estado === 'pendiente');
@@ -432,6 +475,19 @@ const SolicitudesPendientesCards: React.FC<SolicitudesPendientesCardsProps> = ({
               }}
             />
             <Tab
+              value="confirmadas"
+              label={`Confirmadas (${contadorConfirmadas})`}
+              icon={<EventAvailableIcon />}
+              iconPosition="start"
+              sx={{
+                color: contadorConfirmadas > 0 ? '#2196F3' : 'text.secondary',
+                '&.Mui-selected': {
+                  color: '#2196F3',
+                  fontWeight: 700
+                }
+              }}
+            />
+            <Tab
               value="pasadas"
               label={`Pasadas (${contadorPasadas})`}
               icon={<HistoryIcon />}
@@ -478,6 +534,7 @@ const SolicitudesPendientesCards: React.FC<SolicitudesPendientesCardsProps> = ({
       {solicitudesPendientes.length === 0 && solicitudesConfirmadas.length === 0 && solicitudes.length > 0 && (
         <Alert severity="info" sx={{ mt: 2 }}>
           {filtroTemporal === 'hoy' && 'No hay citas programadas para hoy.'}
+          {filtroTemporal === 'confirmadas' && 'No hay citas confirmadas.'}
           {filtroTemporal === 'pasadas' && 'No hay citas pasadas sin atender.'}
           {filtroTemporal === 'pendientes' && 'No hay citas pendientes con fecha futura.'}
           {filtroTemporal === 'revision' && 'No hay citas completadas/revisadas.'}
@@ -488,14 +545,36 @@ const SolicitudesPendientesCards: React.FC<SolicitudesPendientesCardsProps> = ({
       {/* Solicitudes Pendientes */}
       {solicitudesPendientes.length > 0 && (
         <Box mb={4}>
-          <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
-            <Badge badgeContent={solicitudesPendientes.length} color="warning">
-              <ScheduleIcon sx={{ mr: 1 }} />
-            </Badge>
-            Solicitudes Pendientes
-          </Typography>
-          
-          <Grid container spacing={2}>
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              mb: 2,
+              cursor: 'pointer',
+              '&:hover': {
+                bgcolor: 'action.hover',
+                borderRadius: 1,
+                transition: 'background-color 0.2s'
+              },
+              p: 1,
+              ml: -1
+            }}
+            onClick={() => setListExpanded(!listExpanded)}
+          >
+            <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center' }}>
+              <Badge badgeContent={solicitudesPendientes.length} color="warning">
+                <ScheduleIcon sx={{ mr: 1 }} />
+              </Badge>
+              Solicitudes Pendientes
+            </Typography>
+            <IconButton size="small">
+              {listExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+            </IconButton>
+          </Box>
+
+          <Collapse in={listExpanded}>
+            <Grid container spacing={2}>
             {solicitudesPendientes.map((solicitud) => {
               const barraColor = getBarraEstadoColor(solicitud);
               return (
@@ -535,60 +614,37 @@ const SolicitudesPendientesCards: React.FC<SolicitudesPendientesCardsProps> = ({
                       />
                     </Box>
 
-                    <Typography variant="body2" sx={{ mb: 2 }}>
-                      <strong>Motivo:</strong> {solicitud.motivo}
-                    </Typography>
-
-                    <List dense>
-                      <ListItem disablePadding>
-                        <ListItemIcon>
-                          <PersonIcon fontSize="small" />
-                        </ListItemIcon>
-                        <ListItemText 
-                          primary="Estudiante"
-                          secondary={solicitud.alumno_nombre}
-                        />
-                      </ListItem>
-
-                      <ListItem disablePadding>
-                        <ListItemIcon>
-                          <EmailIcon fontSize="small" />
-                        </ListItemIcon>
-                        <ListItemText 
-                          primary="Email"
-                          secondary={solicitud.alumno_email}
-                        />
-                      </ListItem>
-
-                      {solicitud.alumno_celular && (
-                        <ListItem disablePadding>
-                          <ListItemIcon>
-                            <PhoneIcon fontSize="small" />
-                          </ListItemIcon>
-                          <ListItemText 
-                            primary="Celular"
-                            secondary={solicitud.alumno_celular}
-                          />
-                        </ListItem>
+                    <Box sx={{ mb: 2 }}>
+                      <Typography variant="body2" component="span">
+                        <strong>Motivo:</strong>{' '}
+                        {expandedTexts[solicitud.id_cita] || solicitud.motivo.length <= 100
+                          ? solicitud.motivo
+                          : truncateText(solicitud.motivo, 100)}
+                      </Typography>
+                      {solicitud.motivo.length > 100 && (
+                        <Button
+                          size="small"
+                          onClick={() => toggleText(solicitud.id_cita)}
+                          sx={{
+                            ml: 1,
+                            textTransform: 'none',
+                            minWidth: 'auto',
+                            p: 0,
+                            fontSize: '0.875rem'
+                          }}
+                        >
+                          {expandedTexts[solicitud.id_cita] ? 'Ver menos' : 'Ver más'}
+                        </Button>
                       )}
+                    </Box>
 
-                      {solicitud.alumno_matricula && (
-                        <ListItem disablePadding>
-                          <ListItemIcon>
-                            <BadgeIcon fontSize="small" />
-                          </ListItemIcon>
-                          <ListItemText 
-                            primary="Matrícula"
-                            secondary={solicitud.alumno_matricula}
-                          />
-                        </ListItem>
-                      )}
-
+                    {/* Fechas fuera del collapse */}
+                    <List dense sx={{ mb: 1 }}>
                       <ListItem disablePadding>
                         <ListItemIcon>
                           <CalendarIcon fontSize="small" />
                         </ListItemIcon>
-                        <ListItemText 
+                        <ListItemText
                           primary="Fecha de solicitud"
                           secondary={formatDate(solicitud.fecha_solicitud)}
                         />
@@ -599,20 +655,112 @@ const SolicitudesPendientesCards: React.FC<SolicitudesPendientesCardsProps> = ({
                           <ListItemIcon>
                             <ScheduleIcon fontSize="small" />
                           </ListItemIcon>
-                          <ListItemText 
-                            primary="Fecha preferida"
+                          <ListItemText
+                            primary="Fecha preferida del alumno"
                             secondary={formatDate(solicitud.fecha_propuesta_alumno)}
                           />
                         </ListItem>
                       )}
                     </List>
 
+                    {/* Encabezado de detalles del estudiante - colapsable */}
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        cursor: 'pointer',
+                        '&:hover': {
+                          bgcolor: 'action.hover',
+                          borderRadius: 1
+                        },
+                        p: 0.5,
+                        mb: 1
+                      }}
+                      onClick={() => toggleDetails(solicitud.id_cita)}
+                    >
+                      <Typography variant="body2" fontWeight="bold" color="text.secondary">
+                        Detalles del Estudiante
+                      </Typography>
+                      <IconButton size="small">
+                        {expandedDetails[solicitud.id_cita] ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
+                      </IconButton>
+                    </Box>
+
+                    <Collapse in={expandedDetails[solicitud.id_cita]}>
+                      <List dense>
+                        <ListItem disablePadding>
+                          <ListItemIcon>
+                            <PersonIcon fontSize="small" />
+                          </ListItemIcon>
+                          <ListItemText
+                            primary="Estudiante"
+                            secondary={solicitud.alumno_nombre}
+                          />
+                        </ListItem>
+
+                        <ListItem disablePadding>
+                          <ListItemIcon>
+                            <EmailIcon fontSize="small" />
+                          </ListItemIcon>
+                          <ListItemText
+                            primary="Email"
+                            secondary={solicitud.alumno_email}
+                          />
+                        </ListItem>
+
+                        {solicitud.alumno_celular && (
+                          <ListItem disablePadding>
+                            <ListItemIcon>
+                              <PhoneIcon fontSize="small" />
+                            </ListItemIcon>
+                            <ListItemText
+                              primary="Celular"
+                              secondary={solicitud.alumno_celular}
+                            />
+                          </ListItem>
+                        )}
+
+                        {solicitud.alumno_matricula && (
+                          <ListItem disablePadding>
+                            <ListItemIcon>
+                              <BadgeIcon fontSize="small" />
+                            </ListItemIcon>
+                            <ListItemText
+                              primary="Matrícula"
+                              secondary={solicitud.alumno_matricula}
+                            />
+                          </ListItem>
+                        )}
+                      </List>
+                    </Collapse>
+
                     {solicitud.observaciones_alumno && (
                       <>
                         <Divider sx={{ my: 2 }} />
-                        <Typography variant="body2" color="text.secondary">
-                          <strong>Observaciones del estudiante:</strong> {solicitud.observaciones_alumno}
-                        </Typography>
+                        <Box>
+                          <Typography variant="body2" color="text.secondary" component="span">
+                            <strong>Observaciones del estudiante:</strong>{' '}
+                            {expandedTexts[`obs-${solicitud.id_cita}`] || solicitud.observaciones_alumno.length <= 100
+                              ? solicitud.observaciones_alumno
+                              : truncateText(solicitud.observaciones_alumno, 100)}
+                          </Typography>
+                          {solicitud.observaciones_alumno.length > 100 && (
+                            <Button
+                              size="small"
+                              onClick={() => toggleText(`obs-${solicitud.id_cita}`)}
+                              sx={{
+                                ml: 1,
+                                textTransform: 'none',
+                                minWidth: 'auto',
+                                p: 0,
+                                fontSize: '0.875rem'
+                              }}
+                            >
+                              {expandedTexts[`obs-${solicitud.id_cita}`] ? 'Ver menos' : 'Ver más'}
+                            </Button>
+                          )}
+                        </Box>
                       </>
                     )}
 
@@ -644,18 +792,41 @@ const SolicitudesPendientesCards: React.FC<SolicitudesPendientesCardsProps> = ({
               );
             })}
           </Grid>
+          </Collapse>
         </Box>
       )}
 
       {/* Citas Confirmadas */}
       {solicitudesConfirmadas.length > 0 && (
         <Box mb={4}>
-          <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
-            <CheckIcon sx={{ mr: 1, color: 'success.main' }} />
-            Citas Confirmadas ({solicitudesConfirmadas.length})
-          </Typography>
-          
-          <Grid container spacing={2}>
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              mb: 2,
+              cursor: 'pointer',
+              '&:hover': {
+                bgcolor: 'action.hover',
+                borderRadius: 1,
+                transition: 'background-color 0.2s'
+              },
+              p: 1,
+              ml: -1
+            }}
+            onClick={() => setConfirmadasExpanded(!confirmadasExpanded)}
+          >
+            <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center' }}>
+              <CheckIcon sx={{ mr: 1, color: 'success.main' }} />
+              Citas Confirmadas ({solicitudesConfirmadas.length})
+            </Typography>
+            <IconButton size="small">
+              {confirmadasExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+            </IconButton>
+          </Box>
+
+          <Collapse in={confirmadasExpanded}>
+            <Grid container spacing={2}>
             {solicitudesConfirmadas.map((solicitud) => {
               const barraColor = getBarraEstadoColor(solicitud);
               return (
@@ -702,6 +873,7 @@ const SolicitudesPendientesCards: React.FC<SolicitudesPendientesCardsProps> = ({
               );
             })}
           </Grid>
+          </Collapse>
         </Box>
       )}
 

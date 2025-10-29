@@ -200,9 +200,10 @@ Se agregó una barra de pestañas en la parte superior de los componentes de cit
 | Pestaña | Icono | Color | Descripción | Filtro Aplicado |
 |---------|-------|-------|-------------|-----------------|
 | **Todas** | 📅 CalendarIcon | Azul (primary) | Muestra todas las citas | Sin filtro |
-| **Hoy** | 📆 TodayIcon | Verde (#4CAF50) | Citas programadas para hoy | `fecha === hoy` |
+| **Hoy** | 📆 TodayIcon | Verde (#4CAF50) | Citas programadas para hoy (sin importar estado) | `fecha === hoy` |
+| **Confirmadas** | 📋 EventAvailableIcon | Azul (#2196F3) | Citas confirmadas | `estado === 'confirmada'` |
 | **Pasadas** | 🕐 HistoryIcon | Rojo (#F44336) | Citas pasadas sin atender | `fecha < hoy && estado !== 'completada'` |
-| **Pendientes** | ⏳ HourglassEmptyIcon | Gris (#9E9E9E) | Citas futuras pendientes | `fecha > hoy && estado !== 'completada'` |
+| **Pendientes** | ⏳ HourglassEmptyIcon | Gris (#9E9E9E) | Citas con estado pendiente | `estado === 'pendiente'` |
 | **Revisión** | ✅ CheckCircleIcon | Amarillo (#FFC107) | Citas completadas | `estado === 'completada'` |
 
 ### Características
@@ -245,7 +246,7 @@ const filtrarPorEstadoTemporal = (solicitudes: SolicitudCita[]): SolicitudCita[]
 #### Estado del Componente
 
 ```typescript
-type FiltroTemporal = 'todas' | 'hoy' | 'pasadas' | 'pendientes' | 'revision';
+type FiltroTemporal = 'todas' | 'hoy' | 'confirmadas' | 'pasadas' | 'pendientes' | 'revision';
 const [filtroTemporal, setFiltroTemporal] = useState<FiltroTemporal>('todas');
 ```
 
@@ -253,8 +254,9 @@ const [filtroTemporal, setFiltroTemporal] = useState<FiltroTemporal>('todas');
 
 ```typescript
 const contadorHoy = solicitudes.filter(s => esCitaDeHoy(s)).length;
+const contadorConfirmadas = solicitudes.filter(s => s.estado === 'confirmada').length;
 const contadorPasadas = solicitudes.filter(s => esCitaPasada(s) && s.estado !== 'completada').length;
-const contadorPendientes = solicitudes.filter(s => esCitaPendienteFutura(s) && s.estado !== 'completada').length;
+const contadorPendientes = solicitudes.filter(s => s.estado === 'pendiente').length;
 const contadorRevision = solicitudes.filter(s => s.estado === 'completada').length;
 ```
 
@@ -316,6 +318,41 @@ Cuando no hay resultados para el filtro seleccionado, se muestra un mensaje apro
 3. **Priorización**: Las citas de "Hoy" y "Pasadas" son fácilmente accesibles
 4. **Seguimiento**: La pestaña "Revisión" permite ver el historial de citas completadas
 5. **Visibilidad**: Los contadores muestran de un vistazo cuántas citas hay en cada categoría
+
+## Actualizaciones Recientes
+
+### Diciembre 2024 - Mejoras en Filtros de Citas
+
+Se agregaron las siguientes mejoras al sistema de filtros de citas:
+
+1. **Nuevo Tab "Confirmadas"**:
+   - Se agregó un tab específico para citas confirmadas
+   - Icono: EventAvailableIcon
+   - Color: Azul (#2196F3)
+   - Filtro: `estado === 'confirmada'`
+
+2. **Corrección del Tab "Hoy"**:
+   - Ahora muestra TODAS las citas del día de hoy, sin importar su estado
+   - Anteriormente podía mostrar citas de otros días según el filtro temporal
+   - Filtro actualizado: `fecha === hoy` (sin filtro adicional de estado)
+
+3. **Corrección del Tab "Pendientes"**:
+   - Ahora muestra SOLO las citas con estado "pendiente"
+   - Anteriormente mostraba citas futuras con cualquier estado excepto completadas
+   - Filtro actualizado: `estado === 'pendiente'`
+
+4. **Mejora Visual - Citas Confirmadas**:
+   - Se removió el icono de campana (NotificationImportantIcon) de las tarjetas de citas confirmadas
+   - Esto mejora la claridad visual y evita confusión con notificaciones
+
+5. **Componentes Actualizados**:
+   - `SolicitudesCitas.tsx`
+   - `SolicitudesPendientesCards.tsx`
+   - `MisCitas.tsx`
+
+6. **Iconos Diferenciados**:
+   - Tab "Confirmadas": EventAvailableIcon (📋)
+   - Tab "Revisión": CheckCircleIcon (✅)
 
 ## Referencias
 
