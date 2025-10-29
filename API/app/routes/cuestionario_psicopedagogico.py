@@ -189,16 +189,17 @@ def get_reporte_cuestionario(
             detail="No tienes permisos para ver reportes psicopedagógicos"
         )
     
-    # Buscar el cuestionario
+    # Buscar el cuestionario completado
     cuestionario = db.query(Cuestionario).filter(
         Cuestionario.id_persona == persona_id,
-        Cuestionario.tipo_cuestionario == "psicopedagogico"
+        Cuestionario.tipo_cuestionario == "psicopedagogico",
+        Cuestionario.fecha_completado.isnot(None)  # Solo cuestionarios completados
     ).first()
-    
+
     if not cuestionario:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Cuestionario no encontrado para este estudiante"
+            detail="Cuestionario completado no encontrado para este estudiante"
         )
     
     return CuestionarioPsicopedagogicoOut(
@@ -268,14 +269,16 @@ def get_estudiantes_con_cuestionarios(
         Cuestionario, Persona.id == Cuestionario.id_persona
     ).filter(
         Persona.rol == "alumno",
-        Cuestionario.tipo_cuestionario == "psicopedagogico"
+        Cuestionario.tipo_cuestionario == "psicopedagogico",
+        Cuestionario.fecha_completado.isnot(None)  # Solo cuestionarios completados
     ).all()
 
     resultado = []
     for estudiante in estudiantes_con_cuestionarios:
         cuestionario = db.query(Cuestionario).filter(
             Cuestionario.id_persona == estudiante.id,
-            Cuestionario.tipo_cuestionario == "psicopedagogico"
+            Cuestionario.tipo_cuestionario == "psicopedagogico",
+            Cuestionario.fecha_completado.isnot(None)  # Solo cuestionarios completados
         ).first()
 
         resultado.append({

@@ -342,6 +342,12 @@ export const catalogosApi = {
 
 // API para Programas Educativos
 export const programasEducativosApi = {
+  // Obtener todos los programas educativos (público, sin autenticación)
+  getPublico: async () => {
+    const response = await api.get('/programas-educativos/publico/');
+    return response.data;
+  },
+
   // Obtener todos los programas educativos
   getAll: async () => {
     const response = await api.get('/programas-educativos/');
@@ -387,6 +393,12 @@ export const programasEducativosApi = {
 
 // API para Unidades
 export const unidadesApi = {
+  // Obtener todas las unidades (público, sin autenticación)
+  getPublico: async () => {
+    const response = await api.get('/unidades/publico/');
+    return response.data;
+  },
+
   // Obtener todas las unidades
   getAll: async () => {
     const response = await api.get('/unidades/');
@@ -426,6 +438,57 @@ export const unidadesApi = {
   // Eliminar múltiples unidades
   bulkDelete: async (ids: number[]) => {
     const response = await api.delete('/unidades/bulk-delete/', { data: { ids } });
+    return response.data;
+  },
+};
+
+// API para Departamentos
+export const departamentosApi = {
+  // Obtener todos los departamentos activos (público, sin autenticación)
+  getPublico: async () => {
+    const response = await api.get('/departamentos/publico/');
+    return response.data;
+  },
+
+  // Obtener todos los departamentos
+  getAll: async () => {
+    const response = await api.get('/departamentos/');
+    return response.data;
+  },
+
+  // Obtener un departamento por ID
+  getById: async (id: number) => {
+    const response = await api.get(`/departamentos/${id}`);
+    return response.data;
+  },
+
+  // Crear un nuevo departamento
+  create: async (departamento: any) => {
+    const response = await api.post('/departamentos/', departamento);
+    return response.data;
+  },
+
+  // Actualizar un departamento
+  update: async (id: number, departamento: any) => {
+    const cleanData = Object.fromEntries(
+      Object.entries(departamento).filter(([key, value]) =>
+        value !== '' && value !== null && value !== undefined
+      )
+    );
+
+    const response = await api.put(`/departamentos/${id}`, cleanData);
+    return response.data;
+  },
+
+  // Eliminar un departamento
+  delete: async (id: number) => {
+    const response = await api.delete(`/departamentos/${id}`);
+    return response.data;
+  },
+
+  // Eliminar múltiples departamentos
+  bulkDelete: async (ids: number[]) => {
+    const response = await api.delete('/departamentos/bulk-delete/', { data: { ids } });
     return response.data;
   },
 };

@@ -52,6 +52,18 @@ def create_unidad(
     return db_unidad
 
 
+@router.get("/publico/", response_model=List[UnidadOut])
+def read_unidades_publico(
+    db: Session = Depends(get_db)
+) -> Any:
+    """
+    Recuperar todas las unidades (endpoint público sin autenticación).
+    Ordenadas alfabéticamente por nombre.
+    """
+    unidades = db.query(Unidad).order_by(Unidad.nombre).all()
+    return unidades
+
+
 @router.get("/", response_model=List[UnidadOut])
 def read_unidades(
     db: Session = Depends(get_db),

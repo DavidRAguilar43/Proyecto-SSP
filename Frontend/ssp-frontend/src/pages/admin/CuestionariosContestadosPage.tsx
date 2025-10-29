@@ -119,7 +119,7 @@ const CuestionariosContestadosPage: React.FC = () => {
 
   // Filtros
   const [busqueda, setBusqueda] = useState('');
-  const [filtroEstado, setFiltroEstado] = useState('todos');
+  const [filtroEstado, setFiltroEstado] = useState('completado'); // Por defecto solo mostrar completados
 
   // Detalle de respuesta
   const [respuestaSeleccionada, setRespuestaSeleccionada] = useState<RespuestaCuestionario | null>(null);

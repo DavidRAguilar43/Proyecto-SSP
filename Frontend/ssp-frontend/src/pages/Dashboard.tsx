@@ -75,7 +75,7 @@ const Dashboard = () => {
     },
     {
       title: 'Unidades',
-      description: 'Gestionar unidades organizacionales',
+      description: 'Gestionar unidades academicas',
       icon: <BusinessIcon sx={{ fontSize: 40 }} />,
       path: '/unidades',
       roles: ['admin', 'coordinador']

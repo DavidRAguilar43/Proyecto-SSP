@@ -54,6 +54,18 @@ def create_programa_educativo(
     return db_programa
 
 
+@router.get("/publico/", response_model=List[ProgramaEducativoOut])
+def read_programas_educativos_publico(
+    db: Session = Depends(get_db)
+) -> Any:
+    """
+    Recuperar todos los programas educativos (endpoint público sin autenticación).
+    Ordenados alfabéticamente por nombre_programa.
+    """
+    programas = db.query(ProgramaEducativo).order_by(ProgramaEducativo.nombre_programa).all()
+    return programas
+
+
 @router.get("/", response_model=List[ProgramaEducativoOut])
 def read_programas_educativos(
     db: Session = Depends(get_db),

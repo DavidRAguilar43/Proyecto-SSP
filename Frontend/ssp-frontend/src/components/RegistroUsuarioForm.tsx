@@ -17,6 +17,9 @@ import {
 import type { PersonaCreate } from '../types/index';
 import { personasApi, catalogosApi } from '@/services/api';
 import CatalogoSelector from './CatalogoSelector';
+import ProgramaEducativoSelector from './ProgramaEducativoSelector';
+import UnidadSelector from './UnidadSelector';
+import DepartamentoSelector from './DepartamentoSelector';
 import { useNotification } from '@/hooks/useNotification';
 
 interface RegistroUsuarioFormProps {
@@ -611,12 +614,12 @@ const RegistroUsuarioForm = ({ open, onClose, onSubmit, loading = false }: Regis
             {tipoUsuario === 'alumno' && (
               <>
                 <Grid size={{ xs: 12, sm: 6 }}>
-                  <TextField
-                    fullWidth
+                  <ProgramaEducativoSelector
                     label="Programa Educativo / Carrera"
                     value={programaEducativo}
-                    onChange={(e) => setProgramaEducativo(e.target.value)}
-                    helperText="Ingrese su programa educativo o carrera"
+                    onChange={(value) => setProgramaEducativo(value)}
+                    required={true}
+                    helperText="Seleccione su programa educativo o carrera"
                   />
                 </Grid>
 
@@ -647,12 +650,12 @@ const RegistroUsuarioForm = ({ open, onClose, onSubmit, loading = false }: Regis
             {tipoUsuario === 'docente' && (
               <>
                 <Grid size={{ xs: 12, sm: 6 }}>
-                  <TextField
-                    fullWidth
-                    label="Facultad"
+                  <UnidadSelector
+                    label="Facultad / Unidad Académica"
                     value={facultad}
-                    onChange={(e) => setFacultad(e.target.value)}
-                    helperText="Ingrese la facultad a la que pertenece"
+                    onChange={(value) => setFacultad(value)}
+                    required={true}
+                    helperText="Seleccione la facultad o unidad académica a la que pertenece"
                   />
                 </Grid>
 
@@ -682,12 +685,12 @@ const RegistroUsuarioForm = ({ open, onClose, onSubmit, loading = false }: Regis
             {tipoUsuario === 'personal' && (
               <>
                 <Grid size={{ xs: 12, sm: 6 }}>
-                  <TextField
-                    fullWidth
+                  <DepartamentoSelector
                     label="Departamento"
                     value={departamento}
-                    onChange={(e) => setDepartamento(e.target.value)}
-                    helperText="Ingrese el departamento al que pertenece"
+                    onChange={(value) => setDepartamento(value)}
+                    required={true}
+                    helperText="Seleccione el departamento al que pertenece"
                   />
                 </Grid>
 
