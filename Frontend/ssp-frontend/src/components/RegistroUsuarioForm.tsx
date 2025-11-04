@@ -51,6 +51,7 @@ const RegistroUsuarioForm = ({ open, onClose, onSubmit, loading = false }: Regis
     lugar_origen: '',
     colonia_residencia_actual: '',
     celular: '',
+    extension_telefonica: '',
     discapacidad: '',
     observaciones: '',
     matricula: '',
@@ -72,7 +73,6 @@ const RegistroUsuarioForm = ({ open, onClose, onSubmit, loading = false }: Regis
   // Reason: Campos específicos para personal administrativo
   const [departamento, setDepartamento] = useState('');
   const [puesto, setPuesto] = useState('');
-  const [extension, setExtension] = useState('');
 
   // Reason: Campos específicos para alumnos
   const [programaEducativo, setProgramaEducativo] = useState('');
@@ -358,7 +358,6 @@ const RegistroUsuarioForm = ({ open, onClose, onSubmit, loading = false }: Regis
       const infoPersonal = [];
       if (departamento) infoPersonal.push(`Departamento: ${departamento}`);
       if (puesto) infoPersonal.push(`Puesto: ${puesto}`);
-      if (extension) infoPersonal.push(`Extensión: ${extension}`);
       if (infoPersonal.length > 0) {
         observacionesCompletas = infoPersonal.join(' | ') + (observacionesCompletas ? ' | ' + observacionesCompletas : '');
       }
@@ -515,6 +514,16 @@ const RegistroUsuarioForm = ({ open, onClose, onSubmit, loading = false }: Regis
                 label="Teléfono Celular"
                 value={formData.celular}
                 onChange={handleChange('celular')}
+              />
+            </Grid>
+
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField
+                fullWidth
+                label="Extensión Telefónica"
+                value={formData.extension_telefonica}
+                onChange={handleChange('extension_telefonica')}
+                helperText="Extensión telefónica (opcional)"
               />
             </Grid>
 
@@ -701,16 +710,6 @@ const RegistroUsuarioForm = ({ open, onClose, onSubmit, loading = false }: Regis
                     value={puesto}
                     onChange={(e) => setPuesto(e.target.value)}
                     helperText="Ingrese su puesto o cargo"
-                  />
-                </Grid>
-
-                <Grid size={{ xs: 12, sm: 6 }}>
-                  <TextField
-                    fullWidth
-                    label="Extensión (Lugar de Contacto)"
-                    value={extension}
-                    onChange={(e) => setExtension(e.target.value)}
-                    helperText="Ingrese su extensión telefónica o lugar de contacto"
                   />
                 </Grid>
               </>

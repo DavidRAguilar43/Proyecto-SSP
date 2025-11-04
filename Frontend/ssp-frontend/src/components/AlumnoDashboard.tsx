@@ -89,7 +89,7 @@ const AlumnoDashboard = ({ user, onEditProfile }: AlumnoDashboardProps) => {
         return {
           semestre: camposPersonal.departamento || 'Complete su información académica en Editar Perfil',
           programa: camposPersonal.puesto || 'Complete su información académica en Editar Perfil',
-          grupo: camposPersonal.extension || 'Complete su información académica en Editar Perfil'
+          grupo: 'N/A'
         };
       }
       case 'docente': {
@@ -327,16 +327,18 @@ const AlumnoDashboard = ({ user, onEditProfile }: AlumnoDashboardProps) => {
                   </Paper>
                 </Grid>
 
-                <Grid size={{ xs: 12, sm: 6 }}>
-                  <Paper sx={{ p: 2, bgcolor: 'grey.50' }}>
-                    <Typography variant="subtitle2" color="text.secondary">
-                      {getFieldLabels().grupo}
-                    </Typography>
-                    <Typography variant="body1">
-                      {getFieldValues().grupo}
-                    </Typography>
-                  </Paper>
-                </Grid>
+                {user.rol !== 'personal' && (
+                  <Grid size={{ xs: 12, sm: 6 }}>
+                    <Paper sx={{ p: 2, bgcolor: 'grey.50' }}>
+                      <Typography variant="subtitle2" color="text.secondary">
+                        {getFieldLabels().grupo}
+                      </Typography>
+                      <Typography variant="body1">
+                        {getFieldValues().grupo}
+                      </Typography>
+                    </Paper>
+                  </Grid>
+                )}
 
                 {user.cohorte && (
                   <Grid size={{ xs: 12 }}>

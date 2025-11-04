@@ -63,6 +63,7 @@ class PersonaBase(BaseModel):
     lugar_origen: str
     colonia_residencia_actual: Optional[str] = None
     celular: str
+    extension_telefonica: Optional[str] = None
     correo_institucional: EmailStr
     discapacidad: Optional[str] = None
     observaciones: Optional[str] = None
@@ -147,6 +148,7 @@ class PersonaRegistro(BaseModel):
     password: str
 
     # Campos opcionales
+    extension_telefonica: Optional[str] = None
     religion: Optional[str] = None
     trabaja: bool = False
     lugar_trabajo: Optional[str] = None
@@ -227,6 +229,7 @@ class PersonaUpdate(BaseModel):
     lugar_origen: Optional[str] = None
     colonia_residencia_actual: Optional[str] = None
     celular: Optional[str] = None
+    extension_telefonica: Optional[str] = None
     correo_institucional: Optional[EmailStr] = None
     discapacidad: Optional[str] = None
     observaciones: Optional[str] = None

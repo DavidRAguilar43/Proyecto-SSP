@@ -52,6 +52,7 @@ const PersonaForm = ({ open, onClose, onSubmit, persona, loading = false }: Pers
     lugar_origen: '',
     colonia_residencia_actual: '',
     celular: '',
+    extension_telefonica: '',
     discapacidad: '',
     observaciones: '',
     matricula: '',
@@ -406,6 +407,16 @@ const PersonaForm = ({ open, onClose, onSubmit, persona, loading = false }: Pers
                 label="Teléfono Celular"
                 value={formData.celular}
                 onChange={handleChange('celular')}
+              />
+            </Grid>
+
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField
+                fullWidth
+                label="Extensión Telefónica"
+                value={formData.extension_telefonica}
+                onChange={handleChange('extension_telefonica')}
+                helperText="Extensión telefónica (opcional)"
               />
             </Grid>
 

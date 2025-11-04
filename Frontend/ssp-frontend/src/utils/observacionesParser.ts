@@ -19,7 +19,6 @@ export interface CamposDocente {
 export interface CamposPersonal {
   departamento?: string;
   puesto?: string;
-  extension?: string;
 }
 
 export type CamposEspecificos = CamposAlumno | CamposDocente | CamposPersonal;
@@ -74,8 +73,6 @@ export function parseObservaciones(
           campos.departamento = valor.trim();
         } else if (claveNormalizada.includes('puesto')) {
           campos.puesto = valor.trim();
-        } else if (claveNormalizada.includes('extensión') || claveNormalizada.includes('extension')) {
-          campos.extension = valor.trim();
         } else {
           observacionesRestantes.push(parte);
         }
@@ -134,9 +131,6 @@ export function buildObservaciones(
     }
     if (camposPersonal.puesto) {
       partes.push(`Puesto: ${camposPersonal.puesto}`);
-    }
-    if (camposPersonal.extension) {
-      partes.push(`Extensión: ${camposPersonal.extension}`);
     }
   }
 

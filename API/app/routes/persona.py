@@ -173,7 +173,7 @@ def update_mi_perfil(
     allowed_fields = {
         'sexo', 'genero', 'edad', 'estado_civil', 'religion', 'trabaja',
         'lugar_trabajo', 'lugar_origen', 'colonia_residencia_actual',
-        'celular', 'discapacidad', 'observaciones', 'matricula',
+        'celular', 'extension_telefonica', 'discapacidad', 'observaciones', 'matricula',
         'semestre', 'numero_hijos', 'grupo_etnico', 'password'
     }
 

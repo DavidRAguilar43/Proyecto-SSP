@@ -162,6 +162,17 @@ const PersonaFieldsShared: React.FC<PersonaFieldsSharedProps> = ({
         />
       </Grid>
 
+      {/* Extensión Telefónica */}
+      <Grid item xs={12} sm={6}>
+        <TextField
+          fullWidth
+          label="Extensión Telefónica"
+          value={formData.extension_telefonica || ''}
+          onChange={onChange('extension_telefonica')}
+          helperText="Extensión telefónica (opcional)"
+        />
+      </Grid>
+
       {/* Sexo */}
       <Grid item xs={12} sm={6}>
         <FormControl fullWidth>

@@ -108,18 +108,41 @@ const AlumnoPage = ({ user: propUser, onLogout: propOnLogout }: AlumnoPageProps)
             <Typography variant="body2" sx={{ mr: 2 }}>
               {user.correo_institucional.split('@')[0]}
             </Typography>
-            
-            <IconButton
-              size="large"
-              aria-label="account of current user"
-              aria-controls="menu-appbar"
-              aria-haspopup="true"
+
+            <Box
+              sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                cursor: 'pointer',
+                '&:hover': {
+                  opacity: 0.8
+                }
+              }}
               onClick={handleMenu}
-              color="inherit"
             >
-              <AccountCircle />
-            </IconButton>
-            
+              <IconButton
+                size="large"
+                aria-label="account of current user"
+                aria-controls="menu-appbar"
+                aria-haspopup="true"
+                color="inherit"
+                sx={{ p: 0.5 }}
+              >
+                <AccountCircle />
+              </IconButton>
+              <Typography
+                variant="caption"
+                sx={{
+                  fontSize: '0.65rem',
+                  mt: -0.5,
+                  lineHeight: 1
+                }}
+              >
+                Cerrar sesión
+              </Typography>
+            </Box>
+
             <Menu
               id="menu-appbar"
               anchorEl={anchorEl}

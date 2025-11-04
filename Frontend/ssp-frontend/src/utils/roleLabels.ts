@@ -24,7 +24,7 @@ export const getFieldLabels = (rol: string): FieldLabels => {
       return {
         semestre: 'Departamento',
         programa: 'Puesto',
-        grupo: 'Extensión (Lugar de contacto)'
+        grupo: 'Área'
       };
     case 'docente':
       return {

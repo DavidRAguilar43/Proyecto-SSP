@@ -56,6 +56,7 @@ export interface Persona {
   lugar_origen?: string;
   colonia_residencia_actual?: string;
   celular?: string;
+  extension_telefonica?: string;
   correo_institucional: string;
   discapacidad?: string;
   observaciones?: string;
@@ -82,6 +83,7 @@ export interface PersonaCreate {
   lugar_origen: string;
   colonia_residencia_actual?: string;
   celular: string;
+  extension_telefonica?: string;
   correo_institucional: string;
   discapacidad?: string;
   observaciones?: string;

@@ -18,6 +18,7 @@ class Persona(Base):
     lugar_origen = Column(String, nullable=False)
     colonia_residencia_actual = Column(String, nullable=False)
     celular = Column(String, nullable=False)
+    extension_telefonica = Column(String, nullable=True)
     correo_institucional = Column(String, unique=True, index=True, nullable=False)
     discapacidad = Column(String, nullable=True)
     observaciones = Column(String, nullable=True)

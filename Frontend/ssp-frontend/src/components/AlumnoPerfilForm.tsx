@@ -61,7 +61,6 @@ const AlumnoPerfilForm = ({ open, onClose, onSubmit, persona, loading = false }:
   const [carrerasAsignadas, setCarrerasAsignadas] = useState('');
   const [departamento, setDepartamento] = useState('');
   const [puesto, setPuesto] = useState('');
-  const [extension, setExtension] = useState('');
   const [observacionesGenerales, setObservacionesGenerales] = useState('');
 
   // Funciones para obtener etiquetas personalizadas según el rol
@@ -70,8 +69,7 @@ const AlumnoPerfilForm = ({ open, onClose, onSubmit, persona, loading = false }:
       case 'personal':
         return {
           semestre: 'Departamento',
-          programa: 'Puesto',
-          grupo: 'Extensión (Lugar de contacto)'
+          programa: 'Puesto'
         };
       case 'docente':
         return {
@@ -94,8 +92,7 @@ const AlumnoPerfilForm = ({ open, onClose, onSubmit, persona, loading = false }:
       case 'personal':
         return {
           semestre: 'Departamento al que pertenece',
-          programa: 'Puesto que desempeña',
-          grupo: 'Extensión o lugar de contacto'
+          programa: 'Puesto que desempeña'
         };
       case 'docente':
         return {
@@ -161,7 +158,6 @@ const AlumnoPerfilForm = ({ open, onClose, onSubmit, persona, loading = false }:
         const camposPersonal = campos as CamposPersonal;
         setDepartamento(camposPersonal.departamento || '');
         setPuesto(camposPersonal.puesto || '');
-        setExtension(camposPersonal.extension || '');
       }
 
       setObservacionesGenerales(observacionesRestantes);
@@ -177,6 +173,7 @@ const AlumnoPerfilForm = ({ open, onClose, onSubmit, persona, loading = false }:
         lugar_origen: persona.lugar_origen || '',
         colonia_residencia_actual: persona.colonia_residencia_actual || '',
         celular: persona.celular || '',
+        extension_telefonica: persona.extension_telefonica || '',
         discapacidad: persona.discapacidad || '',
         observaciones: persona.observaciones || '',
         matricula: persona.matricula || '',
@@ -280,7 +277,7 @@ const AlumnoPerfilForm = ({ open, onClose, onSubmit, persona, loading = false }:
     } else if (persona.rol === 'docente') {
       camposEspecificos = { facultad, materiasAsignadas, carrerasAsignadas };
     } else if (persona.rol === 'personal') {
-      camposEspecificos = { departamento, puesto, extension };
+      camposEspecificos = { departamento, puesto };
     }
 
     const observacionesCompletas = buildObservaciones(
@@ -345,7 +342,8 @@ const AlumnoPerfilForm = ({ open, onClose, onSubmit, persona, loading = false }:
             
             <Grid size={{ xs: 12 }}>
               <Alert severity="info">
-                <strong>Nota:</strong> Solo puede modificar su información personal. Los {getFieldLabels().programa.toLowerCase()}s y {getFieldLabels().grupo.toLowerCase()}s son asignados por el personal administrativo.
+                <strong>Nota:</strong> Solo puede modificar su información personal. {persona.rol !== 'personal' && `Los ${getFieldLabels().programa.toLowerCase()}s y ${getFieldLabels().grupo?.toLowerCase() || 'grupos'} son asignados por el personal administrativo.`}
+                {persona.rol === 'personal' && 'El departamento y puesto son asignados por el personal administrativo.'}
               </Alert>
             </Grid>
 
@@ -408,6 +406,16 @@ const AlumnoPerfilForm = ({ open, onClose, onSubmit, persona, loading = false }:
                 label="Teléfono Celular"
                 value={formData.celular || ''}
                 onChange={handleChange('celular')}
+              />
+            </Grid>
+
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField
+                fullWidth
+                label="Extensión Telefónica"
+                value={formData.extension_telefonica || ''}
+                onChange={handleChange('extension_telefonica')}
+                helperText="Extensión telefónica (opcional)"
               />
             </Grid>
 
@@ -590,16 +598,6 @@ const AlumnoPerfilForm = ({ open, onClose, onSubmit, persona, loading = false }:
                     value={puesto}
                     onChange={(e) => setPuesto(e.target.value)}
                     helperText="Ingrese su puesto o cargo"
-                  />
-                </Grid>
-
-                <Grid size={{ xs: 12, sm: 6 }}>
-                  <TextField
-                    fullWidth
-                    label="Extensión (Lugar de Contacto)"
-                    value={extension}
-                    onChange={(e) => setExtension(e.target.value)}
-                    helperText="Ingrese su extensión telefónica o lugar de contacto"
                   />
                 </Grid>
               </>
