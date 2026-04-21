@@ -1,12 +1,12 @@
 import { useState, useCallback } from 'react';
 
-interface UseBulkSelectionProps<T> {
+interface UseBulkSelectionProps<T, ID = number> {
   items: T[];
-  getItemId: (item: T) => number;
+  getItemId: (item: T) => ID;
 }
 
-interface UseBulkSelectionReturn<T> {
-  selectedIds: number[];
+interface UseBulkSelectionReturn<T, ID = number> {
+  selectedIds: ID[];
   isSelected: (item: T) => boolean;
   isAllSelected: boolean;
   isIndeterminate: boolean;
@@ -16,11 +16,11 @@ interface UseBulkSelectionReturn<T> {
   selectedCount: number;
 }
 
-export function useBulkSelection<T>({
+export function useBulkSelection<T, ID = number>({
   items,
   getItemId
-}: UseBulkSelectionProps<T>): UseBulkSelectionReturn<T> {
-  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+}: UseBulkSelectionProps<T, ID>): UseBulkSelectionReturn<T, ID> {
+  const [selectedIds, setSelectedIds] = useState<ID[]>([]);
 
   const isSelected = useCallback((item: T) => {
     return selectedIds.includes(getItemId(item));

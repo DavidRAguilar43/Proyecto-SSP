@@ -17,10 +17,10 @@ class NotificacionRegistro(Base):
     mensaje = Column(Text, nullable=False)
     
     # Usuario que generó la notificación (el que se registró)
-    usuario_solicitante_id = Column(Integer, ForeignKey("personas.id"), nullable=False)
-    
+    usuario_solicitante_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+
     # Usuario que debe revisar la notificación (admin)
-    usuario_destinatario_id = Column(Integer, ForeignKey("personas.id"), nullable=True)
+    usuario_destinatario_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     
     # Estado de la notificación
     leida = Column(Boolean, default=False, nullable=False)
@@ -36,8 +36,8 @@ class NotificacionRegistro(Base):
     fecha_procesada = Column(DateTime, nullable=True)
 
     # Relaciones
-    usuario_solicitante = relationship("Persona", foreign_keys=[usuario_solicitante_id], back_populates="notificaciones_enviadas")
-    usuario_destinatario = relationship("Persona", foreign_keys=[usuario_destinatario_id], back_populates="notificaciones_recibidas")
+    usuario_solicitante = relationship("User", foreign_keys=[usuario_solicitante_id], back_populates="notificaciones_enviadas")
+    usuario_destinatario = relationship("User", foreign_keys=[usuario_destinatario_id], back_populates="notificaciones_recibidas")
 
     def __repr__(self):
         return f"<NotificacionRegistro(id={self.id}, tipo='{self.tipo_notificacion}', leida={self.leida}, procesada={self.procesada})>"

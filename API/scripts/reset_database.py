@@ -17,14 +17,13 @@ os.chdir(API_ROOT)
 
 from sqlalchemy.orm import Session
 from app.db.database import engine, Base, SessionLocal
-from app.models.persona import Persona
+from app.models.persona import User
 from app.models.religion import Religion
 from app.models.grupo_etnico import GrupoEtnico
 from app.models.discapacidad import Discapacidad
 from app.models.programa_educativo import ProgramaEducativo
 from app.models.grupo import Grupo
 from app.models.cita import Cita, EstadoCita, TipoCita
-from app.models.cuestionario import Cuestionario
 from app.models.cuestionario_admin import CuestionarioAdmin, Pregunta, AsignacionCuestionario, TipoPregunta, EstadoCuestionario, TipoUsuario
 from app.core.security import get_password_hash
 import uuid
@@ -40,8 +39,8 @@ def reset_database():
         
         # Importar todos los modelos
         from app.models import (
-            persona, programa_educativo, grupo, personal, contacto_emergencia,
-            cita, cuestionario, cohorte, cita, religion, grupo_etnico, discapacidad
+            User, programa_educativo, grupo, personal, contacto_emergencia,
+            cita, cuestionario_admin, cohorte, religion, grupo_etnico, discapacidad
         )
         
         # Crear todas las tablas
@@ -130,7 +129,7 @@ def create_usuarios(db: Session):
         usuarios = []
 
         # 1. Usuario Admin
-        admin = Persona(
+        admin = User(
             sexo="no_decir",
             genero="no_decir",
             edad=35,
@@ -157,7 +156,7 @@ def create_usuarios(db: Session):
         usuarios.append(admin)
 
         # 2. Usuario Coordinador
-        coordinador = Persona(
+        coordinador = User(
             sexo="femenino",
             genero="femenino",
             edad=40,
@@ -184,7 +183,7 @@ def create_usuarios(db: Session):
         usuarios.append(coordinador)
 
         # 3. Usuario Docente
-        docente = Persona(
+        docente = User(
             sexo="masculino",
             genero="masculino",
             edad=38,
@@ -211,7 +210,7 @@ def create_usuarios(db: Session):
         usuarios.append(docente)
 
         # 4. Usuario Personal (Psicólogo)
-        personal = Persona(
+        personal = User(
             sexo="femenino",
             genero="femenino",
             edad=32,
@@ -238,7 +237,7 @@ def create_usuarios(db: Session):
         usuarios.append(personal)
 
         # 5. Usuario Alumno
-        alumno = Persona(
+        alumno = User(
             sexo="masculino",
             genero="masculino",
             edad=20,

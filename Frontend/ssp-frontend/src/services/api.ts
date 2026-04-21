@@ -26,6 +26,66 @@ api.interceptors.request.use(
   }
 );
 
+// Interceptor para manejar errores de respuesta
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    // Si hay una respuesta de error del servidor
+    if (error.response) {
+      const { status, data } = error.response;
+
+      // Si el error es 401 (No autorizado), redirigir al login
+      if (status === 401) {
+        console.warn('🔒 Sesión expirada o token inválido. Redirigiendo al login...');
+
+        // Limpiar el token del localStorage
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+
+        // Redirigir al login
+        // Guardar la URL actual para redirigir después del login
+        const currentPath = window.location.pathname;
+        if (currentPath !== '/login' && currentPath !== '/') {
+          localStorage.setItem('redirectAfterLogin', currentPath);
+        }
+
+        // Redirigir al login
+        window.location.href = '/login';
+
+        // Retornar un error personalizado
+        const customError = new Error('Sesión expirada. Por favor, inicia sesión nuevamente.');
+        (customError as any).status = status;
+        (customError as any).data = data;
+        return Promise.reject(customError);
+      }
+
+      // Crear un error con mensaje legible para otros errores
+      const errorMessage =
+        typeof data === 'object' && data?.detail
+          ? data.detail
+          : typeof data === 'object' && data?.message
+          ? data.message
+          : `Error ${status}: ${error.message}`;
+
+      const customError = new Error(errorMessage);
+      (customError as any).status = status;
+      (customError as any).data = data;
+
+      return Promise.reject(customError);
+    }
+
+    // Si no hay respuesta (error de red)
+    if (error.request) {
+      const customError = new Error('No hay respuesta del servidor. Verifica tu conexión.');
+      (customError as any).request = error.request;
+      return Promise.reject(customError);
+    }
+
+    // Otros errores
+    return Promise.reject(error);
+  }
+);
+
 // Servicio de autenticación
 export const authService = {
   // Función para iniciar sesión
@@ -49,93 +109,97 @@ export const authService = {
   },
 };
 
-// Servicio de personas
-export const personasService = {
-  // Obtener todas las personas
+// Servicio de usuarios (anteriormente personas)
+export const usersService = {
+  // Obtener todos los usuarios
   getAll: async (params?: { skip?: number; limit?: number; rol?: string }) => {
-    const response = await api.get('/personas', { params });
+    const response = await api.get('/users', { params });
     return response.data;
   },
 
-  // Obtener una persona por ID
+  // Obtener un usuario por ID
   getById: async (id: number) => {
-    const response = await api.get(`/personas/${id}`);
+    const response = await api.get(`/users/${id}`);
     return response.data;
   },
 
-  // Crear una nueva persona
-  create: async (persona: any) => {
-    const response = await api.post('/personas', persona);
+  // Crear un nuevo usuario
+  create: async (user: any) => {
+    const response = await api.post('/users', user);
     return response.data;
   },
 
-  // Actualizar una persona
-  update: async (id: number, persona: any) => {
+  // Actualizar un usuario
+  update: async (id: number, user: any) => {
     // Filtrar campos vacíos o undefined para la actualización
     const cleanData = Object.fromEntries(
-      Object.entries(persona).filter(([key, value]) =>
+      Object.entries(user).filter(([key, value]) =>
         value !== '' && value !== null && value !== undefined
       )
     );
 
-    const response = await api.put(`/personas/${id}`, cleanData);
+    const response = await api.put(`/users/${id}`, cleanData);
     return response.data;
   },
 
-  // Eliminar una persona
+  // Eliminar un usuario
   delete: async (id: number) => {
-    const response = await api.delete(`/personas/${id}`);
+    const response = await api.delete(`/users/${id}`);
     return response.data;
   },
 
-  // Eliminar múltiples personas
+  // Eliminar múltiples usuarios
   bulkDelete: async (ids: number[]) => {
-    const response = await api.post('/personas/bulk-delete', { ids });
+    const response = await api.post('/users/bulk-delete', { ids });
     return response.data;
   },
 
-  // Buscar personas
+  // Buscar usuarios
   search: async (query: string) => {
-    const response = await api.get('/personas/search', { params: { q: query } });
+    const response = await api.get('/users/search', { params: { q: query } });
     return response.data;
   },
 
   // Obtener solo estudiantes/alumnos
   getEstudiantes: async (params?: { skip?: number; limit?: number }) => {
-    const response = await api.get('/personas/list/estudiantes', { params });
+    const response = await api.get('/users/list/estudiantes', { params });
     return response.data;
   },
 
   // Auto-registro para alumnos (sin autenticación)
   registroAlumno: async (data: any) => {
-    const response = await api.post('/personas/registro-alumno/', data);
+    const response = await api.post('/users/registro-alumno/', data);
     return response.data;
   },
 
   // Obtener mi perfil (para alumnos)
   getMiPerfil: async () => {
-    const response = await api.get('/personas/mi-perfil');
+    const response = await api.get('/users/mi-perfil');
     return response.data;
   },
 
   // Actualizar mi perfil (para alumnos)
   updateMiPerfil: async (data: any) => {
-    const response = await api.put('/personas/mi-perfil', data);
+    const response = await api.put('/users/mi-perfil', data);
     return response.data;
   },
 
   // Validar si un email está disponible
   validateEmail: async (email: string) => {
-    const response = await api.get(`/personas/validate-email/${encodeURIComponent(email)}`);
+    const response = await api.get(`/users/validate-email/${encodeURIComponent(email)}`);
     return response.data;
   },
 
   // Validar si una matrícula está disponible
   validateMatricula: async (matricula: string) => {
-    const response = await api.get(`/personas/validate-matricula/${encodeURIComponent(matricula)}`);
+    const response = await api.get(`/users/validate-matricula/${encodeURIComponent(matricula)}`);
     return response.data;
   },
 };
+
+// Alias para compatibilidad (DEPRECATED: usar usersService)
+export const personasService = usersService;
+export const personasApi = usersService;
 
 // API para Cohortes
 export const cohortesApi = {
@@ -187,9 +251,6 @@ export const cohortesApi = {
     return response.data;
   },
 };
-
-// Alias para mantener compatibilidad
-export const personasApi = personasService;
 
 // API para Catálogos
 export const catalogosApi = {
@@ -276,6 +337,42 @@ export const catalogosApi = {
     },
     bulkDelete: async (ids: number[]) => {
       const response = await api.post('/catalogos/discapacidades/bulk-delete', { ids });
+      return response.data;
+    }
+  },
+
+  // Modelos IA
+  modelosIA: {
+    getAll: async (activo?: boolean, categoria?: string, recomendado?: boolean) => {
+      const params: any = {};
+      if (activo !== undefined) params.activo = activo;
+      if (categoria) params.categoria = categoria;
+      if (recomendado !== undefined) params.recomendado = recomendado;
+      const response = await api.get('/catalogos/modelos-ia/', { params });
+      return response.data;
+    },
+    getActivos: async () => {
+      const response = await api.get('/catalogos/modelos-ia/activos/');
+      return response.data;
+    },
+    getById: async (id: number) => {
+      const response = await api.get(`/catalogos/modelos-ia/${id}`);
+      return response.data;
+    },
+    create: async (data: any) => {
+      const response = await api.post('/catalogos/modelos-ia/', data);
+      return response.data;
+    },
+    update: async (id: number, data: any) => {
+      const response = await api.put(`/catalogos/modelos-ia/${id}`, data);
+      return response.data;
+    },
+    delete: async (id: number) => {
+      const response = await api.delete(`/catalogos/modelos-ia/${id}`);
+      return response.data;
+    },
+    bulkDelete: async (ids: number[]) => {
+      const response = await api.post('/catalogos/modelos-ia/bulk-delete', { ids });
       return response.data;
     }
   },
@@ -705,39 +802,6 @@ export const citasApi = {
   }
 };
 
-// API para cuestionario psicopedagógico
-export const cuestionarioPsicopedagogicoApi = {
-  // Obtener preguntas del cuestionario
-  getPreguntas: async () => {
-    const response = await api.get('/cuestionario-psicopedagogico/preguntas');
-    return response.data;
-  },
-
-  // Completar cuestionario
-  completar: async (data: any) => {
-    const response = await api.post('/cuestionario-psicopedagogico/completar', data);
-    return response.data;
-  },
-
-  // Obtener estado del cuestionario para el estudiante actual
-  getEstado: async () => {
-    const response = await api.get('/cuestionario-psicopedagogico/estado');
-    return response.data;
-  },
-
-  // Obtener estudiantes con cuestionarios (solo admin/personal)
-  getEstudiantesConCuestionarios: async () => {
-    const response = await api.get('/cuestionario-psicopedagogico/estudiantes-con-cuestionarios');
-    return response.data;
-  },
-
-  // Obtener reporte de un estudiante específico (solo admin/personal)
-  getReporte: async (idPersona: number) => {
-    const response = await api.get(`/cuestionario-psicopedagogico/reporte/${idPersona}`);
-    return response.data;
-  }
-};
-
 // Servicio de notificaciones de registro
 export const notificacionesApi = {
   // Obtener notificaciones de registros pendientes
@@ -862,6 +926,42 @@ export const cuestionariosAdminApi = {
     limit?: number;
   }) => {
     const response = await api.get('/cuestionarios-admin/respuestas/todas', { params: filtros });
+    return response.data;
+  },
+
+  // Obtener el reporte actual de una respuesta (admin)
+  obtenerReporteActual: async (respuestaId: string) => {
+    const response = await api.get(`/cuestionarios-admin/respuestas/${respuestaId}/reporte-actual`);
+    return response.data;
+  },
+
+  // Regenerar reporte de una respuesta (admin)
+  regenerarReporte: async (respuestaId: string) => {
+    const response = await api.post(`/cuestionarios-admin/respuestas/${respuestaId}/regenerar-reporte`);
+    return response.data;
+  },
+
+  // Obtener todos los reportes de una respuesta (admin)
+  obtenerReportes: async (respuestaId: string) => {
+    const response = await api.get(`/cuestionarios-admin/respuestas/${respuestaId}/reportes`);
+    return response.data;
+  },
+
+  // Eliminar una respuesta de cuestionario (admin)
+  eliminarRespuesta: async (respuestaId: string) => {
+    const response = await api.delete(`/cuestionarios-admin/respuestas/${respuestaId}`);
+    return response.data;
+  },
+
+  // Eliminar múltiples cuestionarios en lote
+  bulkDelete: async (ids: string[]) => {
+    const response = await api.post('/cuestionarios-admin/bulk-delete', { ids });
+    return response.data;
+  },
+
+  // Cancelar múltiples respuestas en lote
+  bulkCancelRespuestas: async (ids: string[]) => {
+    const response = await api.post('/cuestionarios-admin/respuestas/bulk-cancel', { ids });
     return response.data;
   }
 };

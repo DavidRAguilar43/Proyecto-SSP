@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.security import ALGORITHM
 from app.db.database import get_db
-from app.models.persona import Persona
+from app.models.persona import User
 from app.schemas.token import TokenPayload
 
 oauth2_scheme = OAuth2PasswordBearer(
@@ -19,7 +19,7 @@ oauth2_scheme = OAuth2PasswordBearer(
 
 def get_current_user(
     db: Session = Depends(get_db), token: str = Depends(oauth2_scheme)
-) -> Persona:
+) -> User:
     try:
         payload = jwt.decode(
             token, settings.SECRET_KEY, algorithms=[ALGORITHM]
@@ -30,23 +30,23 @@ def get_current_user(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No se pudo validar las credenciales",
         )
-    user = db.query(Persona).filter(Persona.id == token_data.sub).first()
+    user = db.query(User).filter(User.id == token_data.sub).first()
     if not user:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
     return user
 
 
 def get_current_active_user(
-    current_user: Persona = Depends(get_current_user),
-) -> Persona:
+    current_user: User = Depends(get_current_user),
+) -> User:
     if not current_user.is_active:
         raise HTTPException(status_code=400, detail="Usuario inactivo")
     return current_user
 
 
 def check_admin_role(
-    current_user: Persona = Depends(get_current_active_user),
-) -> Persona:
+    current_user: User = Depends(get_current_active_user),
+) -> User:
     """Solo administradores tienen acceso completo incluyendo eliminaciones."""
     if current_user.rol != "admin":
         raise HTTPException(
@@ -57,8 +57,8 @@ def check_admin_role(
 
 
 def check_coordinador_role(
-    current_user: Persona = Depends(get_current_active_user),
-) -> Persona:
+    current_user: User = Depends(get_current_active_user),
+) -> User:
     """Coordinadores tienen acceso administrativo excepto eliminaciones."""
     if current_user.rol not in ["admin", "coordinador"]:
         raise HTTPException(
@@ -69,8 +69,8 @@ def check_coordinador_role(
 
 
 def check_administrative_access(
-    current_user: Persona = Depends(get_current_active_user),
-) -> Persona:
+    current_user: User = Depends(get_current_active_user),
+) -> User:
     """
     Acceso administrativo para admin y coordinador.
     Permite gestión de personas, citas, reportes y configuraciones.
@@ -84,8 +84,8 @@ def check_administrative_access(
 
 
 def check_end_user_access(
-    current_user: Persona = Depends(get_current_active_user),
-) -> Persona:
+    current_user: User = Depends(get_current_active_user),
+) -> User:
     """
     Acceso de usuario final para docente, personal y alumno.
     Permite acceso a perfil propio, cuestionarios y funciones básicas.
@@ -101,8 +101,8 @@ def check_end_user_access(
 # DEPRECATED: Mantenidas temporalmente para compatibilidad
 # Serán reemplazadas gradualmente por el nuevo sistema de permisos
 def check_admin_or_coordinador_role(
-    current_user: Persona = Depends(get_current_active_user),
-) -> Persona:
+    current_user: User = Depends(get_current_active_user),
+) -> User:
     """DEPRECATED: Usar check_administrative_access() en su lugar."""
     if current_user.rol not in ["admin", "coordinador"]:
         raise HTTPException(
@@ -113,8 +113,8 @@ def check_admin_or_coordinador_role(
 
 
 def check_user_level_access(
-    current_user: Persona = Depends(get_current_active_user),
-) -> Persona:
+    current_user: User = Depends(get_current_active_user),
+) -> User:
     """DEPRECATED: Usar check_end_user_access() o get_current_active_user según el caso."""
     if current_user.rol not in ["admin", "coordinador", "personal", "docente", "alumno"]:
         raise HTTPException(
@@ -127,8 +127,8 @@ def check_user_level_access(
 # DEPRECATED: Estas funciones se mantienen temporalmente para compatibilidad
 # pero serán eliminadas en la próxima versión
 def check_personal_role(
-    current_user: Persona = Depends(get_current_active_user),
-) -> Persona:
+    current_user: User = Depends(get_current_active_user),
+) -> User:
     """
     DEPRECATED: Usar check_administrative_access() para operaciones administrativas
     o check_end_user_access() para operaciones de usuario final.
@@ -145,8 +145,8 @@ def check_personal_role(
 
 
 def check_docente_role(
-    current_user: Persona = Depends(get_current_active_user),
-) -> Persona:
+    current_user: User = Depends(get_current_active_user),
+) -> User:
     """
     DEPRECATED: Usar check_administrative_access() para operaciones administrativas
     o check_end_user_access() para operaciones de usuario final.
@@ -163,8 +163,8 @@ def check_docente_role(
 
 
 def check_deletion_permission(
-    current_user: Persona = Depends(get_current_active_user),
-) -> Persona:
+    current_user: User = Depends(get_current_active_user),
+) -> User:
     """
     Solo administradores pueden eliminar registros.
     Los coordinadores tienen acceso administrativo pero NO pueden eliminar.

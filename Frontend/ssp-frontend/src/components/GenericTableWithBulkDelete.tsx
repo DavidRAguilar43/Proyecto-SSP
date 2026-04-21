@@ -22,18 +22,18 @@ import {
 import { useBulkSelection } from '@/hooks/useBulkSelection';
 import BulkDeleteToolbar from './BulkDeleteToolbar';
 import BulkDeleteDialog from './BulkDeleteDialog';
-import { TableColumn, TableAction } from '@/types/table';
+import type { TableColumn, TableAction } from '@/types/table';
 
 // Re-export types for convenience
 export type { TableColumn, TableAction };
 
-interface GenericTableWithBulkDeleteProps<T> {
+interface GenericTableWithBulkDeleteProps<T, ID = number> {
   data: T[];
   columns: TableColumn<T>[];
-  getItemId: (item: T) => number;
+  getItemId: (item: T) => ID;
   onEdit?: (item: T) => void;
   onDelete?: (item: T) => void;
-  onBulkDelete?: (ids: number[]) => void;
+  onBulkDelete?: (ids: ID[]) => void;
   actions?: TableAction<T>[];
   loading?: boolean;
   entityName?: string;
@@ -41,9 +41,11 @@ interface GenericTableWithBulkDeleteProps<T> {
   allowBulkDelete?: boolean;
   bulkDeleteWarning?: string;
   emptyMessage?: string;
+  bulkActionLabel?: string; // e.g., "Eliminar" or "Cancelar"
+  bulkActionDialogTitle?: string; // e.g., "Confirmar eliminación" or "Confirmar cancelación"
 }
 
-function GenericTableWithBulkDelete<T>({
+function GenericTableWithBulkDelete<T, ID = number>({
   data,
   columns,
   getItemId,
@@ -56,8 +58,10 @@ function GenericTableWithBulkDelete<T>({
   currentUserRole,
   allowBulkDelete = true,
   bulkDeleteWarning,
-  emptyMessage = "No hay datos disponibles"
-}: GenericTableWithBulkDeleteProps<T>) {
+  emptyMessage = "No hay datos disponibles",
+  bulkActionLabel = "Eliminar",
+  bulkActionDialogTitle = "Confirmar eliminación"
+}: GenericTableWithBulkDeleteProps<T, ID>) {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
@@ -196,18 +200,16 @@ function GenericTableWithBulkDelete<T>({
                         hover
                         key={getItemId(item)}
                         selected={isItemSelected}
-                        onClick={showBulkDelete ? () => bulkSelection.handleSelectItem(item) : undefined}
-                        role={showBulkDelete ? "checkbox" : undefined}
-                        aria-checked={showBulkDelete ? isItemSelected : undefined}
                         tabIndex={-1}
-                        sx={{ cursor: showBulkDelete ? 'pointer' : 'default' }}
                       >
                         {showBulkDelete && (
                           <TableCell padding="checkbox">
                             <Checkbox
                               color="primary"
                               checked={isItemSelected}
-                              onChange={() => bulkSelection.handleSelectItem(item)}
+                              onChange={() => {
+                                bulkSelection.handleSelectItem(item);
+                              }}
                             />
                           </TableCell>
                         )}
@@ -227,10 +229,7 @@ function GenericTableWithBulkDelete<T>({
                                   <IconButton
                                     size="small"
                                     color={action.color || 'default'}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      action.onClick(item);
-                                    }}
+                                    onClick={() => action.onClick(item)}
                                   >
                                     {action.icon}
                                   </IconButton>
@@ -271,8 +270,9 @@ function GenericTableWithBulkDelete<T>({
             onClearSelection={bulkSelection.clearSelection}
             loading={loading}
             entityName={entityName}
+            actionLabel={bulkActionLabel}
           />
-          
+
           <BulkDeleteDialog
             open={bulkDeleteDialogOpen}
             onClose={handleBulkDeleteCancel}
@@ -281,6 +281,9 @@ function GenericTableWithBulkDelete<T>({
             entityName={entityName}
             loading={loading}
             warningMessage={bulkDeleteWarning}
+            dialogTitle={bulkActionDialogTitle}
+            actionLabel={`Sí, ${bulkActionLabel}`}
+            actionVerb={bulkActionLabel.toLowerCase()}
           />
         </>
       )}

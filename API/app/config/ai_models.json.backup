@@ -1,0 +1,188 @@
+{
+  "models": [
+    {
+      "id": "openai/gpt-4-turbo",
+      "name": "GPT-4 Turbo",
+      "provider": "OpenAI",
+      "description": "Modelo más avanzado de OpenAI con mejor razonamiento y análisis",
+      "context_length": 128000,
+      "recommended": true,
+      "category": "premium"
+    },
+    {
+      "id": "openai/gpt-4",
+      "name": "GPT-4",
+      "provider": "OpenAI",
+      "description": "Modelo GPT-4 estándar con excelente capacidad de análisis",
+      "context_length": 8192,
+      "recommended": true,
+      "category": "premium"
+    },
+    {
+      "id": "openai/gpt-3.5-turbo",
+      "name": "GPT-3.5 Turbo",
+      "provider": "OpenAI",
+      "description": "Modelo rápido y económico con buena calidad",
+      "context_length": 16385,
+      "recommended": false,
+      "category": "standard"
+    },
+    {
+      "id": "anthropic/claude-3.5-sonnet",
+      "name": "Claude 3.5 Sonnet",
+      "provider": "Anthropic",
+      "description": "Modelo más avanzado de Anthropic con excelente análisis y empatía",
+      "context_length": 200000,
+      "recommended": true,
+      "category": "premium"
+    },
+    {
+      "id": "anthropic/claude-3-opus",
+      "name": "Claude 3 Opus",
+      "provider": "Anthropic",
+      "description": "Modelo premium de Anthropic con máxima capacidad de análisis",
+      "context_length": 200000,
+      "recommended": true,
+      "category": "premium"
+    },
+    {
+      "id": "anthropic/claude-3-sonnet",
+      "name": "Claude 3 Sonnet",
+      "provider": "Anthropic",
+      "description": "Balance entre rendimiento y costo",
+      "context_length": 200000,
+      "recommended": false,
+      "category": "standard"
+    },
+    {
+      "id": "anthropic/claude-3-haiku",
+      "name": "Claude 3 Haiku",
+      "provider": "Anthropic",
+      "description": "Modelo rápido y económico de Anthropic",
+      "context_length": 200000,
+      "recommended": false,
+      "category": "standard"
+    },
+    {
+      "id": "meta-llama/llama-3.1-405b-instruct",
+      "name": "Llama 3.1 405B",
+      "provider": "Meta",
+      "description": "Modelo open-source más grande de Meta con excelente rendimiento",
+      "context_length": 128000,
+      "recommended": true,
+      "category": "premium"
+    },
+    {
+      "id": "meta-llama/llama-3.1-70b-instruct",
+      "name": "Llama 3.1 70B",
+      "provider": "Meta",
+      "description": "Modelo open-source de Meta con buen balance calidad-precio",
+      "context_length": 128000,
+      "recommended": false,
+      "category": "standard"
+    },
+    {
+      "id": "meta-llama/llama-3.1-8b-instruct",
+      "name": "Llama 3.1 8B",
+      "provider": "Meta",
+      "description": "Modelo open-source rápido y económico",
+      "context_length": 128000,
+      "recommended": false,
+      "category": "budget"
+    },
+    {
+      "id": "google/gemini-pro-1.5",
+      "name": "Gemini Pro 1.5",
+      "provider": "Google",
+      "description": "Modelo avanzado de Google con gran contexto",
+      "context_length": 1000000,
+      "recommended": true,
+      "category": "premium"
+    },
+    {
+      "id": "google/gemini-pro",
+      "name": "Gemini Pro",
+      "provider": "Google",
+      "description": "Modelo estándar de Google con buen rendimiento",
+      "context_length": 32000,
+      "recommended": false,
+      "category": "standard"
+    },
+    {
+      "id": "mistralai/mistral-large",
+      "name": "Mistral Large",
+      "provider": "Mistral AI",
+      "description": "Modelo premium de Mistral AI con excelente rendimiento",
+      "context_length": 32000,
+      "recommended": true,
+      "category": "premium"
+    },
+    {
+      "id": "mistralai/mistral-medium",
+      "name": "Mistral Medium",
+      "provider": "Mistral AI",
+      "description": "Modelo intermedio de Mistral AI",
+      "context_length": 32000,
+      "recommended": false,
+      "category": "standard"
+    },
+    {
+      "id": "mistralai/mistral-small",
+      "name": "Mistral Small",
+      "provider": "Mistral AI",
+      "description": "Modelo económico de Mistral AI",
+      "context_length": 32000,
+      "recommended": false,
+      "category": "budget"
+    },
+    {
+      "id": "perplexity/llama-3.1-sonar-large-128k-online",
+      "name": "Perplexity Sonar Large (Online)",
+      "provider": "Perplexity",
+      "description": "Modelo con acceso a internet para información actualizada",
+      "context_length": 128000,
+      "recommended": false,
+      "category": "standard"
+    },
+    {
+      "id": "cohere/command-r-plus",
+      "name": "Command R+",
+      "provider": "Cohere",
+      "description": "Modelo avanzado de Cohere optimizado para tareas complejas",
+      "context_length": 128000,
+      "recommended": false,
+      "category": "premium"
+    }
+  ],
+  "categories": {
+    "premium": {
+      "name": "Premium",
+      "description": "Modelos de máxima calidad para análisis complejos y detallados",
+      "color": "#FFD700"
+    },
+    "standard": {
+      "name": "Estándar",
+      "description": "Modelos con buen balance entre calidad y costo",
+      "color": "#4CAF50"
+    },
+    "budget": {
+      "name": "Económico",
+      "description": "Modelos rápidos y económicos para tareas simples",
+      "color": "#2196F3"
+    }
+  },
+  "default_model": "anthropic/claude-3.5-sonnet",
+  "recommended_for_psychopedagogical": [
+    "anthropic/claude-3.5-sonnet",
+    "anthropic/claude-3-opus",
+    "openai/gpt-4-turbo",
+    "meta-llama/llama-3.1-405b-instruct",
+    "google/gemini-pro-1.5"
+  ],
+  "metadata": {
+    "version": "1.0.0",
+    "last_updated": "2025-11-05",
+    "description": "Configuración de modelos de IA disponibles para generación de reportes psicopedagógicos"
+  }
+}
+

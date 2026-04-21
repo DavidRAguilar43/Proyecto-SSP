@@ -14,9 +14,6 @@ import { GruposPage } from './pages/GruposPage';
 import CitasPage from './pages/CitasPage';
 import AlumnoPage from './pages/AlumnoPage';
 import CatalogosPage from './pages/CatalogosPage';
-import CuestionariosCompletadosPage from './pages/CuestionariosCompletadosPage';
-
-import CuestionariosPendientesPage from './pages/CuestionariosPendientesPage';
 import ProtectedRoute from './components/ProtectedRoute';
 
 // Páginas de administración de cuestionarios
@@ -29,6 +26,7 @@ import CuestionariosContestadosPage from './pages/admin/CuestionariosContestados
 // Páginas de usuario para cuestionarios
 import CuestionariosAsignadosPage from './pages/usuario/CuestionariosAsignadosPage';
 import ResponderCuestionarioPage from './pages/usuario/ResponderCuestionarioPage';
+import VerRespuestasCuestionarioPage from './pages/usuario/VerRespuestasCuestionarioPage';
 
 
 
@@ -100,23 +98,6 @@ function App() {
             }
           />
           <Route
-            path="/cuestionarios-completados"
-            element={
-              <ProtectedRoute allowedRoles={['admin', 'coordinador']}>
-                <CuestionariosCompletadosPage />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/cuestionarios-pendientes"
-            element={
-              <ProtectedRoute allowedRoles={['admin', 'coordinador']}>
-                <CuestionariosPendientesPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
             path="/alumno"
             element={
               <ProtectedRoute allowedRoles={['alumno', 'docente', 'personal']}>
@@ -181,6 +162,14 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={['alumno', 'docente', 'personal']}>
                 <ResponderCuestionarioPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/usuario/cuestionarios/ver/:id"
+            element={
+              <ProtectedRoute allowedRoles={['alumno', 'docente', 'personal']}>
+                <VerRespuestasCuestionarioPage />
               </ProtectedRoute>
             }
           />

@@ -8,9 +8,9 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.security import create_access_token, verify_password
 from app.db.database import get_db
-from app.models.persona import Persona
+from app.models.persona import User
 from app.schemas.token import Token
-from app.schemas.persona import PersonaOut
+from app.schemas.user import UserOut
 from app.utils.deps import get_current_active_user
 
 router = APIRouter(prefix="/auth", tags=["autenticación"])
@@ -24,10 +24,10 @@ def login_access_token(
     Obtiene un token de acceso JWT utilizando el flujo OAuth2 password.
     """
     # Buscar usuario por correo institucional
-    user = db.query(Persona).filter(Persona.correo_institucional == form_data.username).first()
+    user = db.query(User).filter(User.correo_institucional == form_data.username).first()
     if not user:
         # Si no se encuentra por correo, intentar por matrícula
-        user = db.query(Persona).filter(Persona.matricula == form_data.username).first()
+        user = db.query(User).filter(User.matricula == form_data.username).first()
 
     if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
@@ -49,9 +49,9 @@ def login_access_token(
     }
 
 
-@router.get("/test-token", response_model=PersonaOut)
-def test_token(current_user: Persona = Depends(get_current_active_user)) -> Any:
+@router.get("/test-token", response_model=UserOut)
+def test_token(current_user: User = Depends(get_current_active_user)) -> Any:
     """
     Prueba el token JWT y devuelve información del usuario actual.
     """
-    return PersonaOut.from_orm_with_relations(current_user)
+    return UserOut.from_orm_with_relations(current_user)

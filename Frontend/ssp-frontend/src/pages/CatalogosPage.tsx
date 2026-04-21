@@ -105,7 +105,7 @@ const CatalogosPage: React.FC = () => {
           </Typography>
           
           <Typography variant="body1" color="text.secondary" gutterBottom>
-            Gestiona los catálogos de religiones, grupos étnicos y discapacidades del sistema.
+            Gestiona los catálogos de religiones, grupos étnicos, discapacidades y modelos de IA del sistema.
           </Typography>
 
           {user && (

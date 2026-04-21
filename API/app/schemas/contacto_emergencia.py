@@ -7,7 +7,7 @@ class ContactoEmergenciaBase(BaseModel):
     nombre_contacto: str
     telefono_contacto: str
     parentesco: str
-    id_persona: int
+    id_user: int
 
 
 # Esquema para crear un contacto de emergencia
@@ -20,7 +20,7 @@ class ContactoEmergenciaUpdate(BaseModel):
     nombre_contacto: Optional[str] = None
     telefono_contacto: Optional[str] = None
     parentesco: Optional[str] = None
-    id_persona: Optional[int] = None
+    id_user: Optional[int] = None
 
 
 # Esquema para respuesta de contacto de emergencia

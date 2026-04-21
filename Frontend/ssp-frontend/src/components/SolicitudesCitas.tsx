@@ -134,11 +134,23 @@ const SolicitudesCitas: React.FC<SolicitudesCitasProps> = ({ onBadgeUpdate }) =>
     loadSolicitudes();
   }, []);
 
+  // Ajustar la expansión automática según la pestaña seleccionada
+  // Mantener todos los acordeones colapsados por defecto
+  useEffect(() => {
+    // Colapsar todos los acordeones cuando cambia la pestaña
+    setPendientesExpanded(false);
+    setConfirmadasExpanded(false);
+    setOtrasExpanded(false);
+  }, [filtroTemporal]);
+
   const loadSolicitudes = async () => {
     try {
       setLoading(true);
       setError(null);
       const data = await citasApi.getSolicitudes();
+
+      console.log('📊 Total citas cargadas desde API:', data.length);
+      console.log('📋 Datos completos:', data);
 
       // Ordenar por fecha de solicitud descendente (más recientes primero)
       const sortedData = data.sort((a, b) => {
@@ -147,12 +159,15 @@ const SolicitudesCitas: React.FC<SolicitudesCitasProps> = ({ onBadgeUpdate }) =>
         return dateB - dateA; // Orden descendente
       });
 
-      // Limitar a las últimas 5 citas para el dashboard
-      const last5Citas = sortedData.slice(0, 5);
-      setSolicitudes(last5Citas);
+      console.log('✅ Citas después de ordenar:', sortedData.length);
 
-      // Actualizar badge con solicitudes pendientes (de todas, no solo las 5)
-      const pendientes = data.filter(s => s.estado === 'pendiente').length;
+      // Guardar TODAS las citas (no limitar)
+      setSolicitudes(sortedData);
+
+      // Actualizar badge con solicitudes pendientes
+      const pendientes = sortedData.filter(s => s.estado === 'pendiente').length;
+      console.log('🔔 Pendientes para badge:', pendientes);
+
       if (onBadgeUpdate) {
         onBadgeUpdate(pendientes);
       }
@@ -207,13 +222,26 @@ const SolicitudesCitas: React.FC<SolicitudesCitasProps> = ({ onBadgeUpdate }) =>
 
     try {
       setConfirmLoading(true);
+
+      // Preparar fecha sin conversión a UTC - mantener la hora local
+      let fechaConfirmada = confirmData.fecha_confirmada;
+      if (fechaConfirmada) {
+        const fecha = new Date(fechaConfirmada);
+        // Formatear como ISO pero sin conversión de zona horaria
+        const year = fecha.getFullYear();
+        const month = String(fecha.getMonth() + 1).padStart(2, '0');
+        const day = String(fecha.getDate()).padStart(2, '0');
+        const hours = String(fecha.getHours()).padStart(2, '0');
+        const minutes = String(fecha.getMinutes()).padStart(2, '0');
+        const seconds = String(fecha.getSeconds()).padStart(2, '0');
+        fechaConfirmada = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+      }
+
       await citasApi.confirmar(selectedSolicitud.id_cita, {
         ...confirmData,
-        fecha_confirmada: confirmData.fecha_confirmada 
-          ? new Date(confirmData.fecha_confirmada).toISOString()
-          : undefined
+        fecha_confirmada: fechaConfirmada
       });
-      
+
       setConfirmDialogOpen(false);
       setSelectedSolicitud(null);
       await loadSolicitudes();
@@ -322,31 +350,29 @@ const SolicitudesCitas: React.FC<SolicitudesCitasProps> = ({ onBadgeUpdate }) =>
    *     string: Color en formato hexadecimal o nombre de color de MUI
    */
   const getBarraEstadoColor = (solicitud: SolicitudCita): string => {
-    const ahora = new Date();
-    const fechaCita = solicitud.fecha_confirmada
-      ? new Date(solicitud.fecha_confirmada)
-      : solicitud.fecha_propuesta_alumno
-        ? new Date(solicitud.fecha_propuesta_alumno)
-        : null;
-
     // Si la cita está completada (revisada/atendida) -> Amarillo
     if (solicitud.estado === 'completada') {
       return '#FFC107'; // Amarillo (warning.main)
     }
 
-    // Si la cita está cancelada -> No mostrar barra o usar color neutral
+    // Si la cita está cancelada -> Gris
     if (solicitud.estado === 'cancelada') {
       return '#9E9E9E'; // Gris
     }
 
+    const fechaCitaStr = solicitud.fecha_confirmada || solicitud.fecha_propuesta_alumno;
+
     // Si no hay fecha confirmada ni propuesta, usar gris por defecto
-    if (!fechaCita) {
+    if (!fechaCitaStr) {
       return '#9E9E9E'; // Gris
     }
 
+    const fechaCita = new Date(fechaCitaStr);
+    const ahora = new Date();
+
     // Normalizar fechas para comparación (solo fecha, sin hora)
-    const ahoraFecha = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
     const citaFecha = new Date(fechaCita.getFullYear(), fechaCita.getMonth(), fechaCita.getDate());
+    const ahoraFecha = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
 
     // Si la fecha de la cita ya pasó
     if (citaFecha < ahoraFecha) {
@@ -373,28 +399,38 @@ const SolicitudesCitas: React.FC<SolicitudesCitasProps> = ({ onBadgeUpdate }) =>
   };
 
   /**
-   * Determina si una cita es de hoy.
+   * Determina si una cita es de hoy y aún no ha pasado su hora.
    *
    * Args:
    *     solicitud: Objeto de solicitud de cita
    *
    * Returns:
-   *     boolean: true si la cita es de hoy
+   *     boolean: true si la cita es de hoy y la hora aún no ha pasado
    */
   const esCitaDeHoy = (solicitud: SolicitudCita): boolean => {
-    const fechaCita = solicitud.fecha_confirmada
-      ? new Date(solicitud.fecha_confirmada)
-      : solicitud.fecha_propuesta_alumno
-        ? new Date(solicitud.fecha_propuesta_alumno)
-        : null;
+    // Excluir citas canceladas y completadas
+    if (solicitud.estado === 'cancelada' || solicitud.estado === 'completada') {
+      return false;
+    }
 
-    if (!fechaCita) return false;
+    const fechaCitaStr = solicitud.fecha_confirmada || solicitud.fecha_propuesta_alumno;
+    if (!fechaCitaStr) return false;
 
+    // Crear fecha desde el string ISO (esto la convierte a hora local del navegador)
+    const fechaCita = new Date(fechaCitaStr);
+
+    // Obtener la fecha actual en hora local
     const ahora = new Date();
-    const ahoraFecha = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
-    const citaFecha = new Date(fechaCita.getFullYear(), fechaCita.getMonth(), fechaCita.getDate());
 
-    return citaFecha.getTime() === ahoraFecha.getTime();
+    // Verificar que sea el mismo día
+    const esMismoDia = fechaCita.getFullYear() === ahora.getFullYear() &&
+                       fechaCita.getMonth() === ahora.getMonth() &&
+                       fechaCita.getDate() === ahora.getDate();
+
+    // Verificar que la hora no haya pasado
+    const noHaPasado = fechaCita > ahora;
+
+    return esMismoDia && noHaPasado;
   };
 
   /**
@@ -407,17 +443,15 @@ const SolicitudesCitas: React.FC<SolicitudesCitasProps> = ({ onBadgeUpdate }) =>
    *     boolean: true si la fecha de la cita ya pasó
    */
   const esCitaPasada = (solicitud: SolicitudCita): boolean => {
-    const fechaCita = solicitud.fecha_confirmada
-      ? new Date(solicitud.fecha_confirmada)
-      : solicitud.fecha_propuesta_alumno
-        ? new Date(solicitud.fecha_propuesta_alumno)
-        : null;
+    const fechaCitaStr = solicitud.fecha_confirmada || solicitud.fecha_propuesta_alumno;
+    if (!fechaCitaStr) return false;
 
-    if (!fechaCita) return false;
-
+    const fechaCita = new Date(fechaCitaStr);
     const ahora = new Date();
-    const ahoraFecha = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
+
+    // Normalizar a medianoche para comparar solo fechas
     const citaFecha = new Date(fechaCita.getFullYear(), fechaCita.getMonth(), fechaCita.getDate());
+    const ahoraFecha = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
 
     return citaFecha < ahoraFecha;
   };
@@ -432,17 +466,15 @@ const SolicitudesCitas: React.FC<SolicitudesCitasProps> = ({ onBadgeUpdate }) =>
    *     boolean: true si la fecha de la cita está en el futuro
    */
   const esCitaPendienteFutura = (solicitud: SolicitudCita): boolean => {
-    const fechaCita = solicitud.fecha_confirmada
-      ? new Date(solicitud.fecha_confirmada)
-      : solicitud.fecha_propuesta_alumno
-        ? new Date(solicitud.fecha_propuesta_alumno)
-        : null;
+    const fechaCitaStr = solicitud.fecha_confirmada || solicitud.fecha_propuesta_alumno;
+    if (!fechaCitaStr) return true; // Sin fecha se considera pendiente
 
-    if (!fechaCita) return true; // Sin fecha se considera pendiente
-
+    const fechaCita = new Date(fechaCitaStr);
     const ahora = new Date();
-    const ahoraFecha = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
+
+    // Normalizar a medianoche para comparar solo fechas
     const citaFecha = new Date(fechaCita.getFullYear(), fechaCita.getMonth(), fechaCita.getDate());
+    const ahoraFecha = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
 
     return citaFecha > ahoraFecha;
   };
@@ -494,15 +526,38 @@ const SolicitudesCitas: React.FC<SolicitudesCitasProps> = ({ onBadgeUpdate }) =>
   const solicitudesConfirmadas = solicitudesFiltradas.filter(s => s.estado === 'confirmada');
   const solicitudesOtras = solicitudesFiltradas.filter(s => !['pendiente', 'confirmada'].includes(s.estado));
 
+  // Logs de depuración (después de declarar todas las variables)
+  console.log('🔍 Filtro aplicado:', filtroTemporal);
+  console.log('📝 Total solicitudes base:', solicitudes.length);
+  console.log('✔️ Solicitudes después del filtro:', solicitudesFiltradas.length);
+  console.log('📊 Contadores - Hoy:', contadorHoy, 'Confirmadas:', contadorConfirmadas, 'Pasadas:', contadorPasadas);
+  console.log('📦 Secciones divididas - Pendientes:', solicitudesPendientes.length, 'Confirmadas:', solicitudesConfirmadas.length, 'Otras:', solicitudesOtras.length);
+  console.log('🔓 Estado expansión - Pendientes:', pendientesExpanded, 'Confirmadas:', confirmadasExpanded, 'Otras:', otrasExpanded);
+
+  // Log detallado de las citas filtradas cuando el filtro es "pasadas"
+  if (filtroTemporal === 'pasadas') {
+    console.log('🔴 FILTRO PASADAS ACTIVO - Detalles:');
+    console.log('Total citas pasadas filtradas:', solicitudesFiltradas.length);
+    solicitudesFiltradas.forEach((s, idx) => {
+      console.log(`  Cita ${idx + 1}:`, {
+        id: s.id_cita,
+        estado: s.estado,
+        alumno: s.alumno_nombre,
+        fecha_confirmada: s.fecha_confirmada,
+        fecha_propuesta: s.fecha_propuesta_alumno
+      });
+    });
+  }
+
   return (
     <Box>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
         <Box>
           <Typography variant="h5" component="h2">
-            Últimas 5 Solicitudes de Citas
+            Solicitudes de Citas
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Mostrando las citas más recientes
+            Gestiona todas las solicitudes de citas
           </Typography>
         </Box>
         <Box display="flex" gap={1}>
@@ -648,9 +703,31 @@ const SolicitudesCitas: React.FC<SolicitudesCitasProps> = ({ onBadgeUpdate }) =>
         </Box>
       )}
 
-      {!loading && !error && solicitudes.length > 0 && (
+      {/* Mensaje cuando no hay citas */}
+      {!loading && !error && solicitudes.length > 0 && solicitudesFiltradas.length === 0 && (
+        <Box
+          sx={{
+            textAlign: 'center',
+            py: 8,
+            px: 3
+          }}
+        >
+          <Typography variant="h6" color="text.secondary" gutterBottom>
+            No hay citas {filtroTemporal === 'hoy' ? 'programadas para hoy' : `en la categoría "${filtroTemporal}"`}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            {filtroTemporal === 'hoy'
+              ? 'No hay citas programadas para el día de hoy.'
+              : 'Intenta seleccionar otra categoría para ver más citas.'}
+          </Typography>
+        </Box>
+      )}
+
+      {!loading && !error && solicitudes.length > 0 && solicitudesFiltradas.length > 0 && (
         <Box>
+          {console.log('🖼️ Renderizando contenedor principal de solicitudes')}
           {/* Solicitudes Pendientes */}
+          {solicitudesPendientes.length > 0 && console.log('✅ Sección PENDIENTES debe renderizarse')}
           {solicitudesPendientes.length > 0 && (
             <Box mb={4}>
               <Box
@@ -676,14 +753,20 @@ const SolicitudesCitas: React.FC<SolicitudesCitasProps> = ({ onBadgeUpdate }) =>
                   </Badge>
                   Solicitudes Pendientes
                 </Typography>
-                <IconButton size="small">
-                  {pendientesExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-                </IconButton>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  <Typography variant="caption" color="text.secondary">
+                    {pendientesExpanded ? 'Ocultar' : 'Expandir'}
+                  </Typography>
+                  <IconButton size="small">
+                    {pendientesExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                  </IconButton>
+                </Box>
               </Box>
 
               <Collapse in={pendientesExpanded}>
                 <Grid container spacing={2}>
                 {solicitudesPendientes.map((solicitud) => {
+                  console.log('🎴 Renderizando card PENDIENTE:', solicitud.id_cita);
                   const barraColor = getBarraEstadoColor(solicitud);
                   return (
                   <Grid size={{ xs: 12, md: 6 }} key={solicitud.id_cita}>
@@ -790,9 +873,14 @@ const SolicitudesCitas: React.FC<SolicitudesCitasProps> = ({ onBadgeUpdate }) =>
                           <Typography variant="body2" fontWeight="bold" color="text.secondary">
                             Detalles del Estudiante
                           </Typography>
-                          <IconButton size="small">
-                            {expandedDetails[solicitud.id_cita] ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
-                          </IconButton>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                            <Typography variant="caption" color="text.secondary">
+                              {expandedDetails[solicitud.id_cita] ? 'Ocultar' : 'Expandir'}
+                            </Typography>
+                            <IconButton size="small">
+                              {expandedDetails[solicitud.id_cita] ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
+                            </IconButton>
+                          </Box>
                         </Box>
 
                         <Collapse in={expandedDetails[solicitud.id_cita]}>
@@ -905,6 +993,7 @@ const SolicitudesCitas: React.FC<SolicitudesCitasProps> = ({ onBadgeUpdate }) =>
           )}
 
           {/* Citas Confirmadas */}
+          {solicitudesConfirmadas.length > 0 && console.log('✅ Sección CONFIRMADAS debe renderizarse')}
           {solicitudesConfirmadas.length > 0 && (
             <Box mb={4}>
               <Box
@@ -928,14 +1017,20 @@ const SolicitudesCitas: React.FC<SolicitudesCitasProps> = ({ onBadgeUpdate }) =>
                   <CheckIcon sx={{ mr: 1, color: 'success.main' }} />
                   Citas Confirmadas ({solicitudesConfirmadas.length})
                 </Typography>
-                <IconButton size="small">
-                  {confirmadasExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-                </IconButton>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  <Typography variant="caption" color="text.secondary">
+                    {confirmadasExpanded ? 'Ocultar' : 'Expandir'}
+                  </Typography>
+                  <IconButton size="small">
+                    {confirmadasExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                  </IconButton>
+                </Box>
               </Box>
 
               <Collapse in={confirmadasExpanded}>
                 <Grid container spacing={2}>
                 {solicitudesConfirmadas.map((solicitud) => {
+                  console.log('🎴 Renderizando card CONFIRMADA:', solicitud.id_cita, solicitud.alumno_nombre);
                   const tipoColor = getTipoColor(solicitud.tipo_cita);
                   const barraColor = getBarraEstadoColor(solicitud);
                   return (
@@ -981,25 +1076,120 @@ const SolicitudesCitas: React.FC<SolicitudesCitasProps> = ({ onBadgeUpdate }) =>
                             />
                           </Box>
 
-                          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                          <Typography variant="body2" color="text.secondary">
                             Cita {getTipoLabel(solicitud.tipo_cita)} • {solicitud.alumno_email}
                           </Typography>
 
-                          {solicitud.fecha_confirmada && (
-                            <Box display="flex" alignItems="center" mb={1}>
-                              <CalendarIcon sx={{ fontSize: 16, mr: 0.5, color: 'text.secondary' }} />
-                              <Typography variant="body2" color="text.secondary">
-                                {format(new Date(solicitud.fecha_confirmada), "dd/MM/yyyy HH:mm", { locale: es })}
-                              </Typography>
-                            </Box>
-                          )}
+                          <List dense sx={{ mt: 1 }}>
+                            {solicitud.fecha_confirmada && (
+                              <ListItem disablePadding>
+                                <ListItemIcon>
+                                  <ScheduleIcon fontSize="small" color="success" />
+                                </ListItemIcon>
+                                <ListItemText
+                                  primary="Fecha y hora de la cita"
+                                  secondary={formatDate(solicitud.fecha_confirmada)}
+                                />
+                              </ListItem>
+                            )}
 
-                          {solicitud.ubicacion && (
-                            <Box display="flex" alignItems="center" mb={2}>
-                              <LocationIcon sx={{ fontSize: 16, mr: 0.5, color: 'text.secondary' }} />
-                              <Typography variant="body2" color="text.secondary">
-                                {solicitud.ubicacion}
+                            {solicitud.ubicacion && (
+                              <ListItem disablePadding>
+                                <ListItemIcon>
+                                  <LocationIcon fontSize="small" />
+                                </ListItemIcon>
+                                <ListItemText
+                                  primary="Ubicación"
+                                  secondary={solicitud.ubicacion}
+                                />
+                              </ListItem>
+                            )}
+
+                            {solicitud.fecha_actualizacion && (
+                              <ListItem disablePadding>
+                                <ListItemIcon>
+                                  <CalendarIcon fontSize="small" color="info" />
+                                </ListItemIcon>
+                                <ListItemText
+                                  primary="Fecha de confirmación"
+                                  secondary={formatDate(solicitud.fecha_actualizacion)}
+                                />
+                              </ListItem>
+                            )}
+
+                            {solicitud.personal_nombre && (
+                              <ListItem disablePadding>
+                                <ListItemIcon>
+                                  <PersonIcon fontSize="small" />
+                                </ListItemIcon>
+                                <ListItemText
+                                  primary="Personal asignado"
+                                  secondary={solicitud.personal_nombre}
+                                />
+                              </ListItem>
+                            )}
+
+                            {solicitud.personal_email && (
+                              <ListItem disablePadding>
+                                <ListItemIcon>
+                                  <EmailIcon fontSize="small" />
+                                </ListItemIcon>
+                                <ListItemText
+                                  primary="Correo del personal"
+                                  secondary={solicitud.personal_email}
+                                />
+                              </ListItem>
+                            )}
+                          </List>
+
+                          <Box sx={{ mt: 1 }}>
+                            <Typography variant="body2" component="span">
+                              <strong>Motivo:</strong>{' '}
+                              {expandedTexts[`motivo-confirm-${solicitud.id_cita}`] || solicitud.motivo.length <= 100
+                                ? solicitud.motivo
+                                : truncateText(solicitud.motivo, 100)}
+                            </Typography>
+                            {solicitud.motivo.length > 100 && (
+                              <Button
+                                size="small"
+                                onClick={() => toggleText(`motivo-confirm-${solicitud.id_cita}`)}
+                                sx={{
+                                  ml: 1,
+                                  textTransform: 'none',
+                                  minWidth: 'auto',
+                                  p: 0,
+                                  fontSize: '0.875rem'
+                                }}
+                              >
+                                {expandedTexts[`motivo-confirm-${solicitud.id_cita}`] ? 'Ver menos' : 'Ver más'}
+                              </Button>
+                            )}
+                          </Box>
+
+                          {solicitud.observaciones_personal && (
+                            <Box sx={{ mt: 1 }}>
+                              <Typography variant="body2" component="span">
+                                <strong>Observaciones del personal:</strong>{' '}
+                                {expandedTexts[`obs-confirm-${solicitud.id_cita}`] ||
+                                solicitud.observaciones_personal.length <= 120
+                                  ? solicitud.observaciones_personal
+                                  : truncateText(solicitud.observaciones_personal, 120)}
                               </Typography>
+                              {solicitud.observaciones_personal.length > 120 && (
+                                <Button
+                                  size="small"
+                                  onClick={() => toggleText(`obs-confirm-${solicitud.id_cita}`)}
+                                  sx={{
+                                    ml: 1,
+                                    textTransform: 'none',
+                                    minWidth: 'auto',
+                                    p: 0,
+                                    fontSize: '0.875rem'
+                                  }}
+                                >
+                                  {expandedTexts[`obs-confirm-${solicitud.id_cita}`] ? 'Ver menos' : 'Ver más'}
+                                </Button>
+                              )}
                             </Box>
                           )}
 
@@ -1032,8 +1222,9 @@ const SolicitudesCitas: React.FC<SolicitudesCitasProps> = ({ onBadgeUpdate }) =>
             </Box>
           )}
 
-          {/* Citas Completadas/Canceladas (solo para tabs revision y canceladas) */}
-          {solicitudesOtras.length > 0 && (filtroTemporal === 'revision' || filtroTemporal === 'canceladas') && (
+          {/* Citas Completadas/Canceladas (solo para tabs revision, canceladas, pasadas, todas y hoy) */}
+          {solicitudesOtras.length > 0 && console.log('✅ Sección OTRAS debe renderizarse, filtro actual:', filtroTemporal)}
+          {solicitudesOtras.length > 0 && (filtroTemporal === 'revision' || filtroTemporal === 'canceladas' || filtroTemporal === 'pasadas' || filtroTemporal === 'todas' || filtroTemporal === 'hoy') && (
             <Box mb={4}>
               <Box
                 onClick={() => setOtrasExpanded(!otrasExpanded)}
@@ -1050,18 +1241,37 @@ const SolicitudesCitas: React.FC<SolicitudesCitasProps> = ({ onBadgeUpdate }) =>
                 }}
               >
                 <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center' }}>
-                  <Badge badgeContent={solicitudesOtras.length} color={filtroTemporal === 'revision' ? 'success' : 'error'}>
-                    {filtroTemporal === 'revision' ? <CheckCircleIcon sx={{ mr: 1 }} /> : <CancelIcon sx={{ mr: 1 }} />}
+                  <Badge
+                    badgeContent={solicitudesOtras.length}
+                    color={filtroTemporal === 'revision' ? 'success' : filtroTemporal === 'pasadas' ? 'warning' : 'error'}
+                  >
+                    {filtroTemporal === 'revision' ? (
+                      <CheckCircleIcon sx={{ mr: 1 }} />
+                    ) : filtroTemporal === 'pasadas' ? (
+                      <HistoryIcon sx={{ mr: 1 }} />
+                    ) : (
+                      <CancelIcon sx={{ mr: 1 }} />
+                    )}
                   </Badge>
-                  {filtroTemporal === 'revision' ? 'Citas Completadas' : 'Citas Canceladas'}
+                  {filtroTemporal === 'revision'
+                    ? 'Citas Completadas'
+                    : filtroTemporal === 'pasadas'
+                    ? 'Citas Pasadas'
+                    : 'Citas Canceladas'}
                 </Typography>
-                <IconButton size="small">
-                  {otrasExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-                </IconButton>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  <Typography variant="caption" color="text.secondary">
+                    {otrasExpanded ? 'Ocultar' : 'Expandir'}
+                  </Typography>
+                  <IconButton size="small">
+                    {otrasExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                  </IconButton>
+                </Box>
               </Box>
               <Collapse in={otrasExpanded}>
               <Grid container spacing={2} sx={{ mt: 0.5 }}>
                 {solicitudesOtras.map((solicitud) => {
+                  console.log('🎴 Renderizando card OTRAS:', solicitud.id_cita, solicitud.estado);
                   const tipoColor = getTipoColor(solicitud.tipo_cita);
                   const barraColor = getBarraEstadoColor(solicitud);
 
@@ -1107,13 +1317,36 @@ const SolicitudesCitas: React.FC<SolicitudesCitasProps> = ({ onBadgeUpdate }) =>
                             Cita {getTipoLabel(solicitud.tipo_cita)} • {solicitud.alumno_email}
                           </Typography>
 
-                          {solicitud.fecha_confirmada && (
-                            <Box display="flex" alignItems="center" mb={1}>
-                              <CalendarIcon sx={{ fontSize: 16, mr: 0.5, color: 'text.secondary' }} />
-                              <Typography variant="body2" color="text.secondary">
-                                {format(new Date(solicitud.fecha_confirmada), "dd/MM/yyyy HH:mm", { locale: es })}
-                              </Typography>
-                            </Box>
+                          {/* Para canceladas: mostrar fecha de solicitud y fecha preferida */}
+                          {solicitud.estado === 'cancelada' ? (
+                            <>
+                              {solicitud.fecha_solicitud && (
+                                <Box display="flex" alignItems="center" mb={1}>
+                                  <CalendarIcon sx={{ fontSize: 16, mr: 0.5, color: 'text.secondary' }} />
+                                  <Typography variant="body2" color="text.secondary">
+                                    <strong>Solicitada:</strong> {format(new Date(solicitud.fecha_solicitud), "dd/MM/yyyy HH:mm", { locale: es })}
+                                  </Typography>
+                                </Box>
+                              )}
+                              {solicitud.fecha_propuesta_alumno && (
+                                <Box display="flex" alignItems="center" mb={1}>
+                                  <CalendarIcon sx={{ fontSize: 16, mr: 0.5, color: 'text.secondary' }} />
+                                  <Typography variant="body2" color="text.secondary">
+                                    <strong>Fecha preferida:</strong> {format(new Date(solicitud.fecha_propuesta_alumno), "dd/MM/yyyy HH:mm", { locale: es })}
+                                  </Typography>
+                                </Box>
+                              )}
+                            </>
+                          ) : (
+                            /* Para completadas y otras: mostrar fecha confirmada */
+                            solicitud.fecha_confirmada && (
+                              <Box display="flex" alignItems="center" mb={1}>
+                                <CalendarIcon sx={{ fontSize: 16, mr: 0.5, color: 'text.secondary' }} />
+                                <Typography variant="body2" color="text.secondary">
+                                  {format(new Date(solicitud.fecha_confirmada), "dd/MM/yyyy HH:mm", { locale: es })}
+                                </Typography>
+                              </Box>
+                            )
                           )}
 
                           {solicitud.ubicacion && (

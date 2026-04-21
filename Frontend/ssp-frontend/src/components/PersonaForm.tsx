@@ -75,6 +75,10 @@ const PersonaForm = ({ open, onClose, onSubmit, persona, loading = false }: Pers
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
 
+  // Estado para confirmación de email
+  const [confirmEmail, setConfirmEmail] = useState('');
+  const [emailMatchError, setEmailMatchError] = useState('');
+
   // Función para manejar cambio de rol de usuario (incluye admin y coordinador para administradores)
   const handleTipoUsuarioChange = (tipo: 'alumno' | 'docente' | 'personal' | 'coordinador' | 'admin') => {
     // Validación de seguridad: solo admin puede asignar roles administrativos
@@ -117,12 +121,51 @@ const PersonaForm = ({ open, onClose, onSubmit, persona, loading = false }: Pers
   const handleConfirmPasswordChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const value = event.target.value;
     setConfirmPassword(value);
+    validatePasswordMatch(formData.password, value);
+  };
 
-    if (value && formData.password && value !== formData.password) {
-      setPasswordError('Las contraseñas no coinciden');
-    } else {
+  // Validar que las contraseñas coincidan y cumplan requisitos
+  const validatePasswordMatch = (password: string, confirmPass: string) => {
+    if (!password) {
       setPasswordError('');
+      return;
     }
+
+    // Validar mínimo 6 caracteres
+    if (password.length < 6) {
+      setPasswordError('La contraseña debe tener al menos 6 caracteres');
+      return;
+    }
+
+    // Validar que contenga al menos una letra
+    if (!/[a-zA-Z]/.test(password)) {
+      setPasswordError('La contraseña debe contener al menos una letra');
+      return;
+    }
+
+    // Validar que coincidan
+    if (confirmPass && password !== confirmPass) {
+      setPasswordError('Las contraseñas no coinciden');
+      return;
+    }
+
+    setPasswordError('');
+  };
+
+  // Validar que los emails coincidan
+  const validateEmailMatch = (email: string, confirmEmailValue: string) => {
+    if (confirmEmailValue && email !== confirmEmailValue) {
+      setEmailMatchError('Los correos electrónicos no coinciden');
+    } else {
+      setEmailMatchError('');
+    }
+  };
+
+  // Manejar cambio en confirmación de email
+  const handleConfirmEmailChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value;
+    setConfirmEmail(value);
+    validateEmailMatch(formData.correo_institucional, value);
   };
 
   useEffect(() => {
@@ -130,9 +173,11 @@ const PersonaForm = ({ open, onClose, onSubmit, persona, loading = false }: Pers
       // Actualizar tipoUsuario basado en el rol de la persona
       setTipoUsuario(persona.rol as 'alumno' | 'docente' | 'personal' | 'coordinador' | 'admin');
 
-      // Limpiar confirmación de contraseña en modo edición
+      // Limpiar confirmación de contraseña y email en modo edición
       setConfirmPassword('');
       setPasswordError('');
+      setConfirmEmail('');
+      setEmailMatchError('');
 
       setFormData({
         // SEGURIDAD: Eliminamos tipo_persona, usamos solo rol
@@ -167,6 +212,8 @@ const PersonaForm = ({ open, onClose, onSubmit, persona, loading = false }: Pers
       setTipoUsuario('alumno');
       setConfirmPassword('');
       setPasswordError('');
+      setConfirmEmail('');
+      setEmailMatchError('');
       setCohorteAno(currentYear); // Reason: Establecer año actual en el estado local
       setCohortePeriodo(1);
 
@@ -206,6 +253,16 @@ const PersonaForm = ({ open, onClose, onSubmit, persona, loading = false }: Pers
       ...prev,
       [field]: value
     }));
+
+    // Validar contraseñas cuando se cambie el campo password
+    if (field === 'password') {
+      validatePasswordMatch(value, confirmPassword);
+    }
+
+    // Validar emails cuando se cambie el correo institucional
+    if (field === 'correo_institucional' && confirmEmail) {
+      validateEmailMatch(value, confirmEmail);
+    }
   };
 
 
@@ -221,6 +278,19 @@ const PersonaForm = ({ open, onClose, onSubmit, persona, loading = false }: Pers
       return;
     }
 
+    // Validación de email para nuevas personas
+    if (!persona) {
+      if (!confirmEmail) {
+        notifyValidationError('Por favor, confirme su correo electrónico.');
+        return;
+      }
+
+      if (formData.correo_institucional !== confirmEmail) {
+        notifyValidationError('Los correos electrónicos no coinciden.');
+        return;
+      }
+    }
+
     // Validación de contraseña
     if (!persona) {
       // Para nuevas personas, la contraseña es obligatoria
@@ -229,8 +299,14 @@ const PersonaForm = ({ open, onClose, onSubmit, persona, loading = false }: Pers
         return;
       }
 
-      if (formData.password.length < 8) {
-        notifyValidationError('La contraseña debe tener al menos 8 caracteres.');
+      if (formData.password.length < 6) {
+        notifyValidationError('La contraseña debe tener al menos 6 caracteres.');
+        return;
+      }
+
+      // Validar que contenga al menos una letra
+      if (!/[a-zA-Z]/.test(formData.password)) {
+        notifyValidationError('La contraseña debe contener al menos una letra.');
         return;
       }
 
@@ -240,8 +316,14 @@ const PersonaForm = ({ open, onClose, onSubmit, persona, loading = false }: Pers
       }
     } else if (formData.password) {
       // Para edición, validar solo si se está cambiando la contraseña
-      if (formData.password.length < 8) {
-        notifyValidationError('La contraseña debe tener al menos 8 caracteres.');
+      if (formData.password.length < 6) {
+        notifyValidationError('La contraseña debe tener al menos 6 caracteres.');
+        return;
+      }
+
+      // Validar que contenga al menos una letra
+      if (!/[a-zA-Z]/.test(formData.password)) {
+        notifyValidationError('La contraseña debe contener al menos una letra.');
         return;
       }
 
@@ -279,20 +361,25 @@ const PersonaForm = ({ open, onClose, onSubmit, persona, loading = false }: Pers
                             formData.matricula &&
                             formData.edad > 0;
 
-    // Para nuevas personas, validar contraseña y confirmación
+    // Para nuevas personas, validar contraseña, email y confirmación
     if (!persona) {
       return basicFieldsValid &&
              formData.password &&
-             formData.password.length >= 8 &&
+             formData.password.length >= 6 &&
+             /[a-zA-Z]/.test(formData.password) &&
              confirmPassword &&
              formData.password === confirmPassword &&
-             !passwordError;
+             confirmEmail &&
+             formData.correo_institucional === confirmEmail &&
+             !passwordError &&
+             !emailMatchError;
     }
 
     // Para editar, validar contraseña solo si se está cambiando
     if (persona && formData.password) {
       return basicFieldsValid &&
-             formData.password.length >= 8 &&
+             formData.password.length >= 6 &&
+             /[a-zA-Z]/.test(formData.password) &&
              confirmPassword &&
              formData.password === confirmPassword &&
              !passwordError;
@@ -361,11 +448,13 @@ const PersonaForm = ({ open, onClose, onSubmit, persona, loading = false }: Pers
               <TextField
                 fullWidth
                 required={!persona}
-                label="Contraseña"
-                type="password"
-                value={formData.password}
-                onChange={handleChange('password')}
-                helperText={persona ? "Dejar vacío para mantener la contraseña actual" : "Mínimo 8 caracteres"}
+                label="Confirmar Correo Institucional"
+                type="email"
+                value={confirmEmail}
+                onChange={handleConfirmEmailChange}
+                error={!!emailMatchError}
+                helperText={emailMatchError || (persona ? "No es necesario confirmar en edición" : "Repita su correo institucional")}
+                disabled={!!persona}
               />
             </Grid>
 
@@ -373,6 +462,19 @@ const PersonaForm = ({ open, onClose, onSubmit, persona, loading = false }: Pers
               <TextField
                 fullWidth
                 required={!persona}
+                label="Contraseña"
+                type="password"
+                value={formData.password}
+                onChange={handleChange('password')}
+                error={!!passwordError && !passwordError.includes('coinciden')}
+                helperText={passwordError && !passwordError.includes('coinciden') ? passwordError : (persona ? "Dejar vacío para mantener la contraseña actual" : "Mínimo 6 caracteres, debe contener letras")}
+              />
+            </Grid>
+
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField
+                fullWidth
+                required={!persona && !!formData.password}
                 label="Confirmar contraseña"
                 type="password"
                 value={confirmPassword}

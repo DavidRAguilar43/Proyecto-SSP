@@ -19,6 +19,7 @@ interface BulkDeleteToolbarProps {
   onClearSelection: () => void;
   loading?: boolean;
   entityName?: string; // e.g., "personas", "grupos", etc.
+  actionLabel?: string; // e.g., "Eliminar" or "Cancelar"
 }
 
 const BulkDeleteToolbar: React.FC<BulkDeleteToolbarProps> = ({
@@ -26,7 +27,8 @@ const BulkDeleteToolbar: React.FC<BulkDeleteToolbarProps> = ({
   onBulkDelete,
   onClearSelection,
   loading = false,
-  entityName = "elementos"
+  entityName = "elementos",
+  actionLabel = "Eliminar"
 }) => {
   if (selectedCount === 0) {
     return null;
@@ -71,7 +73,7 @@ const BulkDeleteToolbar: React.FC<BulkDeleteToolbarProps> = ({
             }
           }}
         >
-          Eliminar
+          {actionLabel}
         </Button>
         
         <Tooltip title="Cancelar selección">

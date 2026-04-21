@@ -200,7 +200,7 @@ const PreguntaBuilder: React.FC<PreguntaBuilderProps> = ({
           </Typography>
         </Box>
 
-        <Box sx={{ display: 'flex', gap: 1 }}>
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
           <IconButton
             onClick={(e) => {
               e.stopPropagation();
@@ -214,6 +214,9 @@ const PreguntaBuilder: React.FC<PreguntaBuilderProps> = ({
             <DeleteIcon />
           </IconButton>
 
+          <Typography variant="caption" color="text.secondary">
+            {expanded ? 'Ocultar' : 'Expandir'}
+          </Typography>
           <IconButton size="small">
             {expanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
           </IconButton>

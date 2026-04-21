@@ -123,6 +123,12 @@ class SolicitudCitaOut(BaseModel):
     fecha_propuesta_alumno: Optional[datetime] = None
     observaciones_alumno: Optional[str] = None
 
+    # Campos de confirmación (para citas confirmadas)
+    fecha_confirmada: Optional[datetime] = None
+    observaciones_personal: Optional[str] = None
+    ubicacion: Optional[str] = None
+    fecha_actualizacion: Optional[datetime] = None
+
     # Información del alumno
     id_alumno: int
     alumno_nombre: str
@@ -130,6 +136,10 @@ class SolicitudCitaOut(BaseModel):
     alumno_celular: Optional[str] = None
     alumno_matricula: Optional[str] = None
     alumno_semestre: Optional[int] = None
+
+    # Información del personal asignado
+    personal_nombre: Optional[str] = None
+    personal_email: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 

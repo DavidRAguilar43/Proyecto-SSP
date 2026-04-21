@@ -8,10 +8,21 @@ const LoginPage = () => {
   const { isAuthenticated } = useContext(AuthContext);
   const navigate = useNavigate();
 
-  // Redirigir al dashboard si ya está autenticado
+  // Redirigir al dashboard o a la página anterior si ya está autenticado
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/dashboard');
+      // Verificar si hay una URL guardada para redirigir después del login
+      const redirectPath = localStorage.getItem('redirectAfterLogin');
+
+      if (redirectPath) {
+        // Limpiar la URL guardada
+        localStorage.removeItem('redirectAfterLogin');
+        // Redirigir a la página anterior
+        navigate(redirectPath);
+      } else {
+        // Redirigir al dashboard por defecto
+        navigate('/dashboard');
+      }
     }
   }, [isAuthenticated, navigate]);
 

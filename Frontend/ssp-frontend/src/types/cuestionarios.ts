@@ -57,6 +57,11 @@ export interface CuestionarioAdmin {
   creado_por_nombre?: string;
   total_preguntas: number;
   total_respuestas?: number;
+  instruccion_sistema?: string;
+  modelo_ia?: string;
+  max_tokens?: number;
+  temperature?: number;
+  instruccion_sistema_default?: string;
   updated_at?: string;
 }
 
@@ -68,6 +73,10 @@ export interface CuestionarioAdminCreate {
   fecha_inicio?: string;
   fecha_fin?: string;
   estado: EstadoCuestionario;
+  instruccion_sistema?: string;
+  modelo_ia?: string;
+  max_tokens?: number;
+  temperature?: number;
 }
 
 export interface CuestionarioAdminUpdate {
@@ -78,24 +87,41 @@ export interface CuestionarioAdminUpdate {
   fecha_inicio?: string;
   fecha_fin?: string;
   estado?: EstadoCuestionario;
+  instruccion_sistema?: string;
+  modelo_ia?: string;
+  max_tokens?: number;
+  temperature?: number;
 }
 
 export interface RespuestaPregunta {
+  id?: number;
   pregunta_id: string;
-  valor: string | string[] | number;
+  valor: string | string[] | number | boolean | null;
   texto_otro?: string;
+  pregunta?: Pregunta; // Información de la pregunta (cuando viene del backend)
+  // Campos preservados cuando la pregunta fue eliminada
+  pregunta_texto?: string; // Texto de la pregunta al momento de responder
+  pregunta_tipo?: string; // Tipo de pregunta al momento de responder
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface RespuestaCuestionario {
   id?: string;
   cuestionario_id: string;
   usuario_id: number;
-  respuestas: RespuestaPregunta[];
+  respuestas?: RespuestaPregunta[]; // Alias para compatibilidad
+  respuestas_preguntas?: RespuestaPregunta[]; // Nombre correcto del backend
   estado: EstadoRespuesta;
   fecha_inicio?: string;
   fecha_completado?: string;
   tiempo_total_minutos?: number;
-  progreso_porcentaje: number;
+  progreso_porcentaje?: number;
+  progreso?: number; // Alias para compatibilidad
+  cuestionario?: CuestionarioAdmin; // Información del cuestionario
+  reportes_ia?: ReporteIA[]; // Reportes de IA generados
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface CuestionarioAsignado {
@@ -157,4 +183,14 @@ export interface ValidacionCuestionario {
   es_valido: boolean;
   errores_generales: string[];
   errores_preguntas: { [pregunta_id: string]: string[] };
+}
+
+export interface ReporteIA {
+  id: string;
+  respuesta_cuestionario_id: string;
+  contenido: string;
+  version: number;
+  es_actual: boolean;
+  fecha_generacion: string;
+  created_at?: string;
 }

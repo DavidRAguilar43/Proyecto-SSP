@@ -6,7 +6,7 @@ from sqlalchemy import or_
 
 from app.db.database import get_db
 from app.models.contacto_emergencia import ContactoEmergencia
-from app.models.persona import Persona
+from app.models.persona import User
 from app.schemas.contacto_emergencia import (
     ContactoEmergenciaCreate, 
     ContactoEmergenciaUpdate, 
@@ -37,12 +37,12 @@ def create_contacto_emergencia(
     Los usuarios finales solo pueden crear contactos para sí mismos.
     """
     # Verificar si la persona existe
-    persona = db.query(Persona).filter(Persona.id == contacto_in.id_persona).first()
+    persona = db.query(User).filter(User.id == contacto_in.id_user).first()
     if not persona:
-        raise HTTPException(status_code=404, detail="Persona no encontrada")
+        raise HTTPException(status_code=404, detail="User no encontrada")
 
     # VALIDACIÓN: Los usuarios finales solo pueden crear contactos para sí mismos
-    if current_user.rol in ["docente", "personal", "alumno"] and current_user.id != contacto_in.id_persona:
+    if current_user.rol in ["docente", "personal", "alumno"] and current_user.id != contacto_in.id_user:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Solo puede crear contactos de emergencia para su propio perfil"
@@ -53,7 +53,7 @@ def create_contacto_emergencia(
         nombre_contacto=contacto_in.nombre_contacto,
         telefono_contacto=contacto_in.telefono_contacto,
         parentesco=contacto_in.parentesco,
-        id_persona=contacto_in.id_persona
+        id_user=contacto_in.id_user
     )
     
     db.add(db_contacto)
@@ -67,7 +67,7 @@ def read_contactos_emergencia(
     db: Session = Depends(get_db),
     skip: int = 0,
     limit: int = 100,
-    id_persona: Optional[int] = None,
+    id_user: Optional[int] = None,
     current_user = Depends(get_current_active_user)
 ) -> Any:
     """
@@ -76,8 +76,8 @@ def read_contactos_emergencia(
     query = db.query(ContactoEmergencia)
     
     # Aplicar filtros si se proporcionan
-    if id_persona:
-        query = query.filter(ContactoEmergencia.id_persona == id_persona)
+    if id_user:
+        query = query.filter(ContactoEmergencia.id_user == id_user)
     
     contactos = query.offset(skip).limit(limit).all()
     return contactos
@@ -117,14 +117,14 @@ def update_contacto_emergencia(
         raise HTTPException(status_code=404, detail="Contacto de emergencia no encontrado")
 
     # VALIDACIÓN: Los usuarios finales solo pueden actualizar sus propios contactos
-    if current_user.rol in ["docente", "personal", "alumno"] and current_user.id != contacto.id_persona:
+    if current_user.rol in ["docente", "personal", "alumno"] and current_user.id != contacto.id_user:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Solo puede actualizar sus propios contactos de emergencia"
         )
 
     # Verificar si se está cambiando la persona y si existe
-    if contacto_in.id_persona and contacto_in.id_persona != contacto.id_persona:
+    if contacto_in.id_user and contacto_in.id_user != contacto.id_user:
         # VALIDACIÓN: Los usuarios finales no pueden cambiar la persona del contacto
         if current_user.rol in ["docente", "personal", "alumno"]:
             raise HTTPException(
@@ -132,9 +132,9 @@ def update_contacto_emergencia(
                 detail="No puede cambiar la persona asociada al contacto"
             )
 
-        persona = db.query(Persona).filter(Persona.id == contacto_in.id_persona).first()
+        persona = db.query(User).filter(User.id == contacto_in.id_user).first()
         if not persona:
-            raise HTTPException(status_code=404, detail="Persona no encontrada")
+            raise HTTPException(status_code=404, detail="User no encontrada")
     
     # Actualizar campos si se proporcionan
     update_data = contacto_in.dict(exclude_unset=True)
@@ -165,7 +165,7 @@ def delete_contacto_emergencia(
         raise HTTPException(status_code=404, detail="Contacto de emergencia no encontrado")
 
     # VALIDACIÓN: Los usuarios finales solo pueden eliminar sus propios contactos
-    if current_user.rol in ["docente", "personal", "alumno"] and current_user.id != contacto.id_persona:
+    if current_user.rol in ["docente", "personal", "alumno"] and current_user.id != contacto.id_user:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Solo puede eliminar sus propios contactos de emergencia"
@@ -190,7 +190,7 @@ def bulk_create_contactos_emergencia(
     
     for contacto_data in bulk_contactos.items:
         # Verificar si la persona existe
-        persona = db.query(Persona).filter(Persona.id == contacto_data.id_persona).first()
+        persona = db.query(User).filter(User.id == contacto_data.id_user).first()
         if not persona:
             continue  # Saltar este registro si la persona no existe
         
@@ -199,7 +199,7 @@ def bulk_create_contactos_emergencia(
             nombre_contacto=contacto_data.nombre_contacto,
             telefono_contacto=contacto_data.telefono_contacto,
             parentesco=contacto_data.parentesco,
-            id_persona=contacto_data.id_persona
+            id_user=contacto_data.id_user
         )
         
         db.add(db_contacto)
@@ -237,8 +237,8 @@ def bulk_update_contactos_emergencia(
             continue
         
         # Verificar si se está cambiando la persona y si existe
-        if "id_persona" in item and item["id_persona"] != contacto.id_persona:
-            persona = db.query(Persona).filter(Persona.id == item["id_persona"]).first()
+        if "id_user" in item and item["id_user"] != contacto.id_user:
+            persona = db.query(User).filter(User.id == item["id_user"]).first()
             if not persona:
                 continue  # Saltar este registro si la persona no existe
         

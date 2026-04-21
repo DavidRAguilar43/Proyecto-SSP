@@ -17,9 +17,7 @@ import {
 } from '@mui/material';
 import {
   Edit as EditIcon,
-  Delete as DeleteIcon,
-  Psychology as PsychologyIcon,
-  Assessment as AssessmentIcon
+  Delete as DeleteIcon
 } from '@mui/icons-material';
 import type { Persona } from '../types';
 import { useBulkSelection } from '../hooks/useBulkSelection';
@@ -32,8 +30,6 @@ interface PersonasTableProps {
   onEdit: (persona: Persona) => void;
   onDelete: (persona: Persona) => void;
   onBulkDelete: (ids: number[]) => void;
-  onCuestionario?: (persona: Persona) => void;
-  onVerReporte?: (persona: Persona) => void;
   currentUserRole?: string;
 }
 
@@ -43,8 +39,6 @@ const PersonasTable = ({
   onEdit,
   onDelete,
   onBulkDelete,
-  onCuestionario,
-  onVerReporte,
   currentUserRole
 }: PersonasTableProps) => {
   const [page, setPage] = useState(0);
@@ -147,17 +141,28 @@ const PersonasTable = ({
                 return (
                   <TableRow
                     hover
-                    onClick={() => bulkSelection.handleSelectItem(persona)}
+                    onClick={(event) => {
+                      // Solo seleccionar si el click no fue en el checkbox o en botones de acción
+                      const target = event.target as HTMLElement;
+                      if (!target.closest('.MuiCheckbox-root') && !target.closest('.MuiIconButton-root')) {
+                        bulkSelection.handleSelectItem(persona);
+                      }
+                    }}
                     role="checkbox"
                     aria-checked={isItemSelected}
                     tabIndex={-1}
                     key={persona.id}
                     selected={isItemSelected}
+                    sx={{ cursor: 'pointer' }}
                   >
-                    <TableCell padding="checkbox">
+                    <TableCell padding="checkbox" onClick={(e) => e.stopPropagation()}>
                       <Checkbox
                         color="primary"
                         checked={isItemSelected}
+                        onChange={(e) => {
+                          e.stopPropagation();
+                          bulkSelection.handleSelectItem(persona);
+                        }}
                       />
                     </TableCell>
                     <TableCell>{persona.id}</TableCell>
@@ -200,40 +205,6 @@ const PersonasTable = ({
                           <DeleteIcon />
                         </IconButton>
                       </Tooltip>
-
-                      {/* Botón de cuestionario para alumnos */}
-                      {persona.rol === 'alumno' && onCuestionario && (
-                        <Tooltip title="Cuestionario Psicopedagógico">
-                          <IconButton
-                            size="small"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onCuestionario(persona);
-                            }}
-                            color="primary"
-                          >
-                            <PsychologyIcon />
-                          </IconButton>
-                        </Tooltip>
-                      )}
-
-                      {/* Botón de reporte para admin/coordinador/personal */}
-                      {persona.rol === 'alumno' &&
-                       onVerReporte &&
-                       (currentUserRole === 'admin' || currentUserRole === 'coordinador' || currentUserRole === 'personal') && (
-                        <Tooltip title="Ver Reporte Psicopedagógico">
-                          <IconButton
-                            size="small"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onVerReporte(persona);
-                            }}
-                            color="secondary"
-                          >
-                            <AssessmentIcon />
-                          </IconButton>
-                        </Tooltip>
-                      )}
                     </TableCell>
                   </TableRow>
                 );

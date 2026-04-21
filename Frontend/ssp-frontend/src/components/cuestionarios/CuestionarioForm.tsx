@@ -56,6 +56,7 @@ import type {
 } from '@/types/cuestionarios';
 import { validarCuestionario, getConfiguracionPorDefecto } from '@/utils/validacionesCuestionarios';
 import { processApiError, logError } from '@/utils/errorHandling';
+import { catalogosApi } from '@/services/api';
 
 interface CuestionarioFormProps {
   cuestionario?: CuestionarioAdmin;
@@ -80,7 +81,20 @@ const CuestionarioForm: React.FC<CuestionarioFormProps> = ({
   // Estados del formulario
   const [titulo, setTitulo] = useState(cuestionario?.titulo || '');
   const [descripcion, setDescripcion] = useState(cuestionario?.descripcion || '');
+  const [instruccionSistema, setInstruccionSistema] = useState(cuestionario?.instruccion_sistema || '');
+  const [modeloIA, setModeloIA] = useState(cuestionario?.modelo_ia || 'openai/gpt-3.5-turbo');
+  const [maxTokens, setMaxTokens] = useState<number>(cuestionario?.max_tokens || 4000);
+  const [temperature, setTemperature] = useState<number>(cuestionario?.temperature || 0.7);
   const [preguntas, setPreguntas] = useState<Pregunta[]>(cuestionario?.preguntas || []);
+
+  // Estado para modelos de IA del catálogo
+  const [modelosIA, setModelosIA] = useState<any[]>([]);
+  const [loadingModelos, setLoadingModelos] = useState(false);
+
+  // Estado para rastrear si las preguntas fueron modificadas
+  // Reason: En modo edición, solo enviar preguntas si realmente cambiaron
+  // para evitar borrar respuestas de usuarios innecesariamente
+  const [preguntasModificadas, setPreguntasModificadas] = useState(false);
   const [tiposUsuario, setTiposUsuario] = useState<TipoUsuario[]>(
     cuestionario?.tipos_usuario_asignados || []
   );
@@ -205,6 +219,46 @@ const CuestionarioForm: React.FC<CuestionarioFormProps> = ({
   const [validacion, setValidacion] = useState<ValidacionCuestionario | null>(null);
   const [guardandoBorrador, setGuardandoBorrador] = useState(false);
 
+  // Cargar modelos de IA del catálogo
+  useEffect(() => {
+    const cargarModelos = async () => {
+      setLoadingModelos(true);
+      try {
+        const modelos = await catalogosApi.modelosIA.getActivos();
+        setModelosIA(modelos);
+      } catch (error) {
+        logError(error, 'CuestionarioForm.cargarModelos');
+        // Si falla, usar lista vacía (el select mostrará el valor actual aunque no esté en la lista)
+        setModelosIA([]);
+      } finally {
+        setLoadingModelos(false);
+      }
+    };
+
+    cargarModelos();
+  }, []);
+
+  // Actualizar estados cuando cambia el cuestionario (modo edición)
+  // Reason: En modo edición, el cuestionario se carga async, por lo que los estados
+  // inicializados con useState no tienen los valores correctos al montar el componente
+  useEffect(() => {
+    if (cuestionario) {
+      setTitulo(cuestionario.titulo || '');
+      setDescripcion(cuestionario.descripcion || '');
+      setInstruccionSistema(cuestionario.instruccion_sistema || '');
+      setModeloIA(cuestionario.modelo_ia || 'openai/gpt-3.5-turbo');
+      setMaxTokens(cuestionario.max_tokens || 4000);
+      setTemperature(cuestionario.temperature || 0.7);
+      setPreguntas(cuestionario.preguntas || []);
+      setTiposUsuario(cuestionario.tipos_usuario_asignados || []);
+      setFechaInicio(cuestionario.fecha_inicio ? new Date(cuestionario.fecha_inicio) : null);
+      setFechaFin(cuestionario.fecha_fin ? new Date(cuestionario.fecha_fin) : null);
+      setEstado(cuestionario.estado || 'borrador');
+      // Resetear flag de modificación al cargar el cuestionario
+      setPreguntasModificadas(false);
+    }
+  }, [cuestionario]);
+
   // Configurar sensores para drag & drop
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -233,6 +287,7 @@ const CuestionarioForm: React.FC<CuestionarioFormProps> = ({
       configuracion: {}
     };
     setPreguntas([...preguntas, nuevaPregunta]);
+    setPreguntasModificadas(true); // Marcar que se modificaron las preguntas
   };
 
   // Eliminar pregunta
@@ -244,6 +299,7 @@ const CuestionarioForm: React.FC<CuestionarioFormProps> = ({
       orden: i + 1
     }));
     setPreguntas(preguntasReordenadas);
+    setPreguntasModificadas(true); // Marcar que se modificaron las preguntas
   };
 
   // Actualizar pregunta
@@ -251,6 +307,7 @@ const CuestionarioForm: React.FC<CuestionarioFormProps> = ({
     const nuevasPreguntas = [...preguntas];
     nuevasPreguntas[index] = preguntaActualizada;
     setPreguntas(nuevasPreguntas);
+    setPreguntasModificadas(true); // Marcar que se modificaron las preguntas
   };
 
   // Duplicar pregunta
@@ -263,6 +320,7 @@ const CuestionarioForm: React.FC<CuestionarioFormProps> = ({
       orden: preguntas.length + 1
     };
     setPreguntas([...preguntas, preguntaDuplicada]);
+    setPreguntasModificadas(true); // Marcar que se modificaron las preguntas
   };
 
   // Manejar el fin del drag & drop
@@ -282,6 +340,7 @@ const CuestionarioForm: React.FC<CuestionarioFormProps> = ({
       }));
 
       setPreguntas(preguntasReordenadas);
+      setPreguntasModificadas(true); // Marcar que se modificaron las preguntas
     }
   };
 
@@ -308,6 +367,7 @@ const CuestionarioForm: React.FC<CuestionarioFormProps> = ({
     }));
 
     setPreguntas(preguntasReordenadas);
+    setPreguntasModificadas(true); // Marcar que se modificaron las preguntas
   };
 
   // Validar formulario usando las utilidades
@@ -334,15 +394,38 @@ const CuestionarioForm: React.FC<CuestionarioFormProps> = ({
       return;
     }
 
-    const datosFormulario = {
+    const datosFormulario: any = {
       titulo,
       descripcion,
-      preguntas,
-      tipos_usuario_asignados: tiposUsuario,
+      instruccion_sistema: instruccionSistema || undefined,
+      modelo_ia: modeloIA || 'openai/gpt-3.5-turbo',
+      max_tokens: maxTokens,
+      temperature: temperature,
       fecha_inicio: fechaInicio?.toISOString(),
       fecha_fin: fechaFin?.toISOString(),
       estado
     };
+
+    // PROTECCIÓN: Solo incluir preguntas si:
+    // 1. Estamos en modo creación (siempre se necesitan), O
+    // 2. Estamos en modo edición Y las preguntas fueron modificadas
+    // Reason: Evitar enviar preguntas innecesariamente en edición, lo que podría
+    // causar que el backend las procese y afecte respuestas de usuarios
+    if (mode === 'create') {
+      // Modo creación: siempre enviar preguntas
+      if (preguntas.length > 0) {
+        datosFormulario.preguntas = preguntas;
+      }
+    } else if (mode === 'edit' && preguntasModificadas) {
+      // Modo edición: solo enviar si fueron modificadas
+      datosFormulario.preguntas = preguntas;
+    }
+    // Si mode === 'edit' y NO se modificaron preguntas, NO se envía el campo
+
+    // Solo incluir tipos de usuario si hay al menos uno
+    if (tiposUsuario.length > 0) {
+      datosFormulario.tipos_usuario_asignados = tiposUsuario;
+    }
 
     try {
       await onSubmit(datosFormulario);
@@ -500,6 +583,99 @@ const CuestionarioForm: React.FC<CuestionarioFormProps> = ({
                   <MenuItem value="inactivo">Inactivo</MenuItem>
                 </Select>
               </FormControl>
+            </CardContent>
+          </Card>
+
+          {/* Configuración de IA para Reportes */}
+          <Card sx={{ mb: 3 }}>
+            <CardContent>
+              <Typography variant="h6" sx={{ mb: 2 }}>
+                Configuración de IA para Reportes
+              </Typography>
+
+              <Alert severity="info" sx={{ mb: 2 }}>
+                <Typography variant="body2">
+                  Personaliza cómo la IA generará los reportes psicopedagógicos para este cuestionario.
+                </Typography>
+              </Alert>
+
+              <FormControl fullWidth sx={{ mb: 2 }} disabled={loadingModelos}>
+                <InputLabel>Modelo de IA</InputLabel>
+                <Select
+                  value={modeloIA}
+                  label="Modelo de IA"
+                  onChange={(e) => setModeloIA(e.target.value)}
+                >
+                  {loadingModelos ? (
+                    <MenuItem value={modeloIA}>{modeloIA} (Cargando...)</MenuItem>
+                  ) : modelosIA.length === 0 ? (
+                    <MenuItem value={modeloIA}>{modeloIA} (Sin modelos disponibles)</MenuItem>
+                  ) : (
+                    modelosIA.map((modelo) => (
+                      <MenuItem key={modelo.id} value={modelo.model_id}>
+                        {modelo.titulo}
+                        {modelo.recomendado && ' ⭐'}
+                        {' - '}
+                        {modelo.proveedor}
+                        {modelo.categoria === 'premium' && ' (Premium)'}
+                        {modelo.categoria === 'budget' && ' (Económico)'}
+                      </MenuItem>
+                    ))
+                  )}
+                </Select>
+              </FormControl>
+
+              <TextField
+                fullWidth
+                label="Instrucción personalizada para la IA (opcional)"
+                value={instruccionSistema}
+                onChange={(e) => setInstruccionSistema(e.target.value)}
+                helperText="Define cómo quieres que la IA analice las respuestas y genere el reporte. Si se deja vacío, se usará la instrucción por defecto."
+                multiline
+                rows={6}
+                placeholder="Ejemplo: Eres un psicólogo educativo especializado en estudiantes universitarios. Analiza las respuestas enfocándote en factores de riesgo académico y emocional..."
+                sx={{ mb: 3 }}
+              />
+
+              <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 'bold' }}>
+                Parámetros de Generación
+              </Typography>
+
+              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+                <TextField
+                  type="number"
+                  label="Tokens Máximos"
+                  value={maxTokens}
+                  onChange={(e) => setMaxTokens(parseInt(e.target.value) || 1000)}
+                  inputProps={{ min: 100, max: 10000, step: 100 }}
+                  helperText="Máximo de tokens en la respuesta"
+                />
+
+                <TextField
+                  type="number"
+                  label="Temperatura (0.0-1.0)"
+                  value={temperature}
+                  onChange={(e) => setTemperature(parseFloat(e.target.value) || 0.0)}
+                  inputProps={{ min: 0.0, max: 1.0, step: 0.1 }}
+                  helperText="Creatividad de la IA (0.0=preciso, 1.0=creativo)"
+                />
+              </Box>
+
+              <Alert severity="info" sx={{ mt: 2 }}>
+                <Typography variant="body2">
+                  <strong>Max Tokens:</strong> Controla la longitud máxima de la respuesta. 1 token ≈ 0.75 palabras.<br />
+                  <strong>Temperatura:</strong> Valores bajos (0.0-0.3) = respuestas más precisas y consistentes. Valores altos (0.7-1.0) = respuestas más creativas y variadas.
+                </Typography>
+              </Alert>
+            </CardContent>
+          </Card>
+
+          {/* Fechas de disponibilidad */}
+          <Card sx={{ mb: 3 }}>
+            <CardContent>
+              <Typography variant="h6" sx={{ mb: 2 }}>
+                Fechas de Disponibilidad
+              </Typography>
 
               {/* Fecha de inicio */}
               <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>

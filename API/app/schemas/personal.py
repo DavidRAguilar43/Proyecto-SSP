@@ -7,7 +7,7 @@ class PersonalBase(BaseModel):
     area: str
     rol: str
     numero_empleado: str
-    id_persona: int
+    id_user: int
 
 
 # Esquema para crear un personal
@@ -20,7 +20,7 @@ class PersonalUpdate(BaseModel):
     area: Optional[str] = None
     rol: Optional[str] = None
     numero_empleado: Optional[str] = None
-    id_persona: Optional[int] = None
+    id_user: Optional[int] = None
 
 
 # Esquema para respuesta de personal

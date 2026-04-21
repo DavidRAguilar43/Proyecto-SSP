@@ -87,6 +87,10 @@ const RegistroUsuarioForm = ({ open, onClose, onSubmit, loading = false }: Regis
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
 
+  // Estado para confirmación de email
+  const [confirmEmail, setConfirmEmail] = useState('');
+  const [emailMatchError, setEmailMatchError] = useState('');
+
   // Estados para validación de duplicados
   const [emailError, setEmailError] = useState('');
   const [matriculaError, setMatriculaError] = useState('');
@@ -160,6 +164,8 @@ const RegistroUsuarioForm = ({ open, onClose, onSubmit, loading = false }: Regis
       setCohortePeriodo(1);
       setConfirmPassword('');
       setPasswordError('');
+      setConfirmEmail('');
+      setEmailMatchError('');
       setEmailError('');
       setMatriculaError('');
 
@@ -183,8 +189,13 @@ const RegistroUsuarioForm = ({ open, onClose, onSubmit, loading = false }: Regis
     }));
 
     // Validar contraseñas cuando se cambie el campo password
-    if (field === 'password' && confirmPassword) {
+    if (field === 'password') {
       validatePasswordMatch(value, confirmPassword);
+    }
+
+    // Validar emails cuando se cambie el correo institucional
+    if (field === 'correo_institucional' && confirmEmail) {
+      validateEmailMatch(value, confirmEmail);
     }
   };
 
@@ -217,13 +228,48 @@ const RegistroUsuarioForm = ({ open, onClose, onSubmit, loading = false }: Regis
     validatePasswordMatch(formData.password, value);
   };
 
-  // Validar que las contraseñas coincidan
+  // Validar que las contraseñas coincidan y cumplan requisitos
   const validatePasswordMatch = (password: string, confirmPass: string) => {
+    if (!password) {
+      setPasswordError('');
+      return;
+    }
+
+    // Validar mínimo 6 caracteres
+    if (password.length < 6) {
+      setPasswordError('La contraseña debe tener al menos 6 caracteres');
+      return;
+    }
+
+    // Validar que contenga al menos una letra
+    if (!/[a-zA-Z]/.test(password)) {
+      setPasswordError('La contraseña debe contener al menos una letra');
+      return;
+    }
+
+    // Validar que coincidan
     if (confirmPass && password !== confirmPass) {
       setPasswordError('Las contraseñas no coinciden');
-    } else {
-      setPasswordError('');
+      return;
     }
+
+    setPasswordError('');
+  };
+
+  // Validar que los emails coincidan
+  const validateEmailMatch = (email: string, confirmEmailValue: string) => {
+    if (confirmEmailValue && email !== confirmEmailValue) {
+      setEmailMatchError('Los correos electrónicos no coinciden');
+    } else {
+      setEmailMatchError('');
+    }
+  };
+
+  // Manejar cambio en confirmación de email
+  const handleConfirmEmailChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value;
+    setConfirmEmail(value);
+    validateEmailMatch(formData.correo_institucional, value);
   };
 
   // Validar email en tiempo real
@@ -309,8 +355,14 @@ const RegistroUsuarioForm = ({ open, onClose, onSubmit, loading = false }: Regis
     }
 
     // Validación de contraseña
-    if (formData.password.length < 8) {
-      notifyValidationError('La contraseña debe tener al menos 8 caracteres.');
+    if (formData.password.length < 6) {
+      notifyValidationError('La contraseña debe tener al menos 6 caracteres.');
+      return;
+    }
+
+    // Validar que contenga al menos una letra
+    if (!/[a-zA-Z]/.test(formData.password)) {
+      notifyValidationError('La contraseña debe contener al menos una letra.');
       return;
     }
 
@@ -322,6 +374,17 @@ const RegistroUsuarioForm = ({ open, onClose, onSubmit, loading = false }: Regis
 
     if (formData.password !== confirmPassword) {
       notifyValidationError('Las contraseñas no coinciden.');
+      return;
+    }
+
+    // Validación de confirmación de email
+    if (!confirmEmail) {
+      notifyValidationError('Por favor, confirme su correo electrónico.');
+      return;
+    }
+
+    if (formData.correo_institucional !== confirmEmail) {
+      notifyValidationError('Los correos electrónicos no coinciden.');
       return;
     }
 
@@ -404,12 +467,16 @@ const RegistroUsuarioForm = ({ open, onClose, onSubmit, loading = false }: Regis
            formData.lugar_origen &&
            formData.colonia_residencia_actual &&
            formData.password &&
-           formData.password.length >= 8 &&
+           formData.password.length >= 6 &&
+           /[a-zA-Z]/.test(formData.password) &&
            formData.matricula &&
            confirmPassword &&
            formData.password === confirmPassword &&
+           confirmEmail &&
+           formData.correo_institucional === confirmEmail &&
            !passwordError &&
            !emailError &&
+           !emailMatchError &&
            !matriculaError &&
            !validatingEmail &&
            !validatingMatricula;
@@ -469,11 +536,25 @@ const RegistroUsuarioForm = ({ open, onClose, onSubmit, loading = false }: Regis
               <TextField
                 fullWidth
                 required
+                label="Confirmar Correo Institucional"
+                type="email"
+                value={confirmEmail}
+                onChange={handleConfirmEmailChange}
+                error={!!emailMatchError}
+                helperText={emailMatchError || "Repita su correo institucional"}
+              />
+            </Grid>
+
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField
+                fullWidth
+                required
                 label="Contraseña"
                 type="password"
                 value={formData.password}
                 onChange={handleChange('password')}
-                helperText="Mínimo 8 caracteres"
+                error={!!passwordError && !passwordError.includes('coinciden')}
+                helperText={passwordError && !passwordError.includes('coinciden') ? passwordError : "Mínimo 6 caracteres, debe contener letras"}
               />
             </Grid>
 

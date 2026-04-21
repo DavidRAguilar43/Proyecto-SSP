@@ -58,7 +58,7 @@ class PreguntaBase(BaseModel):
 
 class PreguntaCreate(PreguntaBase):
     """Esquema para crear una pregunta"""
-    pass
+    id: Optional[str] = None  # ID opcional para actualización
 
 
 class PreguntaUpdate(BaseModel):
@@ -88,6 +88,10 @@ class CuestionarioAdminBase(BaseModel):
     fecha_inicio: Optional[datetime] = Field(None, description="Fecha de inicio de disponibilidad")
     fecha_fin: Optional[datetime] = Field(None, description="Fecha de fin de disponibilidad")
     estado: EstadoCuestionario = Field(EstadoCuestionario.BORRADOR, description="Estado del cuestionario")
+    instruccion_sistema: Optional[str] = Field(None, description="Instrucción personalizada para la IA al generar reportes")
+    max_tokens: Optional[int] = Field(4000, ge=100, le=10000, description="Número máximo de tokens para la respuesta de IA")
+    temperature: Optional[float] = Field(0.7, ge=0.0, le=1.0, description="Temperatura de la IA (0.0=preciso, 1.0=creativo)")
+    modelo_ia: Optional[str] = Field("openai/gpt-3.5-turbo", max_length=100, description="Modelo de IA a utilizar para generar reportes")
 
     @field_validator('titulo')
     @classmethod
@@ -148,6 +152,10 @@ class CuestionarioAdminUpdate(BaseModel):
     fecha_inicio: Optional[datetime] = None
     fecha_fin: Optional[datetime] = None
     estado: Optional[EstadoCuestionario] = None
+    instruccion_sistema: Optional[str] = None
+    modelo_ia: Optional[str] = Field(None, max_length=100)
+    max_tokens: Optional[int] = Field(None, ge=100, le=10000)
+    temperature: Optional[float] = Field(None, ge=0.0, le=1.0)
     preguntas: Optional[List[PreguntaUpdate]] = None
     tipos_usuario_asignados: Optional[List[TipoUsuario]] = None
 
@@ -181,6 +189,9 @@ class RespuestaPreguntaCreate(RespuestaPreguntaBase):
 
 class RespuestaPreguntaOut(RespuestaPreguntaBase):
     id: int
+    pregunta_snapshot_id: Optional[str] = None  # Referencia al snapshot de la pregunta (opcional para respuestas antiguas)
+    pregunta: Optional["PreguntaOut"] = None  # Referencia opcional a la pregunta original
+    pregunta_snapshot: Optional["PreguntaSnapshotOut"] = None  # Referencia al snapshot
     created_at: datetime
     updated_at: datetime
 
@@ -204,14 +215,35 @@ class RespuestaCuestionarioUpdate(BaseModel):
     tiempo_total_minutos: Optional[int] = None
 
 
+class ReporteIABase(BaseModel):
+    """Esquema base para reportes generados por IA"""
+    contenido: str = Field(..., description="Contenido del reporte generado")
+
+
+class ReporteIAOut(ReporteIABase):
+    """Esquema de salida para reporte IA"""
+    id: str
+    respuesta_cuestionario_id: str
+    version: int
+    es_actual: bool
+    fecha_generacion: datetime
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class RespuestaCuestionarioOut(RespuestaCuestionarioBase):
     id: str
-    cuestionario_id: str
+    cuestionario_id: Optional[str] = None  # Ahora es opcional
+    snapshot_id: Optional[str] = None  # Referencia al snapshot (opcional para respuestas antiguas)
     usuario_id: int
+    cuestionario: Optional["CuestionarioAdminOut"] = None  # Referencia opcional al original
+    cuestionario_snapshot: Optional["CuestionarioSnapshotOut"] = None  # Referencia al snapshot
     fecha_inicio: datetime
     fecha_completado: Optional[datetime] = None
     tiempo_total_minutos: Optional[int] = None
     respuestas_preguntas: List[RespuestaPreguntaOut] = Field(default_factory=list)
+    reportes_ia: List[ReporteIAOut] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
 
@@ -261,6 +293,11 @@ class CuestionarioBulkDelete(BaseModel):
     ids: List[str] = Field(..., min_length=1, description="Lista de IDs de cuestionarios a eliminar")
 
 
+class RespuestaBulkCancel(BaseModel):
+    """Esquema para cancelar múltiples respuestas de cuestionarios"""
+    ids: List[str] = Field(..., min_length=1, description="Lista de IDs de respuestas a cancelar")
+
+
 class CuestionarioDuplicate(BaseModel):
     nuevo_titulo: str = Field(..., max_length=100, description="Título para el cuestionario duplicado")
 
@@ -268,3 +305,93 @@ class CuestionarioDuplicate(BaseModel):
 class CuestionarioEstadoUpdate(BaseModel):
     """Esquema para cambiar el estado de un cuestionario"""
     estado: EstadoCuestionario = Field(..., description="Nuevo estado del cuestionario")
+
+
+class PreguntaRespuestaReporte(BaseModel):
+    """Información de una pregunta y su respuesta para generar reportes"""
+    pregunta_id: Optional[str] = None
+    pregunta: str
+    respuesta: Optional[Union[str, int, float, bool, List[str]]] = None
+    texto_otro: Optional[str] = None
+    tipo: Optional[str] = None
+    orden: Optional[int] = None
+
+
+class PersonaInfoReporte(BaseModel):
+    """Información adicional de la persona que responde el cuestionario
+
+    PROTECCIÓN DE DATOS PERSONALES:
+    - Se permiten: edad, género, semestre (datos demográficos útiles)
+    - NO se permiten: nombres, apellidos, correos, teléfonos, direcciones
+    - Matrícula/número de empleado: comentados temporalmente para pruebas
+    """
+    # COMENTADO TEMPORALMENTE PARA PRUEBAS
+    # matricula: Optional[str] = Field(None, description="Matrícula del estudiante")
+    # numero_empleado: Optional[str] = Field(None, description="Número de empleado")
+
+    # Datos demográficos útiles para análisis psicopedagógico
+    edad: Optional[int] = Field(None, description="Edad del estudiante")
+    genero: Optional[str] = Field(None, description="Género del estudiante")
+    semestre: Optional[int] = Field(None, description="Semestre actual del estudiante")
+
+
+class GenerarReporteRequest(BaseModel):
+    """Esquema para solicitar la generación de un reporte"""
+    preguntas_respuestas: List[PreguntaRespuestaReporte] = Field(default_factory=list)
+    instruccion_sistema: Optional[str] = None
+    modelo_ia: Optional[str] = None
+    max_tokens: Optional[int] = Field(None, ge=100, le=10000)
+    temperature: Optional[float] = Field(None, ge=0.0, le=1.0)
+    persona_info: Optional[PersonaInfoReporte] = None
+
+
+class RegenerarReporteRequest(GenerarReporteRequest):
+    """Esquema para solicitar la regeneración de un reporte"""
+    pass
+
+
+class ReporteResponse(BaseModel):
+    """Esquema de respuesta para operaciones de reporte"""
+    id: str
+    respuesta_cuestionario_id: str
+    version: int
+    es_actual: bool
+    contenido: str
+    fecha_generacion: datetime
+    mensaje: str = "Reporte generado exitosamente"
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# Esquemas para Snapshots
+class PreguntaSnapshotOut(BaseModel):
+    """Esquema de salida para pregunta snapshot"""
+    id: str
+    cuestionario_snapshot_id: str
+    pregunta_original_id: str
+    tipo: str
+    texto: str
+    descripcion: Optional[str] = None
+    obligatoria: bool
+    orden: int
+    configuracion: Dict[str, Any] = Field(default_factory=dict)
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class CuestionarioSnapshotOut(BaseModel):
+    """Esquema de salida para cuestionario snapshot"""
+    id: str
+    cuestionario_original_id: str
+    titulo: str
+    descripcion: str
+    instruccion_sistema: Optional[str] = None
+    modelo_ia: Optional[str] = None
+    max_tokens: Optional[int] = None
+    temperature: Optional[float] = None
+    fecha_snapshot: datetime
+    created_at: datetime
+    preguntas_snapshot: List[PreguntaSnapshotOut] = Field(default_factory=list)
+
+    model_config = ConfigDict(from_attributes=True)

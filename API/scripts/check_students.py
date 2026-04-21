@@ -1,8 +1,8 @@
 from app.db.database import SessionLocal
-from app.models.persona import Persona
+from app.models.persona import User
 
 db = SessionLocal()
-estudiantes = db.query(Persona).filter(Persona.rol == "alumno").all()
+estudiantes = db.query(User).filter(User.rol == "alumno").all()
 
 print(f"Total estudiantes: {len(estudiantes)}")
 for e in estudiantes:

@@ -301,9 +301,14 @@ const ConfiguracionPreguntaComponent: React.FC<ConfiguracionPreguntaProps> = ({
             </Typography>
             <Chip size="small" label={tipo.replace('_', ' ')} variant="outlined" />
           </Box>
-          <IconButton size="small">
-            {expanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-          </IconButton>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <Typography variant="caption" color="text.secondary">
+              {expanded ? 'Ocultar' : 'Expandir'}
+            </Typography>
+            <IconButton size="small">
+              {expanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+            </IconButton>
+          </Box>
         </Box>
       </Paper>
 

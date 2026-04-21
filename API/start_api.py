@@ -24,7 +24,6 @@ def main():
         import app.models.personal
         import app.models.contacto_emergencia
         import app.models.cita
-        import app.models.cuestionario
         import app.models.cuestionario_admin
         import app.models.notificacion
 
@@ -48,30 +47,30 @@ def create_admin():
     """Crea un usuario administrador si no existe"""
     try:
         from app.db.database import SessionLocal
-        from app.models.persona import Persona
-        from app.schemas.persona import Rol, TipoPersona, Sexo, Genero, EstadoCivil
+        from app.models.persona import User
         from app.core.security import get_password_hash
 
         db = SessionLocal()
         try:
             # Verificar si ya existe un usuario administrador
-            admin_user = db.query(Persona).filter(Persona.rol == Rol.ADMIN).first()
+            admin_user = db.query(User).filter(User.rol == "admin").first()
             if admin_user:
                 logger.info("El usuario administrador ya existe")
                 return
 
             # Crear usuario administrador por defecto
             admin_password = "admin123"  # Cambiar en producción
-            admin = Persona(
-                sexo=Sexo.OTRO,
-                genero=Genero.OTRO,
+            admin = User(
+                sexo="otro",
+                genero="otro",
                 edad=30,
-                estado_civil=EstadoCivil.SOLTERO,
+                estado_civil="soltero",
                 lugar_origen="Sistema",
                 colonia_residencia_actual="Sistema",
                 celular="0000000000",
+                matricula="ADMIN001",
                 correo_institucional="admin@sistema.edu",
-                rol=Rol.ADMIN,
+                rol="admin",
                 hashed_password=get_password_hash(admin_password),
                 is_active=True
             )

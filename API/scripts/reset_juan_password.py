@@ -10,7 +10,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from sqlalchemy.orm import Session
 from app.db.database import SessionLocal
-from app.models.persona import Persona
+from app.models.persona import User
 from app.core.security import get_password_hash
 
 def reset_juan_password():
@@ -19,8 +19,8 @@ def reset_juan_password():
     
     try:
         # Buscar a Juan Pérez
-        juan = db.query(Persona).filter(
-            Persona.correo_institucional == "juan.perez@estudiante.edu"
+        juan = db.query(User).filter(
+            User.correo_institucional == "juan.perez@estudiante.edu"
         ).first()
         
         if not juan:

@@ -34,9 +34,11 @@ import {
 } from '@mui/icons-material';
 import { AuthContext } from '@/contexts/AuthContext';
 import { cuestionariosUsuarioApi } from '@/services/api';
+import { generarReporte } from '@/services/reporteService';
 import { useNotification } from '@/hooks/useNotification';
 import VistaPreviaPregunta from '@/components/cuestionarios/VistaPreviaPregunta';
 import type { CuestionarioAdmin, RespuestaPregunta, RespuestaCuestionario } from '@/types/cuestionarios';
+import type { GenerarReporteRequestPayload, PreguntaRespuestaReportePayload, PersonaInfoReportePayload } from '@/types/reporte';
 
 /**
  * Página para responder un cuestionario asignado
@@ -55,10 +57,12 @@ const ResponderCuestionarioPage: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [autoSaving, setAutoSaving] = useState(false);
+  const [generatingReport, setGeneratingReport] = useState(false);
 
   // Estados de navegación
   const [preguntaActual, setPreguntaActual] = useState(0);
-  const [modoVisualizacion, setModoVisualizacion] = useState<'paso_a_paso' | 'completo'>('paso_a_paso');
+  // Vista completa por defecto (todas las preguntas en la misma página)
+  const [modoVisualizacion, setModoVisualizacion] = useState<'paso_a_paso' | 'completo'>('completo');
 
   // Estados de UI
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
@@ -81,7 +85,10 @@ const ResponderCuestionarioPage: React.FC = () => {
         console.log('📋 Cuestionario cargado:', {
           titulo: cuestionarioData.titulo,
           totalPreguntas: cuestionarioData.preguntas?.length,
-          respuestasPrevias: cuestionarioData.respuestas_previas
+          respuestasPrevias: cuestionarioData.respuestas_previas,
+          instruccion_sistema: cuestionarioData.instruccion_sistema,
+          instruccion_sistema_default: cuestionarioData.instruccion_sistema_default,
+          modelo_ia: cuestionarioData.modelo_ia
         });
         setCuestionario(cuestionarioData);
 
@@ -224,6 +231,41 @@ const ResponderCuestionarioPage: React.FC = () => {
     if (!cuestionario) return 0;
     const preguntasRespondidas = contarRespuestasValidas(respuestasObj);
     return Math.round((preguntasRespondidas / cuestionario.preguntas.length) * 100);
+  };
+
+  const construirPreguntasRespuestasPayload = (): PreguntaRespuestaReportePayload[] => {
+    if (!cuestionario) return [];
+
+    const preguntasOrdenadas = [...cuestionario.preguntas].sort((a, b) => a.orden - b.orden);
+
+    return preguntasOrdenadas.map((pregunta): PreguntaRespuestaReportePayload => ({
+      pregunta_id: pregunta.id,
+      pregunta: pregunta.texto,
+      respuesta: respuestas[pregunta.id],
+      tipo: pregunta.tipo,
+      orden: pregunta.orden
+    }));
+  };
+
+  // PROTECCIÓN DE DATOS:
+  // - Se envían: edad, género, semestre (datos demográficos útiles)
+  // - NO se envían: nombres, correos, teléfonos, direcciones
+  // - Matrícula: comentada temporalmente para pruebas
+  const construirPersonaInfoPayload = (): PersonaInfoReportePayload | undefined => {
+    if (!user) return undefined;
+
+    const payload: PersonaInfoReportePayload = {
+      // COMENTADO TEMPORALMENTE PARA PRUEBAS
+      // matricula: user.matricula || undefined
+
+      // Datos demográficos útiles para el análisis
+      edad: (user as any).edad || undefined,
+      genero: (user as any).genero || undefined,
+      semestre: (user as any).semestre || undefined
+    };
+
+    const tieneDatos = Object.values(payload).some(valor => Boolean(valor));
+    return tieneDatos ? payload : undefined;
   };
 
   // Manejar cambio de respuesta con auto-guardado
@@ -426,8 +468,79 @@ const ResponderCuestionarioPage: React.FC = () => {
           valor
         }));
 
-      await cuestionariosUsuarioApi.completarCuestionario(id, respuestasArray, 100);
+      // Paso 1: Guardar el cuestionario
+      const respuestaFinalizada = await cuestionariosUsuarioApi.completarCuestionario(id, respuestasArray, 100);
       showNotification('Cuestionario completado exitosamente', 'success');
+
+      // Paso 2: Intentar generar el reporte de IA (con timeout)
+      if (respuestaFinalizada?.id) {
+        const preguntasRespuestasPayload = construirPreguntasRespuestasPayload();
+
+        if (preguntasRespuestasPayload.length > 0) {
+          setGeneratingReport(true);
+
+          // NO enviamos instruccion_sistema en el payload cuando completamos el cuestionario
+          // El backend tomará automáticamente la instrucción del cuestionario
+          // Esto asegura que SIEMPRE se use la instrucción configurada en el cuestionario
+
+          const modeloIASeleccionado = cuestionario.modelo_ia ?? undefined;
+          const personaInfoPayload = construirPersonaInfoPayload();
+
+          console.log('🤖 Configuración del reporte:', {
+            instruccionCuestionario: cuestionario.instruccion_sistema?.substring(0, 100) + '...',
+            modeloIA: modeloIASeleccionado,
+            personaInfo: personaInfoPayload,
+            nota: 'El backend usará la instrucción del cuestionario automáticamente'
+          });
+
+          const payload: GenerarReporteRequestPayload = {
+            preguntas_respuestas: preguntasRespuestasPayload
+          };
+
+          // NO incluimos instruccion_sistema aquí - el backend la tomará del cuestionario
+          // if (instruccionSeleccionada) {
+          //   payload.instruccion_sistema = instruccionSeleccionada;
+          // }
+
+          if (modeloIASeleccionado) {
+            payload.modelo_ia = modeloIASeleccionado;
+          }
+
+          if (cuestionario.max_tokens !== undefined && cuestionario.max_tokens !== null) {
+            payload.max_tokens = cuestionario.max_tokens;
+          }
+
+          if (cuestionario.temperature !== undefined && cuestionario.temperature !== null) {
+            payload.temperature = cuestionario.temperature;
+          }
+
+          if (personaInfoPayload) {
+            payload.persona_info = personaInfoPayload;
+          }
+
+          try {
+            console.log('📤 Enviando payload para generar reporte:', JSON.stringify(payload, null, 2));
+            // Generar el reporte con timeout de 45 segundos
+            await generarReporte(respuestaFinalizada.id, payload, 45000);
+            console.log('✅ Reporte generado exitosamente');
+          } catch (reporteError: any) {
+            console.error('Error al generar el reporte automáticamente:', reporteError);
+
+            // Determinar el mensaje de error apropiado
+            const isTimeout = reporteError?.code === 'ECONNABORTED' || reporteError?.message?.includes('timeout');
+            const errorMessage = isTimeout
+              ? 'El reporte está tardando más de lo esperado. Se generará en segundo plano y estará disponible en unos minutos.'
+              : 'El reporte no pudo generarse automáticamente. Puedes intentarlo nuevamente desde la sección de cuestionarios completados.';
+
+            showNotification(errorMessage, 'warning');
+          } finally {
+            setGeneratingReport(false);
+          }
+        } else {
+          console.warn('No se encontraron preguntas para generar el reporte automáticamente.');
+        }
+      }
+
       navigate('/usuario/cuestionarios');
     } catch (error) {
       console.error('Error al completar cuestionario:', error);
@@ -565,8 +678,8 @@ const ResponderCuestionarioPage: React.FC = () => {
                       width: 8,
                       height: 8,
                       borderRadius: '50%',
-                      bgcolor: index === preguntaActual 
-                        ? 'primary.main' 
+                      bgcolor: index === preguntaActual
+                        ? 'primary.main'
                         : respuestas[cuestionario.preguntas[index].id] !== undefined
                         ? 'success.main'
                         : 'grey.300',
@@ -645,7 +758,7 @@ const ResponderCuestionarioPage: React.FC = () => {
                   <VistaPreviaPregunta
                     pregunta={pregunta}
                     value={respuestas[pregunta.id]}
-                    onChange={(valor, autoAvanzar) => handleRespuestaChange(pregunta.id, valor, false)} // No auto-avanzar en vista completa
+                    onChange={(valor) => handleRespuestaChange(pregunta.id, valor, false)}
                     showValidation={pregunta.obligatoria}
                   />
                 </CardContent>
@@ -663,7 +776,7 @@ const ResponderCuestionarioPage: React.FC = () => {
               >
                 {saving ? 'Guardando...' : 'Guardar Progreso'}
               </Button>
-              
+
               <Button
                 startIcon={<SendIcon />}
                 onClick={() => setShowConfirmDialog(true)}
@@ -679,28 +792,65 @@ const ResponderCuestionarioPage: React.FC = () => {
       </Box>
 
       {/* Diálogo de confirmación para completar */}
-      <Dialog open={showConfirmDialog} onClose={() => setShowConfirmDialog(false)}>
+      <Dialog
+        open={showConfirmDialog}
+        onClose={() => !submitting && setShowConfirmDialog(false)}
+        maxWidth="sm"
+        fullWidth
+      >
         <DialogTitle>Completar Cuestionario</DialogTitle>
         <DialogContent>
-          <Typography>
-            ¿Está seguro de que desea completar el cuestionario? 
-            Una vez completado, no podrá modificar sus respuestas.
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-            Progreso actual: {progreso}% ({contarRespuestasValidas(respuestas)}/{cuestionario.preguntas.length} preguntas respondidas)
-          </Typography>
+          {!submitting && !generatingReport && (
+            <>
+              <Typography>
+                ¿Está seguro de que desea completar el cuestionario?
+                Una vez completado, no podrá modificar sus respuestas.
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                Progreso actual: {progreso}% ({contarRespuestasValidas(respuestas)}/{cuestionario.preguntas.length} preguntas respondidas)
+              </Typography>
+            </>
+          )}
+
+          {submitting && !generatingReport && (
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 3 }}>
+              <CircularProgress size={48} sx={{ mb: 2 }} />
+              <Typography variant="h6" gutterBottom>
+                Guardando cuestionario...
+              </Typography>
+              <Typography variant="body2" color="text.secondary" align="center">
+                Por favor espere mientras guardamos sus respuestas
+              </Typography>
+            </Box>
+          )}
+
+          {generatingReport && (
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 3 }}>
+              <CircularProgress size={48} sx={{ mb: 2 }} />
+              <Typography variant="h6" gutterBottom>
+                Generando reporte de IA...
+              </Typography>
+              <Typography variant="body2" color="text.secondary" align="center">
+                Esto puede tomar unos momentos. El cuestionario ya ha sido guardado exitosamente.
+              </Typography>
+            </Box>
+          )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setShowConfirmDialog(false)}>
+          <Button
+            onClick={() => setShowConfirmDialog(false)}
+            disabled={submitting || generatingReport}
+          >
             Cancelar
           </Button>
-          <Button 
-            onClick={completarCuestionario} 
-            variant="contained" 
+          <Button
+            onClick={completarCuestionario}
+            variant="contained"
             color="success"
-            disabled={submitting}
+            disabled={submitting || generatingReport}
+            startIcon={submitting || generatingReport ? <CircularProgress size={20} /> : null}
           >
-            {submitting ? 'Completando...' : 'Completar'}
+            {submitting ? 'Guardando...' : generatingReport ? 'Generando reporte...' : 'Completar'}
           </Button>
         </DialogActions>
       </Dialog>

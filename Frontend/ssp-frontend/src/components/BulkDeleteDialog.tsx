@@ -22,6 +22,9 @@ interface BulkDeleteDialogProps {
   entityName?: string; // e.g., "personas", "grupos", etc.
   loading?: boolean;
   warningMessage?: string;
+  dialogTitle?: string; // e.g., "Confirmar eliminación" or "Confirmar cancelación"
+  actionLabel?: string; // e.g., "Eliminar" or "Cancelar"
+  actionVerb?: string; // e.g., "eliminar" or "cancelar"
 }
 
 const BulkDeleteDialog: React.FC<BulkDeleteDialogProps> = ({
@@ -31,7 +34,10 @@ const BulkDeleteDialog: React.FC<BulkDeleteDialogProps> = ({
   selectedCount,
   entityName = "elementos",
   loading = false,
-  warningMessage
+  warningMessage,
+  dialogTitle = "Confirmar Eliminación Masiva",
+  actionLabel = "Sí, Eliminar",
+  actionVerb = "eliminar"
 }) => {
   return (
     <Dialog
@@ -44,27 +50,29 @@ const BulkDeleteDialog: React.FC<BulkDeleteDialogProps> = ({
         <Box display="flex" alignItems="center" gap={1}>
           <WarningIcon color="error" />
           <Typography variant="h6">
-            Confirmar Eliminación Masiva
+            {dialogTitle}
           </Typography>
         </Box>
       </DialogTitle>
-      
+
       <DialogContent>
         <Typography variant="body1" gutterBottom>
-          ¿Está seguro de que desea eliminar <strong>{selectedCount}</strong> {entityName}?
+          ¿Está seguro de que desea {actionVerb} <strong>{selectedCount}</strong> {entityName}?
         </Typography>
-        
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Esta acción eliminará permanentemente todos los registros seleccionados y no se puede deshacer.
-        </Typography>
-        
+
+        {!warningMessage && (
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Esta acción {actionVerb === 'eliminar' ? 'eliminará permanentemente todos los registros seleccionados y no se puede deshacer' : 'afectará a todos los registros seleccionados'}.
+          </Typography>
+        )}
+
         {warningMessage && (
           <Alert severity="warning" sx={{ mt: 2 }}>
             {warningMessage}
           </Alert>
         )}
       </DialogContent>
-      
+
       <DialogActions>
         <Button
           onClick={onClose}
@@ -80,7 +88,7 @@ const BulkDeleteDialog: React.FC<BulkDeleteDialogProps> = ({
           variant="contained"
           startIcon={loading ? <CircularProgress size={16} /> : undefined}
         >
-          {loading ? 'Eliminando...' : 'Sí, Eliminar'}
+          {loading ? `${actionVerb.charAt(0).toUpperCase() + actionVerb.slice(1)}ando...` : actionLabel}
         </Button>
       </DialogActions>
     </Dialog>

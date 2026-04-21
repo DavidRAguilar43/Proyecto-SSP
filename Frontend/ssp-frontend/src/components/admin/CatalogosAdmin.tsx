@@ -23,18 +23,23 @@ import {
   Alert,
   Snackbar,
   Badge,
-  Grid
+  Grid,
+  MenuItem,
+  Select,
+  FormControl,
+  InputLabel,
+  Tooltip
 } from '@mui/material';
 import {
   Add as AddIcon,
   Edit as EditIcon,
-  Delete as DeleteIcon,
-  Visibility as VisibilityIcon,
   CheckCircle as CheckCircleIcon
 } from '@mui/icons-material';
 import ConfirmDialog from '../ConfirmDialog';
+import GenericTableWithBulkDelete from '../GenericTableWithBulkDelete';
 import { catalogosApi } from '../../services/api';
-import type { Religion, GrupoEtnico, Discapacidad, ElementosPendientes, CatalogoCreate, CatalogoUpdate } from '../../types';
+import { useAuth } from '../../contexts/AuthContext';
+import type { Religion, GrupoEtnico, Discapacidad, ModeloIA, ElementosPendientes, CatalogoCreate, CatalogoUpdate, ModeloIACreate, ModeloIAUpdate, TableColumn } from '../../types';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -58,28 +63,39 @@ function TabPanel(props: TabPanelProps) {
 }
 
 const CatalogosAdmin: React.FC<CatalogosAdminProps> = ({ canDelete = true }) => {
+  const { user } = useAuth();
   const [tabValue, setTabValue] = useState(0);
   const [religiones, setReligiones] = useState<Religion[]>([]);
   const [gruposEtnicos, setGruposEtnicos] = useState<GrupoEtnico[]>([]);
   const [discapacidades, setDiscapacidades] = useState<Discapacidad[]>([]);
+  const [modelosIA, setModelosIA] = useState<ModeloIA[]>([]);
   const [pendientes, setPendientes] = useState<ElementosPendientes | null>(null);
-  
+
   // Estados para diálogos
   const [openDialog, setOpenDialog] = useState(false);
   const [dialogMode, setDialogMode] = useState<'create' | 'edit'>('create');
-  const [currentCatalogo, setCurrentCatalogo] = useState<'religiones' | 'grupos-etnicos' | 'discapacidades'>('religiones');
+  const [currentCatalogo, setCurrentCatalogo] = useState<'religiones' | 'grupos-etnicos' | 'discapacidades' | 'modelos-ia'>('religiones');
   const [editingItem, setEditingItem] = useState<any>(null);
 
   // Estados para diálogo de confirmación
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [itemToDelete, setItemToDelete] = useState<{item: any, catalogo: 'religiones' | 'grupos-etnicos' | 'discapacidades'} | null>(null);
-  
+  const [itemToDelete, setItemToDelete] = useState<{item: any, catalogo: 'religiones' | 'grupos-etnicos' | 'discapacidades' | 'modelos-ia'} | null>(null);
+
   // Estados para formulario
   const [formData, setFormData] = useState<CatalogoCreate>({ titulo: '', activo: true });
-  
+  const [modeloIAFormData, setModeloIAFormData] = useState<ModeloIACreate>({
+    titulo: '',
+    model_id: '',
+    proveedor: '',
+    descripcion: '',
+    categoria: 'standard',
+    recomendado: false,
+    activo: true
+  });
+
   // Estados para notificaciones
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
-  
+
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -89,16 +105,18 @@ const CatalogosAdmin: React.FC<CatalogosAdminProps> = ({ canDelete = true }) => 
   const loadData = async () => {
     try {
       setLoading(true);
-      const [religionesData, gruposData, discapacidadesData, pendientesData] = await Promise.all([
+      const [religionesData, gruposData, discapacidadesData, modelosIAData, pendientesData] = await Promise.all([
         catalogosApi.religiones.getAll(),
         catalogosApi.gruposEtnicos.getAll(),
         catalogosApi.discapacidades.getAll(),
+        catalogosApi.modelosIA.getAll(),
         catalogosApi.getPendientes()
       ]);
-      
+
       setReligiones(religionesData);
       setGruposEtnicos(gruposData);
       setDiscapacidades(discapacidadesData);
+      setModelosIA(modelosIAData);
       setPendientes(pendientesData);
     } catch (error) {
       showSnackbar('Error al cargar datos', 'error');
@@ -115,18 +133,42 @@ const CatalogosAdmin: React.FC<CatalogosAdminProps> = ({ canDelete = true }) => 
     setTabValue(newValue);
   };
 
-  const openCreateDialog = (catalogo: 'religiones' | 'grupos-etnicos' | 'discapacidades') => {
+  const openCreateDialog = (catalogo: 'religiones' | 'grupos-etnicos' | 'discapacidades' | 'modelos-ia') => {
     setCurrentCatalogo(catalogo);
     setDialogMode('create');
-    setFormData({ titulo: '', activo: true });
+    if (catalogo === 'modelos-ia') {
+      setModeloIAFormData({
+        titulo: '',
+        model_id: '',
+        proveedor: '',
+        descripcion: '',
+        categoria: 'standard',
+        recomendado: false,
+        activo: true
+      });
+    } else {
+      setFormData({ titulo: '', activo: true });
+    }
     setEditingItem(null);
     setOpenDialog(true);
   };
 
-  const openEditDialog = (item: any, catalogo: 'religiones' | 'grupos-etnicos' | 'discapacidades') => {
+  const openEditDialog = (item: any, catalogo: 'religiones' | 'grupos-etnicos' | 'discapacidades' | 'modelos-ia') => {
     setCurrentCatalogo(catalogo);
     setDialogMode('edit');
-    setFormData({ titulo: item.titulo, activo: item.activo });
+    if (catalogo === 'modelos-ia') {
+      setModeloIAFormData({
+        titulo: item.titulo,
+        model_id: item.model_id,
+        proveedor: item.proveedor,
+        descripcion: item.descripcion || '',
+        categoria: item.categoria,
+        recomendado: item.recomendado,
+        activo: item.activo
+      });
+    } else {
+      setFormData({ titulo: item.titulo, activo: item.activo });
+    }
     setEditingItem(item);
     setOpenDialog(true);
   };
@@ -134,9 +176,11 @@ const CatalogosAdmin: React.FC<CatalogosAdminProps> = ({ canDelete = true }) => 
   const handleSubmit = async () => {
     try {
       setLoading(true);
-      
+
       if (dialogMode === 'create') {
-        if (currentCatalogo === 'religiones') {
+        if (currentCatalogo === 'modelos-ia') {
+          await catalogosApi.modelosIA.create(modeloIAFormData);
+        } else if (currentCatalogo === 'religiones') {
           await catalogosApi.religiones.create(formData);
         } else if (currentCatalogo === 'grupos-etnicos') {
           await catalogosApi.gruposEtnicos.create(formData);
@@ -145,18 +189,31 @@ const CatalogosAdmin: React.FC<CatalogosAdminProps> = ({ canDelete = true }) => 
         }
         showSnackbar('Elemento creado exitosamente', 'success');
       } else {
-        const updateData: CatalogoUpdate = { titulo: formData.titulo, activo: formData.activo };
-        
-        if (currentCatalogo === 'religiones') {
-          await catalogosApi.religiones.update(editingItem.id, updateData);
-        } else if (currentCatalogo === 'grupos-etnicos') {
-          await catalogosApi.gruposEtnicos.update(editingItem.id, updateData);
-        } else if (currentCatalogo === 'discapacidades') {
-          await catalogosApi.discapacidades.update(editingItem.id, updateData);
+        if (currentCatalogo === 'modelos-ia') {
+          const updateData: ModeloIAUpdate = {
+            titulo: modeloIAFormData.titulo,
+            model_id: modeloIAFormData.model_id,
+            proveedor: modeloIAFormData.proveedor,
+            descripcion: modeloIAFormData.descripcion,
+            categoria: modeloIAFormData.categoria,
+            recomendado: modeloIAFormData.recomendado,
+            activo: modeloIAFormData.activo
+          };
+          await catalogosApi.modelosIA.update(editingItem.id, updateData);
+        } else {
+          const updateData: CatalogoUpdate = { titulo: formData.titulo, activo: formData.activo };
+
+          if (currentCatalogo === 'religiones') {
+            await catalogosApi.religiones.update(editingItem.id, updateData);
+          } else if (currentCatalogo === 'grupos-etnicos') {
+            await catalogosApi.gruposEtnicos.update(editingItem.id, updateData);
+          } else if (currentCatalogo === 'discapacidades') {
+            await catalogosApi.discapacidades.update(editingItem.id, updateData);
+          }
         }
         showSnackbar('Elemento actualizado exitosamente', 'success');
       }
-      
+
       setOpenDialog(false);
       loadData();
     } catch (error: any) {
@@ -166,7 +223,7 @@ const CatalogosAdmin: React.FC<CatalogosAdminProps> = ({ canDelete = true }) => 
     }
   };
 
-  const handleDelete = (item: any, catalogo: 'religiones' | 'grupos-etnicos' | 'discapacidades') => {
+  const handleDelete = (item: any, catalogo: 'religiones' | 'grupos-etnicos' | 'discapacidades' | 'modelos-ia') => {
     setItemToDelete({ item, catalogo });
     setConfirmOpen(true);
   };
@@ -177,7 +234,9 @@ const CatalogosAdmin: React.FC<CatalogosAdminProps> = ({ canDelete = true }) => 
     try {
       setLoading(true);
 
-      if (itemToDelete.catalogo === 'religiones') {
+      if (itemToDelete.catalogo === 'modelos-ia') {
+        await catalogosApi.modelosIA.delete(itemToDelete.item.id);
+      } else if (itemToDelete.catalogo === 'religiones') {
         await catalogosApi.religiones.delete(itemToDelete.item.id);
       } else if (itemToDelete.catalogo === 'grupos-etnicos') {
         await catalogosApi.gruposEtnicos.delete(itemToDelete.item.id);
@@ -196,19 +255,25 @@ const CatalogosAdmin: React.FC<CatalogosAdminProps> = ({ canDelete = true }) => 
     }
   };
 
-  const activarElemento = async (item: any, catalogo: 'religiones' | 'grupos-etnicos' | 'discapacidades') => {
+  const activarElemento = async (item: any, catalogo: 'religiones' | 'grupos-etnicos' | 'discapacidades' | 'modelos-ia') => {
     try {
       setLoading(true);
-      const updateData: CatalogoUpdate = { activo: true };
-      
-      if (catalogo === 'religiones') {
-        await catalogosApi.religiones.update(item.id, updateData);
-      } else if (catalogo === 'grupos-etnicos') {
-        await catalogosApi.gruposEtnicos.update(item.id, updateData);
-      } else if (catalogo === 'discapacidades') {
-        await catalogosApi.discapacidades.update(item.id, updateData);
+
+      if (catalogo === 'modelos-ia') {
+        const updateData: ModeloIAUpdate = { activo: true };
+        await catalogosApi.modelosIA.update(item.id, updateData);
+      } else {
+        const updateData: CatalogoUpdate = { activo: true };
+
+        if (catalogo === 'religiones') {
+          await catalogosApi.religiones.update(item.id, updateData);
+        } else if (catalogo === 'grupos-etnicos') {
+          await catalogosApi.gruposEtnicos.update(item.id, updateData);
+        } else if (catalogo === 'discapacidades') {
+          await catalogosApi.discapacidades.update(item.id, updateData);
+        }
       }
-      
+
       showSnackbar('Elemento activado exitosamente', 'success');
       loadData();
     } catch (error: any) {
@@ -218,69 +283,322 @@ const CatalogosAdmin: React.FC<CatalogosAdminProps> = ({ canDelete = true }) => 
     }
   };
 
-  const renderCatalogoList = (items: any[], catalogoType: 'religiones' | 'grupos-etnicos' | 'discapacidades', title: string) => (
-    <Card>
-      <CardContent>
-        <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-          <Typography variant="h6">{title}</Typography>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => openCreateDialog(catalogoType)}
-          >
-            Agregar
-          </Button>
-        </Box>
-        
-        <Grid container spacing={2}>
-          {items.map((item) => (
-            <Grid item xs={12} sm={6} md={4} key={item.id}>
-              <Card variant="outlined">
-                <CardContent>
-                  <Box display="flex" justifyContent="space-between" alignItems="center">
-                    <Typography variant="body1">{item.titulo}</Typography>
-                    <Chip 
-                      label={item.activo ? 'Activo' : 'Inactivo'} 
-                      color={item.activo ? 'success' : 'default'}
-                      size="small"
-                    />
-                  </Box>
-                  <Box mt={1} display="flex" gap={1}>
-                    <IconButton 
-                      size="small" 
-                      onClick={() => openEditDialog(item, catalogoType)}
-                      title="Editar"
-                    >
-                      <EditIcon fontSize="small" />
-                    </IconButton>
-                    {canDelete && (
-                      <IconButton
-                        size="small"
-                        onClick={() => handleDelete(item, catalogoType)}
-                        title="Eliminar"
-                      >
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
-                    )}
-                    {!item.activo && (
-                      <IconButton 
-                        size="small" 
-                        onClick={() => activarElemento(item, catalogoType)}
-                        title="Activar"
-                        color="success"
-                      >
-                        <CheckCircleIcon fontSize="small" />
-                      </IconButton>
-                    )}
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-          ))}
-        </Grid>
-      </CardContent>
-    </Card>
-  );
+  // Funciones de batch delete
+  const handleBulkDeleteReligiones = async (ids: number[]) => {
+    try {
+      setLoading(true);
+      await catalogosApi.religiones.bulkDelete(ids);
+      showSnackbar(`${ids.length} religiones eliminadas exitosamente`, 'success');
+      loadData();
+    } catch (error: any) {
+      showSnackbar(error.response?.data?.detail || 'Error al eliminar religiones', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleBulkDeleteGruposEtnicos = async (ids: number[]) => {
+    try {
+      setLoading(true);
+      await catalogosApi.gruposEtnicos.bulkDelete(ids);
+      showSnackbar(`${ids.length} grupos étnicos eliminados exitosamente`, 'success');
+      loadData();
+    } catch (error: any) {
+      showSnackbar(error.response?.data?.detail || 'Error al eliminar grupos étnicos', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleBulkDeleteDiscapacidades = async (ids: number[]) => {
+    try {
+      setLoading(true);
+      await catalogosApi.discapacidades.bulkDelete(ids);
+      showSnackbar(`${ids.length} discapacidades eliminadas exitosamente`, 'success');
+      loadData();
+    } catch (error: any) {
+      showSnackbar(error.response?.data?.detail || 'Error al eliminar discapacidades', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleBulkDeleteModelosIA = async (ids: number[]) => {
+    try {
+      setLoading(true);
+      await catalogosApi.modelosIA.bulkDelete(ids);
+      showSnackbar(`${ids.length} modelos de IA eliminados exitosamente`, 'success');
+      loadData();
+    } catch (error: any) {
+      showSnackbar(error.response?.data?.detail || 'Error al eliminar modelos de IA', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const renderModelosIAList = (items: ModeloIA[]) => {
+    const columns: TableColumn<ModeloIA>[] = [
+      {
+        id: 'titulo',
+        label: 'Título',
+        render: (item) => (
+          <Typography variant="body2" fontWeight="medium">
+            {item.titulo}
+          </Typography>
+        )
+      },
+      {
+        id: 'model_id',
+        label: 'ID del Modelo',
+        render: (item) => (
+          <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>
+            {item.model_id}
+          </Typography>
+        )
+      },
+      {
+        id: 'proveedor',
+        label: 'Proveedor',
+        render: (item) => (
+          <Typography variant="body2">
+            {item.proveedor}
+          </Typography>
+        )
+      },
+      {
+        id: 'categoria',
+        label: 'Categoría',
+        render: (item) => (
+          <Chip
+            label={item.categoria}
+            size="small"
+            color={
+              item.categoria === 'premium'
+                ? 'primary'
+                : item.categoria === 'standard'
+                ? 'default'
+                : 'secondary'
+            }
+          />
+        )
+      },
+      {
+        id: 'descripcion',
+        label: 'Descripción',
+        render: (item) => (
+          <Tooltip title={item.descripcion || ''} arrow>
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{
+                maxWidth: 200,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              {item.descripcion || '-'}
+            </Typography>
+          </Tooltip>
+        )
+      },
+      {
+        id: 'recomendado',
+        label: 'Recomendado',
+        align: 'center',
+        render: (item) => (
+          item.recomendado ? (
+            <Chip
+              label="Sí"
+              size="small"
+              color="success"
+              variant="outlined"
+            />
+          ) : (
+            <Typography variant="body2" color="text.secondary">
+              No
+            </Typography>
+          )
+        )
+      },
+      {
+        id: 'activo',
+        label: 'Estado',
+        align: 'center',
+        render: (item) => (
+          <Chip
+            label={item.activo ? 'Activo' : 'Inactivo'}
+            color={item.activo ? 'success' : 'default'}
+            size="small"
+          />
+        )
+      }
+    ];
+
+    const actions = [
+      {
+        icon: <CheckCircleIcon />,
+        tooltip: 'Activar',
+        onClick: (item: ModeloIA) => activarElemento(item, 'modelos-ia'),
+        color: 'success' as const,
+        show: (item: ModeloIA) => !item.activo
+      }
+    ];
+
+    return (
+      <Card>
+        <CardContent>
+          <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+            <Typography variant="h6">Modelos de IA</Typography>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => openCreateDialog('modelos-ia')}
+            >
+              Agregar Modelo
+            </Button>
+          </Box>
+
+          <GenericTableWithBulkDelete
+            data={items}
+            columns={columns}
+            getItemId={(item) => item.id}
+            onEdit={(item) => openEditDialog(item, 'modelos-ia')}
+            onDelete={canDelete ? (item) => handleDelete(item, 'modelos-ia') : undefined}
+            onBulkDelete={handleBulkDeleteModelosIA}
+            actions={actions}
+            loading={loading}
+            entityName="modelos de IA"
+            currentUserRole={user?.rol}
+            allowBulkDelete={canDelete}
+            bulkDeleteWarning="Se eliminarán permanentemente todos los modelos de IA seleccionados."
+            emptyMessage="No hay modelos de IA registrados"
+          />
+        </CardContent>
+      </Card>
+    );
+  };
+
+  const renderCatalogoList = (items: any[], catalogoType: 'religiones' | 'grupos-etnicos' | 'discapacidades', title: string) => {
+    const columns: TableColumn<any>[] = [
+      {
+        id: 'titulo',
+        label: 'Título',
+        render: (item) => (
+          <Typography variant="body2" fontWeight="medium">
+            {item.titulo}
+          </Typography>
+        )
+      },
+      {
+        id: 'activo',
+        label: 'Estado',
+        align: 'center',
+        render: (item) => (
+          <Chip
+            label={item.activo ? 'Activo' : 'Inactivo'}
+            color={item.activo ? 'success' : 'default'}
+            size="small"
+          />
+        )
+      },
+      {
+        id: 'fecha_creacion',
+        label: 'Fecha Creación',
+        render: (item) => (
+          <Typography variant="caption" color="text.secondary">
+            {new Date(item.fecha_creacion).toLocaleDateString('es-ES', {
+              year: 'numeric',
+              month: 'short',
+              day: 'numeric'
+            })}
+          </Typography>
+        )
+      },
+      {
+        id: 'fecha_actualizacion',
+        label: 'Última Actualización',
+        render: (item) => (
+          <Typography variant="caption" color="text.secondary">
+            {new Date(item.fecha_actualizacion).toLocaleDateString('es-ES', {
+              year: 'numeric',
+              month: 'short',
+              day: 'numeric'
+            })}
+          </Typography>
+        )
+      }
+    ];
+
+    const actions = [
+      {
+        icon: <CheckCircleIcon />,
+        tooltip: 'Activar',
+        onClick: (item: any) => activarElemento(item, catalogoType),
+        color: 'success' as const,
+        show: (item: any) => !item.activo
+      }
+    ];
+
+    const getBulkDeleteHandler = () => {
+      switch (catalogoType) {
+        case 'religiones':
+          return handleBulkDeleteReligiones;
+        case 'grupos-etnicos':
+          return handleBulkDeleteGruposEtnicos;
+        case 'discapacidades':
+          return handleBulkDeleteDiscapacidades;
+        default:
+          return handleBulkDeleteReligiones;
+      }
+    };
+
+    const getEntityName = () => {
+      switch (catalogoType) {
+        case 'religiones':
+          return 'religiones';
+        case 'grupos-etnicos':
+          return 'grupos étnicos';
+        case 'discapacidades':
+          return 'discapacidades';
+        default:
+          return 'elementos';
+      }
+    };
+
+    return (
+      <Card>
+        <CardContent>
+          <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+            <Typography variant="h6">{title}</Typography>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => openCreateDialog(catalogoType)}
+            >
+              Agregar
+            </Button>
+          </Box>
+
+          <GenericTableWithBulkDelete
+            data={items}
+            columns={columns}
+            getItemId={(item) => item.id}
+            onEdit={(item) => openEditDialog(item, catalogoType)}
+            onDelete={canDelete ? (item) => handleDelete(item, catalogoType) : undefined}
+            onBulkDelete={getBulkDeleteHandler()}
+            actions={actions}
+            loading={loading}
+            entityName={getEntityName()}
+            currentUserRole={user?.rol}
+            allowBulkDelete={canDelete}
+            bulkDeleteWarning={`Se eliminarán permanentemente todos los ${getEntityName()} seleccionados.`}
+            emptyMessage="No hay elementos registrados"
+          />
+        </CardContent>
+      </Card>
+    );
+  };
 
   return (
     <Box>
@@ -299,12 +617,13 @@ const CatalogosAdmin: React.FC<CatalogosAdminProps> = ({ canDelete = true }) => 
           <Tab label="Religiones" />
           <Tab label="Grupos Étnicos" />
           <Tab label="Discapacidades" />
-          <Tab 
+          <Tab label="Modelos IA" />
+          <Tab
             label={
               <Badge badgeContent={pendientes?.total || 0} color="error">
                 Pendientes
               </Badge>
-            } 
+            }
           />
         </Tabs>
       </Box>
@@ -322,6 +641,10 @@ const CatalogosAdmin: React.FC<CatalogosAdminProps> = ({ canDelete = true }) => 
       </TabPanel>
 
       <TabPanel value={tabValue} index={3}>
+        {renderModelosIAList(modelosIA)}
+      </TabPanel>
+
+      <TabPanel value={tabValue} index={4}>
         {pendientes && (
           <Box>
             <Typography variant="h6" gutterBottom>
@@ -355,32 +678,118 @@ const CatalogosAdmin: React.FC<CatalogosAdminProps> = ({ canDelete = true }) => 
       {/* Diálogo para crear/editar */}
       <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>
         <DialogTitle>
-          {dialogMode === 'create' ? 'Crear' : 'Editar'} Elemento
+          {dialogMode === 'create' ? 'Crear' : 'Editar'} {currentCatalogo === 'modelos-ia' ? 'Modelo de IA' : 'Elemento'}
         </DialogTitle>
         <DialogContent>
-          <TextField
-            autoFocus
-            margin="dense"
-            label="Título"
-            fullWidth
-            variant="outlined"
-            value={formData.titulo}
-            onChange={(e) => setFormData({ ...formData, titulo: e.target.value })}
-          />
-          <FormControlLabel
-            control={
-              <Switch
-                checked={formData.activo}
-                onChange={(e) => setFormData({ ...formData, activo: e.target.checked })}
+          {currentCatalogo === 'modelos-ia' ? (
+            <>
+              <TextField
+                autoFocus
+                margin="dense"
+                label="Título"
+                fullWidth
+                variant="outlined"
+                value={modeloIAFormData.titulo}
+                onChange={(e) => setModeloIAFormData({ ...modeloIAFormData, titulo: e.target.value })}
+                helperText="Nombre amigable del modelo (ej: GPT-4 Turbo)"
               />
-            }
-            label="Activo"
-            sx={{ mt: 2 }}
-          />
+              <TextField
+                margin="dense"
+                label="ID del Modelo"
+                fullWidth
+                variant="outlined"
+                value={modeloIAFormData.model_id}
+                onChange={(e) => setModeloIAFormData({ ...modeloIAFormData, model_id: e.target.value })}
+                helperText="ID técnico para la API (ej: openai/gpt-4-turbo)"
+              />
+              <TextField
+                margin="dense"
+                label="Proveedor"
+                fullWidth
+                variant="outlined"
+                value={modeloIAFormData.proveedor}
+                onChange={(e) => setModeloIAFormData({ ...modeloIAFormData, proveedor: e.target.value })}
+                helperText="Proveedor del modelo (ej: OpenAI, Anthropic, Meta)"
+              />
+              <TextField
+                margin="dense"
+                label="Descripción"
+                fullWidth
+                variant="outlined"
+                multiline
+                rows={3}
+                value={modeloIAFormData.descripcion}
+                onChange={(e) => setModeloIAFormData({ ...modeloIAFormData, descripcion: e.target.value })}
+                helperText="Descripción del modelo y sus características"
+              />
+              <FormControl fullWidth margin="dense">
+                <InputLabel>Categoría</InputLabel>
+                <Select
+                  value={modeloIAFormData.categoria}
+                  label="Categoría"
+                  onChange={(e) => setModeloIAFormData({ ...modeloIAFormData, categoria: e.target.value as 'premium' | 'standard' | 'budget' })}
+                >
+                  <MenuItem value="premium">Premium</MenuItem>
+                  <MenuItem value="standard">Standard</MenuItem>
+                  <MenuItem value="budget">Budget</MenuItem>
+                </Select>
+              </FormControl>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={modeloIAFormData.recomendado}
+                    onChange={(e) => setModeloIAFormData({ ...modeloIAFormData, recomendado: e.target.checked })}
+                  />
+                }
+                label="Recomendado para reportes psicopedagógicos"
+                sx={{ mt: 2 }}
+              />
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={modeloIAFormData.activo}
+                    onChange={(e) => setModeloIAFormData({ ...modeloIAFormData, activo: e.target.checked })}
+                  />
+                }
+                label="Activo"
+                sx={{ mt: 1 }}
+              />
+            </>
+          ) : (
+            <>
+              <TextField
+                autoFocus
+                margin="dense"
+                label="Título"
+                fullWidth
+                variant="outlined"
+                value={formData.titulo}
+                onChange={(e) => setFormData({ ...formData, titulo: e.target.value })}
+              />
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={formData.activo}
+                    onChange={(e) => setFormData({ ...formData, activo: e.target.checked })}
+                  />
+                }
+                label="Activo"
+                sx={{ mt: 2 }}
+              />
+            </>
+          )}
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenDialog(false)}>Cancelar</Button>
-          <Button onClick={handleSubmit} variant="contained" disabled={!formData.titulo.trim() || loading}>
+          <Button
+            onClick={handleSubmit}
+            variant="contained"
+            disabled={
+              currentCatalogo === 'modelos-ia'
+                ? (!modeloIAFormData.titulo.trim() || !modeloIAFormData.model_id.trim() || !modeloIAFormData.proveedor.trim() || loading)
+                : (!formData.titulo.trim() || loading)
+            }
+          >
             {dialogMode === 'create' ? 'Crear' : 'Actualizar'}
           </Button>
         </DialogActions>

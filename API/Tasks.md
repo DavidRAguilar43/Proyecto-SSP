@@ -63,6 +63,72 @@ El Sistema de Seguimiento Psicopedagógico (SSP) es una plataforma integral que 
 
 ## Tareas Pendientes
 
+### Sistema de Cifrado de Datos Sensibles (NUEVA - Enero 2024)
+- [ ] **Fase 1: Análisis e Inventario** ✅ COMPLETADA
+  - [x] Inventariar campos sensibles en modelos
+  - [x] Documentar flujos de datos sensibles
+  - [x] Definir formato de almacenamiento cifrado
+  - [x] Crear `docs/INVENTARIO_DATOS_SENSIBLES.md`
+  - [x] Crear `docs/PLAN_CIFRADO_DATOS_SENSIBLES.md`
+
+- [ ] **Fase 2: Infraestructura de Cifrado**
+  - [ ] Actualizar `requirements.txt` con `cryptography>=42.0.0`
+  - [ ] Instalar dependencias en venv
+  - [ ] Generar llave de cifrado con script
+  - [ ] Actualizar `.env.example` con variables de cifrado
+  - [ ] Configurar `.env` local con llave generada
+  - [ ] Actualizar `app/core/config.py` con campos de cifrado
+  - [ ] Crear `app/core/encryption_keys.py` (gestor de llaves)
+  - [ ] Actualizar `scripts/verify_env_config.py` para validar llaves
+
+- [ ] **Fase 3: Utilidades de Cifrado**
+  - [ ] Crear directorio `app/security/`
+  - [ ] Crear `app/security/encryption.py` (módulo de cifrado)
+  - [ ] Implementar `FieldEncryption` class
+  - [ ] Implementar funciones `encrypt_value/decrypt_value`
+  - [ ] Implementar funciones `encrypt_json/decrypt_json`
+  - [ ] Crear excepciones personalizadas
+  - [ ] Crear `tests/test_encryption.py`
+  - [ ] Ejecutar tests unitarios
+
+- [ ] **Fase 4: Integración con ORM**
+  - [ ] Crear mixin `EncryptedFieldMixin`
+  - [ ] Adaptar modelo `User` para cifrar campos sensibles
+  - [ ] Adaptar modelo `RespuestaPregunta` para cifrar respuestas
+  - [ ] Adaptar modelo `ReporteIA` para cifrar contenido
+  - [ ] Adaptar modelo `ContactoEmergencia` para cifrar datos
+  - [ ] Crear migraciones Alembic para cambios de esquema
+  - [ ] Crear decoradores para repositorios
+
+- [ ] **Fase 5: Servicios y Endpoints**
+  - [ ] Revisar schemas Pydantic para descifrado automático
+  - [ ] Actualizar `app/services/cuestionario_service.py`
+  - [ ] Actualizar `app/services/reporte_ia_service.py`
+  - [ ] Actualizar `app/services/user_service.py`
+  - [ ] Crear tests de integración para endpoints
+
+- [ ] **Fase 6: Migración de Datos**
+  - [ ] Crear script `scripts/migrations_scripts/encrypt_existing_data.py`
+  - [ ] Crear procedimiento de backup/rollback
+  - [ ] Ejecutar migración en desarrollo
+  - [ ] Validar datos cifrados
+  - [ ] Ejecutar migración en staging
+  - [ ] Ejecutar migración en producción
+
+- [ ] **Fase 7: Testing y Observabilidad**
+  - [ ] Agregar pruebas de regresión
+  - [ ] Verificar rendimiento de operaciones
+  - [ ] Configurar logging de eventos de cifrado
+  - [ ] Configurar alertas de errores de descifrado
+  - [ ] Documentar métricas de éxito
+
+- [ ] **Fase 8: Operación Continua**
+  - [ ] Documentar procedimiento de rotación de llaves
+  - [ ] Crear script de rotación de llaves
+  - [ ] Definir políticas de backups cifrados
+  - [ ] Capacitar equipo en gestión de llaves
+  - [ ] Establecer calendario de rotación (6-12 meses)
+
 ### Integración con Inteligencia Artificial
 - [ ] **Configurar OpenRouter API**
   - [ ] Obtener API key de OpenRouter

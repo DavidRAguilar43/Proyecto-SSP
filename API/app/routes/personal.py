@@ -6,7 +6,7 @@ from sqlalchemy import or_
 
 from app.db.database import get_db
 from app.models.personal import Personal
-from app.models.persona import Persona
+from app.models.persona import User
 from app.schemas.personal import (
     PersonalCreate, 
     PersonalUpdate, 
@@ -35,9 +35,9 @@ def create_personal(
     Crear un nuevo personal (administradores y coordinadores).
     """
     # Verificar si la persona existe
-    persona = db.query(Persona).filter(Persona.id == personal_in.id_persona).first()
+    persona = db.query(User).filter(User.id == personal_in.id_persona).first()
     if not persona:
-        raise HTTPException(status_code=404, detail="Persona no encontrada")
+        raise HTTPException(status_code=404, detail="User no encontrada")
     
     # Verificar si ya existe un personal con el mismo número de empleado
     db_personal = db.query(Personal).filter(Personal.numero_empleado == personal_in.numero_empleado).first()
@@ -137,9 +137,9 @@ def update_personal(
     # Verificar si se está cambiando la persona y si ya está asignada a otro personal
     if personal_in.id_persona and personal_in.id_persona != personal.id_persona:
         # Verificar si la persona existe
-        persona = db.query(Persona).filter(Persona.id == personal_in.id_persona).first()
+        persona = db.query(User).filter(User.id == personal_in.id_persona).first()
         if not persona:
-            raise HTTPException(status_code=404, detail="Persona no encontrada")
+            raise HTTPException(status_code=404, detail="User no encontrada")
         
         # Verificar si la persona ya está asignada a otro personal
         db_personal = db.query(Personal).filter(Personal.id_persona == personal_in.id_persona).first()
@@ -195,7 +195,7 @@ def bulk_create_personal(
     
     for personal_data in bulk_personal.items:
         # Verificar si la persona existe
-        persona = db.query(Persona).filter(Persona.id == personal_data.id_persona).first()
+        persona = db.query(User).filter(User.id == personal_data.id_persona).first()
         if not persona:
             continue  # Saltar este registro si la persona no existe
         
@@ -260,7 +260,7 @@ def bulk_update_personal(
         # Verificar si se está cambiando la persona y si ya está asignada a otro personal
         if "id_persona" in item and item["id_persona"] != personal.id_persona:
             # Verificar si la persona existe
-            persona = db.query(Persona).filter(Persona.id == item["id_persona"]).first()
+            persona = db.query(User).filter(User.id == item["id_persona"]).first()
             if not persona:
                 continue  # Saltar este registro si la persona no existe
             

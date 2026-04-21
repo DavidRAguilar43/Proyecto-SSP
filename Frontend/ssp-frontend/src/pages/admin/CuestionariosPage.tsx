@@ -19,7 +19,16 @@ import {
   Select,
   Pagination,
   AppBar,
-  Toolbar
+  Toolbar,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  Tooltip,
+  TablePagination
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -37,12 +46,15 @@ import {
 import { cuestionariosAdminApi } from '@/services/api';
 import { useNotification } from '@/hooks/useNotification';
 import ConfirmDialog from '@/components/ConfirmDialog';
+import GenericTableWithBulkDelete from '@/components/GenericTableWithBulkDelete';
+import { useAuth } from '@/contexts/AuthContext';
 import type {
   CuestionarioAdmin,
   FiltrosCuestionarios,
   EstadoCuestionario,
   TipoUsuario
 } from '@/types/cuestionarios';
+import type { TableColumn } from '@/types';
 import { getTipoUsuarioLabel } from '@/components/cuestionarios/AsignacionUsuarios';
 
 /**
@@ -51,6 +63,7 @@ import { getTipoUsuarioLabel } from '@/components/cuestionarios/AsignacionUsuari
 const CuestionariosPage: React.FC = () => {
   const navigate = useNavigate();
   const { showNotification } = useNotification();
+  const { user } = useAuth();
 
   // Estados principales
   const [cuestionarios, setCuestionarios] = useState<CuestionarioAdmin[]>([]);
@@ -219,6 +232,35 @@ const CuestionariosPage: React.FC = () => {
     handleMenuClose();
   };
 
+  const handleBulkDelete = async (ids: string[]) => {
+    try {
+      const result = await cuestionariosAdminApi.bulkDelete(ids);
+
+      if (result.total_deleted > 0) {
+        showNotification(
+          `${result.total_deleted} cuestionario(s) eliminado(s) exitosamente`,
+          'success'
+        );
+      }
+
+      if (result.errors && result.errors.length > 0) {
+        showNotification(
+          `Algunos cuestionarios no pudieron eliminarse: ${result.errors.join(', ')}`,
+          'warning'
+        );
+      }
+
+      await cargarCuestionarios();
+    } catch (error: any) {
+      console.error('Error en batch delete:', error);
+      showNotification(
+        error.response?.data?.detail || 'Error al eliminar cuestionarios',
+        'error'
+      );
+      throw error;
+    }
+  };
+
   const getEstadoColor = (estado: EstadoCuestionario) => {
     switch (estado) {
       case 'activo': return 'success';
@@ -235,6 +277,142 @@ const CuestionariosPage: React.FC = () => {
       day: 'numeric'
     });
   };
+
+  // Definir columnas para la tabla
+  const columns: TableColumn<CuestionarioAdmin>[] = [
+    {
+      id: 'titulo',
+      label: 'Título',
+      render: (cuestionario) => (
+        <Typography variant="body2" fontWeight="medium">
+          {cuestionario.titulo}
+        </Typography>
+      )
+    },
+    {
+      id: 'descripcion',
+      label: 'Descripción',
+      render: (cuestionario) => (
+        <Tooltip title={cuestionario.descripcion || ''}>
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{
+              maxWidth: 250,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            {cuestionario.descripcion || 'Sin descripción'}
+          </Typography>
+        </Tooltip>
+      )
+    },
+    {
+      id: 'estado',
+      label: 'Estado',
+      align: 'center',
+      render: (cuestionario) => (
+        <Chip
+          label={cuestionario.estado}
+          color={getEstadoColor(cuestionario.estado)}
+          size="small"
+        />
+      )
+    },
+    {
+      id: 'total_preguntas',
+      label: 'Preguntas',
+      align: 'center',
+      render: (cuestionario) => (
+        <Chip
+          label={cuestionario.total_preguntas}
+          variant="outlined"
+          size="small"
+        />
+      )
+    },
+    {
+      id: 'tipos_usuario_asignados',
+      label: 'Asignado a',
+      render: (cuestionario) => (
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+          {cuestionario.tipos_usuario_asignados.length === 0 ? (
+            <Typography variant="caption" color="text.secondary">
+              Sin asignar
+            </Typography>
+          ) : (
+            cuestionario.tipos_usuario_asignados.map(tipo => (
+              <Chip
+                key={tipo}
+                label={getTipoUsuarioLabel(tipo)}
+                variant="outlined"
+                size="small"
+              />
+            ))
+          )}
+        </Box>
+      )
+    },
+    {
+      id: 'fecha_creacion',
+      label: 'Creado',
+      render: (cuestionario) => (
+        <>
+          <Typography variant="caption" color="text.secondary" display="block">
+            {formatearFecha(cuestionario.fecha_creacion)}
+          </Typography>
+          {cuestionario.creado_por_nombre && (
+            <Typography variant="caption" color="text.secondary">
+              Por: {cuestionario.creado_por_nombre}
+            </Typography>
+          )}
+        </>
+      )
+    }
+  ];
+
+  // Definir acciones adicionales para cada fila
+  const actions = [
+    {
+      icon: <ViewIcon />,
+      tooltip: 'Ver detalles',
+      onClick: (cuestionario: CuestionarioAdmin) => handleView(cuestionario),
+      color: 'primary' as const
+    },
+    {
+      icon: <CopyIcon />,
+      tooltip: 'Duplicar',
+      onClick: async (cuestionario: CuestionarioAdmin) => {
+        try {
+          await cuestionariosAdminApi.duplicate(
+            cuestionario.id,
+            `${cuestionario.titulo} (Copia)`
+          );
+          showNotification('Cuestionario duplicado exitosamente', 'success');
+          cargarCuestionarios();
+        } catch (error) {
+          showNotification('Error al duplicar cuestionario', 'error');
+        }
+      },
+      color: 'default' as const
+    },
+    {
+      icon: <ActivarIcon />,
+      tooltip: 'Activar',
+      onClick: (cuestionario: CuestionarioAdmin) => handleActivateClick(cuestionario),
+      color: 'success' as const,
+      show: (cuestionario: CuestionarioAdmin) => cuestionario.estado !== 'activo'
+    },
+    {
+      icon: <DesactivarIcon />,
+      tooltip: 'Desactivar',
+      onClick: (cuestionario: CuestionarioAdmin) => handleDeactivateClick(cuestionario),
+      color: 'error' as const,
+      show: (cuestionario: CuestionarioAdmin) => cuestionario.estado === 'activo'
+    }
+  ];
 
   return (
     <Box>
@@ -382,133 +560,21 @@ const CuestionariosPage: React.FC = () => {
         </Grid>
 
         {/* Lista de cuestionarios */}
-        {loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-            <CircularProgress />
-          </Box>
-        ) : cuestionarios.length === 0 ? (
-          <Alert severity="info">
-            No se encontraron cuestionarios. 
-            <Button onClick={() => navigate('/admin/cuestionarios/crear')} sx={{ ml: 1 }}>
-              Crear el primero
-            </Button>
-          </Alert>
-        ) : (
-          <Grid container spacing={2}>
-            {cuestionarios.map((cuestionario) => (
-              <Grid item xs={12} md={6} lg={4} key={cuestionario.id}>
-                <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                  <CardContent sx={{ flex: 1 }}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-                      <Typography variant="h6" component="h3" sx={{ flex: 1, mr: 1 }}>
-                        {cuestionario.titulo}
-                      </Typography>
-                      <IconButton
-                        size="small"
-                        onClick={(e) => handleMenuOpen(e, cuestionario)}
-                      >
-                        <MoreIcon />
-                      </IconButton>
-                    </Box>
-
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                      {cuestionario.descripcion}
-                    </Typography>
-
-                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 2 }}>
-                      <Chip
-                        label={cuestionario.estado}
-                        color={getEstadoColor(cuestionario.estado)}
-                        size="small"
-                      />
-                      <Chip
-                        label={`${cuestionario.total_preguntas} preguntas`}
-                        variant="outlined"
-                        size="small"
-                      />
-                      {cuestionario.tipos_usuario_asignados.map(tipo => (
-                        <Chip
-                          key={tipo}
-                          label={getTipoUsuarioLabel(tipo)}
-                          variant="outlined"
-                          size="small"
-                        />
-                      ))}
-                    </Box>
-
-                    <Typography variant="caption" color="text.secondary">
-                      Creado: {formatearFecha(cuestionario.fecha_creacion)}
-                    </Typography>
-                    {cuestionario.creado_por_nombre && (
-                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                        Por: {cuestionario.creado_por_nombre}
-                      </Typography>
-                    )}
-
-                    {/* Botones de acción */}
-                    <Box sx={{ display: 'flex', gap: 1, mt: 2, pt: 2, borderTop: '1px solid', borderColor: 'divider' }}>
-                      <IconButton
-                        size="small"
-                        color="primary"
-                        onClick={() => handleView(cuestionario)}
-                        title="Ver detalles"
-                      >
-                        <ViewIcon fontSize="small" />
-                      </IconButton>
-                      <IconButton
-                        size="small"
-                        color="primary"
-                        onClick={() => handleEdit(cuestionario)}
-                        title="Editar"
-                      >
-                        <EditIcon fontSize="small" />
-                      </IconButton>
-                      {cuestionario.estado === 'activo' ? (
-                        <IconButton
-                          size="small"
-                          color="error"
-                          onClick={() => handleDeactivateClick(cuestionario)}
-                          title="Desactivar"
-                        >
-                          <DesactivarIcon fontSize="small" />
-                        </IconButton>
-                      ) : (
-                        <IconButton
-                          size="small"
-                          color="success"
-                          onClick={() => handleActivateClick(cuestionario)}
-                          title="Activar"
-                        >
-                          <ActivarIcon fontSize="small" />
-                        </IconButton>
-                      )}
-                      <IconButton
-                        size="small"
-                        color="error"
-                        onClick={() => handleDeleteClick(cuestionario)}
-                        title="Eliminar"
-                      >
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
-                    </Box>
-                  </CardContent>
-                </Card>
-              </Grid>
-            ))}
-          </Grid>
-        )}
-
-        {/* Paginación */}
-        {total > limit && (
-          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
-            <Pagination
-              count={Math.ceil(total / limit)}
-              page={page}
-              onChange={(_, newPage) => setPage(newPage)}
-              color="primary"
-            />
-          </Box>
-        )}
+        <GenericTableWithBulkDelete
+          data={cuestionarios}
+          columns={columns}
+          getItemId={(cuestionario) => cuestionario.id}
+          onEdit={(cuestionario) => handleEdit(cuestionario)}
+          onDelete={(cuestionario) => handleDeleteClick(cuestionario)}
+          onBulkDelete={handleBulkDelete}
+          actions={actions}
+          loading={loading}
+          entityName="cuestionarios"
+          currentUserRole={user?.rol}
+          allowBulkDelete={user?.rol === 'admin' || user?.rol === 'coordinador'}
+          bulkDeleteWarning="Se eliminarán permanentemente todos los cuestionarios seleccionados. Esta acción no se puede deshacer."
+          emptyMessage="No se encontraron cuestionarios"
+        />
       </Box>
 
       {/* Menú contextual */}

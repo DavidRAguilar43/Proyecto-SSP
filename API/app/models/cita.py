@@ -38,9 +38,9 @@ class Cita(Base):
 
     id_cita = Column(Integer, primary_key=True, index=True, autoincrement=True)
 
-    # Relaciones con personas
-    id_alumno = Column(Integer, ForeignKey("personas.id"), nullable=False)
-    id_personal = Column(Integer, ForeignKey("personas.id"), nullable=True)
+    # Relaciones con users
+    id_alumno = Column(Integer, ForeignKey("users.id"), nullable=False)
+    id_personal = Column(Integer, ForeignKey("users.id"), nullable=True)
 
     # Información básica de la cita
     tipo_cita = Column(Enum(TipoCita), nullable=False, default=TipoCita.GENERAL)
@@ -76,17 +76,15 @@ class Cita(Base):
 
     # Relaciones adicionales (de atenciones)
     id_grupo = Column(Integer, ForeignKey("grupo.id"), nullable=True)
-    id_cuestionario = Column(Integer, ForeignKey("cuestionario.id_cuestionario"), nullable=True)
 
     # Metadatos
     fecha_creacion = Column(DateTime(timezone=True), server_default=func.now())
     fecha_actualizacion = Column(DateTime(timezone=True), onupdate=func.now())
 
     # Relaciones
-    alumno = relationship("Persona", foreign_keys=[id_alumno], back_populates="citas_como_alumno")
-    personal_asignado = relationship("Persona", foreign_keys=[id_personal], back_populates="citas_como_personal")
+    alumno = relationship("User", foreign_keys=[id_alumno], back_populates="citas_como_alumno")
+    personal_asignado = relationship("User", foreign_keys=[id_personal], back_populates="citas_como_personal")
     grupo = relationship("Grupo", back_populates="citas")
-    cuestionario = relationship("Cuestionario", back_populates="citas")
 
     def __repr__(self):
         return f"<Cita(id={self.id_cita}, alumno_id={self.id_alumno}, estado={self.estado}, tipo={self.tipo_cita})>"

@@ -3,9 +3,10 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_, and_
 from typing import List, Optional, Any
 from datetime import datetime, timedelta, date
+from zoneinfo import ZoneInfo
 
 from app.db.database import get_db
-from app.models.persona import Persona
+from app.models.persona import User
 from app.models.cita import Cita, EstadoCita, TipoCita
 from app.schemas.cita import (
     CitaCreate, CitaUpdate, CitaOut, SolicitudCitaOut,
@@ -19,13 +20,16 @@ from app.utils.deps import (
     check_deletion_permission
 )
 
+# Zona horaria de México
+MEXICO_TZ = ZoneInfo("America/Mexico_City")
+
 router = APIRouter()
 
 @router.post("/solicitar", response_model=CitaOut)
 def solicitar_cita(
     cita_data: CitaCreate,
     db: Session = Depends(get_db),
-    current_user: Persona = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user)
 ):
     """
     Solicitar una cita (solo para alumnos).
@@ -37,14 +41,29 @@ def solicitar_cita(
             detail="Solo los alumnos pueden solicitar citas"
         )
 
-    # Crear la cita
+    # Preparar fecha propuesta si existe
+    fecha_propuesta = cita_data.fecha_propuesta_alumno
+    if fecha_propuesta:
+        if fecha_propuesta.tzinfo is None:
+            # La fecha viene naive, asumirla como hora de México
+            fecha_propuesta = fecha_propuesta.replace(tzinfo=MEXICO_TZ)
+
+        # Validar que la fecha propuesta no sea en el pasado
+        if fecha_propuesta < datetime.now(MEXICO_TZ):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="La fecha y hora propuesta no pueden ser en el pasado"
+            )
+
+    # Crear la cita con fecha de solicitud en hora de México
     nueva_cita = Cita(
         id_alumno=current_user.id,
         tipo_cita=cita_data.tipo_cita,
         motivo=cita_data.motivo,
-        fecha_propuesta_alumno=cita_data.fecha_propuesta_alumno,
+        fecha_propuesta_alumno=fecha_propuesta,
         observaciones_alumno=cita_data.observaciones_alumno,
-        estado=EstadoCita.PENDIENTE
+        estado=EstadoCita.PENDIENTE,
+        fecha_solicitud=datetime.now(MEXICO_TZ)  # Usar hora de México
     )
 
     db.add(nueva_cita)
@@ -77,7 +96,7 @@ def solicitar_cita(
 @router.get("/mis-citas", response_model=List[CitaOut])
 def get_mis_citas(
     db: Session = Depends(get_db),
-    current_user: Persona = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user)
 ):
     """
     Obtener las citas del alumno actual.
@@ -96,7 +115,7 @@ def get_mis_citas(
         personal_email = None
 
         if cita.id_personal:
-            personal = db.query(Persona).filter(Persona.id == cita.id_personal).first()
+            personal = db.query(User).filter(User.id == cita.id_personal).first()
             if personal:
                 personal_nombre = personal.correo_institucional.split('@')[0]
                 personal_email = personal.correo_institucional
@@ -131,7 +150,7 @@ def get_mis_citas(
 def get_solicitudes_citas(
     estado: Optional[EstadoCita] = None,
     db: Session = Depends(get_db),
-    current_user: Persona = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user)
 ):
     """
     Obtener solicitudes de citas (solo para admin y coordinador).
@@ -142,7 +161,7 @@ def get_solicitudes_citas(
             detail="No tienes permisos para ver las solicitudes de citas"
         )
 
-    query = db.query(Cita).join(Persona, Cita.id_alumno == Persona.id)
+    query = db.query(Cita).join(User, Cita.id_alumno == User.id)
 
     if estado:
         query = query.filter(Cita.estado == estado)
@@ -151,7 +170,8 @@ def get_solicitudes_citas(
 
     resultado = []
     for cita in citas:
-        alumno = db.query(Persona).filter(Persona.id == cita.id_alumno).first()
+        alumno = db.query(User).filter(User.id == cita.id_alumno).first()
+        personal = db.query(User).filter(User.id == cita.id_personal).first() if cita.id_personal else None
 
         resultado.append(SolicitudCitaOut(
             id_cita=cita.id_cita,
@@ -161,12 +181,21 @@ def get_solicitudes_citas(
             fecha_solicitud=cita.fecha_solicitud,
             fecha_propuesta_alumno=cita.fecha_propuesta_alumno,
             observaciones_alumno=cita.observaciones_alumno,
+            # Campos de confirmación
+            fecha_confirmada=cita.fecha_confirmada,
+            observaciones_personal=cita.observaciones_personal,
+            ubicacion=cita.ubicacion,
+            fecha_actualizacion=cita.fecha_actualizacion,
+            # Información del alumno
             id_alumno=cita.id_alumno,
             alumno_nombre=alumno.correo_institucional.split('@')[0] if alumno else "Desconocido",
             alumno_email=alumno.correo_institucional if alumno else "",
             alumno_celular=alumno.celular if alumno else None,
             alumno_matricula=alumno.matricula if alumno else None,
-            alumno_semestre=alumno.semestre if alumno else None
+            alumno_semestre=alumno.semestre if alumno else None,
+            # Información del personal
+            personal_nombre=personal.correo_institucional.split('@')[0] if personal else None,
+            personal_email=personal.correo_institucional if personal else None
         ))
 
     return resultado
@@ -176,7 +205,7 @@ def confirmar_cita(
     cita_id: int,
     cita_update: CitaUpdate,
     db: Session = Depends(get_db),
-    current_user: Persona = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user)
 ):
     """
     Confirmar o actualizar una cita (solo para admin y coordinador).
@@ -198,7 +227,12 @@ def confirmar_cita(
     if cita_update.estado:
         cita.estado = cita_update.estado
     if cita_update.fecha_confirmada:
-        cita.fecha_confirmada = cita_update.fecha_confirmada
+        # Si la fecha viene sin timezone, asumirla como hora de México
+        fecha = cita_update.fecha_confirmada
+        if fecha.tzinfo is None:
+            # La fecha viene naive, asumirla como hora de México y convertir a UTC para almacenar
+            fecha = fecha.replace(tzinfo=MEXICO_TZ)
+        cita.fecha_confirmada = fecha
     if cita_update.observaciones_personal is not None:
         cita.observaciones_personal = cita_update.observaciones_personal
     if cita_update.ubicacion is not None:
@@ -210,14 +244,14 @@ def confirmar_cita(
 
     # Si se confirma, marcar fecha de confirmación
     if cita_update.estado == EstadoCita.CONFIRMADA and not cita.fecha_confirmada:
-        cita.fecha_confirmada = datetime.utcnow()
+        cita.fecha_confirmada = datetime.now(MEXICO_TZ)
 
     db.commit()
     db.refresh(cita)
 
     # Obtener información del alumno y personal
-    alumno = db.query(Persona).filter(Persona.id == cita.id_alumno).first()
-    personal = db.query(Persona).filter(Persona.id == cita.id_personal).first() if cita.id_personal else None
+    alumno = db.query(User).filter(User.id == cita.id_alumno).first()
+    personal = db.query(User).filter(User.id == cita.id_personal).first() if cita.id_personal else None
 
     return CitaOut(
         id_cita=cita.id_cita,
@@ -246,7 +280,7 @@ def confirmar_cita(
 @router.get("/notificaciones", response_model=List[NotificacionCita])
 def get_notificaciones_citas(
     db: Session = Depends(get_db),
-    current_user: Persona = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user)
 ):
     """
     Obtener notificaciones de citas para el alumno.
@@ -258,7 +292,7 @@ def get_notificaciones_citas(
         )
 
     # Obtener citas confirmadas recientes (últimos 30 días)
-    fecha_limite = datetime.utcnow() - timedelta(days=30)
+    fecha_limite = datetime.now(MEXICO_TZ) - timedelta(days=30)
 
     citas = db.query(Cita).filter(
         Cita.id_alumno == current_user.id,
@@ -270,7 +304,7 @@ def get_notificaciones_citas(
     for cita in citas:
         personal = None
         if cita.id_personal:
-            personal = db.query(Persona).filter(Persona.id == cita.id_personal).first()
+            personal = db.query(User).filter(User.id == cita.id_personal).first()
 
         if cita.estado == EstadoCita.CONFIRMADA:
             mensaje = f"Tu cita de tipo '{cita.tipo_cita.value}' ha sido confirmada"
@@ -295,7 +329,7 @@ def get_notificaciones_citas(
 @router.get("/estadisticas", response_model=EstadisticasCitas)
 def get_estadisticas_citas(
     db: Session = Depends(get_db),
-    current_user: Persona = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user)
 ):
     """
     Obtener estadísticas de citas (solo para admin y coordinador).
@@ -333,7 +367,7 @@ def bulk_delete_citas(
     *,
     db: Session = Depends(get_db),
     bulk_delete: CitaBulkDelete,
-    current_user: Persona = Depends(check_admin_role)
+    current_user: User = Depends(check_admin_role)
 ) -> List[int]:
     """
     Eliminar múltiples citas en una sola operación (solo administradores).
@@ -366,7 +400,7 @@ def get_citas(
     id_grupo: Optional[int] = None,
     fecha_desde: Optional[date] = None,
     fecha_hasta: Optional[date] = None,
-    current_user: Persona = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user)
 ) -> Any:
     """
     Recuperar citas con filtros opcionales.
@@ -406,8 +440,8 @@ def get_citas(
     # Construir respuesta con información de alumno y personal
     resultado = []
     for cita in citas:
-        alumno = db.query(Persona).filter(Persona.id == cita.id_alumno).first()
-        personal = db.query(Persona).filter(Persona.id == cita.id_personal).first() if cita.id_personal else None
+        alumno = db.query(User).filter(User.id == cita.id_alumno).first()
+        personal = db.query(User).filter(User.id == cita.id_personal).first() if cita.id_personal else None
 
         resultado.append(CitaOut(
             id_cita=cita.id_cita,
@@ -450,7 +484,7 @@ def get_citas(
 def get_cita_by_id(
     cita_id: int,
     db: Session = Depends(get_db),
-    current_user: Persona = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user)
 ) -> Any:
     """
     Obtener una cita específica por ID.
@@ -459,8 +493,8 @@ def get_cita_by_id(
     if not cita:
         raise HTTPException(status_code=404, detail="Cita no encontrada")
 
-    alumno = db.query(Persona).filter(Persona.id == cita.id_alumno).first()
-    personal = db.query(Persona).filter(Persona.id == cita.id_personal).first() if cita.id_personal else None
+    alumno = db.query(User).filter(User.id == cita.id_alumno).first()
+    personal = db.query(User).filter(User.id == cita.id_personal).first() if cita.id_personal else None
 
     return CitaOut(
         id_cita=cita.id_cita,
@@ -503,7 +537,7 @@ def create_cita(
     *,
     db: Session = Depends(get_db),
     cita_in: CitaCreate,
-    current_user: Persona = Depends(check_administrative_access)
+    current_user: User = Depends(check_administrative_access)
 ) -> Any:
     """
     Crear una nueva cita (solo administradores y coordinadores).
@@ -511,6 +545,13 @@ def create_cita(
     Permite crear citas directamente desde el panel de administración,
     incluyendo todos los campos de atención.
     """
+    # Preparar fecha propuesta si existe
+    fecha_propuesta = cita_in.fecha_propuesta_alumno
+    if fecha_propuesta:
+        if fecha_propuesta.tzinfo is None:
+            # La fecha viene naive, asumirla como hora de México
+            fecha_propuesta = fecha_propuesta.replace(tzinfo=MEXICO_TZ)
+
     # Crear objeto Cita
     db_cita = Cita(
         id_alumno=cita_in.id_alumno if cita_in.id_alumno else None,
@@ -519,9 +560,10 @@ def create_cita(
         id_cuestionario=cita_in.id_cuestionario,
         tipo_cita=cita_in.tipo_cita,
         motivo=cita_in.motivo,
-        fecha_propuesta_alumno=cita_in.fecha_propuesta_alumno,
+        fecha_propuesta_alumno=fecha_propuesta,
         observaciones_alumno=cita_in.observaciones_alumno,
-        estado=EstadoCita.PENDIENTE
+        estado=EstadoCita.PENDIENTE,
+        fecha_solicitud=datetime.now(MEXICO_TZ)  # Usar hora de México
     )
 
     db.add(db_cita)
@@ -529,7 +571,7 @@ def create_cita(
     db.refresh(db_cita)
 
     # Obtener información del alumno
-    alumno = db.query(Persona).filter(Persona.id == db_cita.id_alumno).first() if db_cita.id_alumno else None
+    alumno = db.query(User).filter(User.id == db_cita.id_alumno).first() if db_cita.id_alumno else None
 
     return CitaOut(
         id_cita=db_cita.id_cita,
@@ -572,7 +614,7 @@ def update_cita(
     db: Session = Depends(get_db),
     cita_id: int,
     cita_in: CitaUpdate,
-    current_user: Persona = Depends(check_administrative_access)
+    current_user: User = Depends(check_administrative_access)
 ) -> Any:
     """
     Actualizar una cita (solo administradores y coordinadores).
@@ -589,7 +631,28 @@ def update_cita(
 
     # Si se marca como completada, establecer fecha_completada
     if update_data.get("estado") == EstadoCita.COMPLETADA and not cita.fecha_completada:
-        cita.fecha_completada = datetime.utcnow()
+        cita.fecha_completada = datetime.now(MEXICO_TZ)
+
+    # Manejar fechas con timezone
+    if "fecha_propuesta_alumno" in update_data and update_data["fecha_propuesta_alumno"]:
+        fecha = update_data["fecha_propuesta_alumno"]
+        if fecha.tzinfo is None:
+            update_data["fecha_propuesta_alumno"] = fecha.replace(tzinfo=MEXICO_TZ)
+
+    if "fecha_confirmada" in update_data and update_data["fecha_confirmada"]:
+        fecha = update_data["fecha_confirmada"]
+        if fecha.tzinfo is None:
+            update_data["fecha_confirmada"] = fecha.replace(tzinfo=MEXICO_TZ)
+
+    if "fecha_proxima_sesion" in update_data and update_data["fecha_proxima_sesion"]:
+        fecha = update_data["fecha_proxima_sesion"]
+        if fecha.tzinfo is None:
+            update_data["fecha_proxima_sesion"] = fecha.replace(tzinfo=MEXICO_TZ)
+
+    if "ultima_fecha_contacto" in update_data and update_data["ultima_fecha_contacto"]:
+        fecha = update_data["ultima_fecha_contacto"]
+        if fecha.tzinfo is None:
+            update_data["ultima_fecha_contacto"] = fecha.replace(tzinfo=MEXICO_TZ)
 
     # Actualizar campos
     for field, value in update_data.items():
@@ -600,8 +663,8 @@ def update_cita(
     db.refresh(cita)
 
     # Obtener información del alumno y personal
-    alumno = db.query(Persona).filter(Persona.id == cita.id_alumno).first()
-    personal = db.query(Persona).filter(Persona.id == cita.id_personal).first() if cita.id_personal else None
+    alumno = db.query(User).filter(User.id == cita.id_alumno).first()
+    personal = db.query(User).filter(User.id == cita.id_personal).first() if cita.id_personal else None
 
     return CitaOut(
         id_cita=cita.id_cita,
@@ -643,7 +706,7 @@ def delete_cita(
     *,
     db: Session = Depends(get_db),
     cita_id: int,
-    current_user: Persona = Depends(check_deletion_permission)
+    current_user: User = Depends(check_deletion_permission)
 ) -> Any:
     """
     Eliminar una cita (solo administradores - coordinadores NO pueden eliminar).
@@ -653,8 +716,8 @@ def delete_cita(
         raise HTTPException(status_code=404, detail="Cita no encontrada")
 
     # Guardar información antes de eliminar
-    alumno = db.query(Persona).filter(Persona.id == cita.id_alumno).first()
-    personal = db.query(Persona).filter(Persona.id == cita.id_personal).first() if cita.id_personal else None
+    alumno = db.query(User).filter(User.id == cita.id_alumno).first()
+    personal = db.query(User).filter(User.id == cita.id_personal).first() if cita.id_personal else None
 
     cita_out = CitaOut(
         id_cita=cita.id_cita,
@@ -701,7 +764,7 @@ def search_citas(
     *,
     db: Session = Depends(get_db),
     q: str = Query(None, min_length=3),
-    current_user: Persona = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user)
 ) -> Any:
     """
     Buscar citas por texto en varios campos.
@@ -724,8 +787,8 @@ def search_citas(
     # Construir respuesta
     resultado = []
     for cita in citas:
-        alumno = db.query(Persona).filter(Persona.id == cita.id_alumno).first()
-        personal = db.query(Persona).filter(Persona.id == cita.id_personal).first() if cita.id_personal else None
+        alumno = db.query(User).filter(User.id == cita.id_alumno).first()
+        personal = db.query(User).filter(User.id == cita.id_personal).first() if cita.id_personal else None
 
         resultado.append(CitaOut(
             id_cita=cita.id_cita,
@@ -769,7 +832,7 @@ def bulk_create_citas(
     *,
     db: Session = Depends(get_db),
     bulk_citas: CitaBulkCreate,
-    current_user: Persona = Depends(check_admin_role)
+    current_user: User = Depends(check_admin_role)
 ) -> Any:
     """
     Crear múltiples citas en una sola operación (solo administradores).
@@ -777,6 +840,12 @@ def bulk_create_citas(
     created_citas = []
 
     for cita_data in bulk_citas.items:
+        # Preparar fecha propuesta si existe
+        fecha_propuesta = cita_data.fecha_propuesta_alumno
+        if fecha_propuesta:
+            if fecha_propuesta.tzinfo is None:
+                fecha_propuesta = fecha_propuesta.replace(tzinfo=MEXICO_TZ)
+
         db_cita = Cita(
             id_alumno=cita_data.id_alumno,
             id_personal=cita_data.id_personal,
@@ -784,9 +853,10 @@ def bulk_create_citas(
             id_cuestionario=cita_data.id_cuestionario,
             tipo_cita=cita_data.tipo_cita,
             motivo=cita_data.motivo,
-            fecha_propuesta_alumno=cita_data.fecha_propuesta_alumno,
+            fecha_propuesta_alumno=fecha_propuesta,
             observaciones_alumno=cita_data.observaciones_alumno,
-            estado=EstadoCita.PENDIENTE
+            estado=EstadoCita.PENDIENTE,
+            fecha_solicitud=datetime.now(MEXICO_TZ)
         )
         db.add(db_cita)
         created_citas.append(db_cita)
@@ -800,8 +870,8 @@ def bulk_create_citas(
     # Construir respuesta
     resultado = []
     for cita in created_citas:
-        alumno = db.query(Persona).filter(Persona.id == cita.id_alumno).first()
-        personal = db.query(Persona).filter(Persona.id == cita.id_personal).first() if cita.id_personal else None
+        alumno = db.query(User).filter(User.id == cita.id_alumno).first()
+        personal = db.query(User).filter(User.id == cita.id_personal).first() if cita.id_personal else None
 
         resultado.append(CitaOut(
             id_cita=cita.id_cita,
@@ -845,7 +915,7 @@ def bulk_update_citas(
     *,
     db: Session = Depends(get_db),
     bulk_update: CitaBulkUpdate,
-    current_user: Persona = Depends(check_admin_role)
+    current_user: User = Depends(check_admin_role)
 ) -> Any:
     """
     Actualizar múltiples citas en una sola operación (solo administradores).
@@ -879,8 +949,8 @@ def bulk_update_citas(
     # Construir respuesta
     resultado = []
     for cita in updated_citas:
-        alumno = db.query(Persona).filter(Persona.id == cita.id_alumno).first()
-        personal = db.query(Persona).filter(Persona.id == cita.id_personal).first() if cita.id_personal else None
+        alumno = db.query(User).filter(User.id == cita.id_alumno).first()
+        personal = db.query(User).filter(User.id == cita.id_personal).first() if cita.id_personal else None
 
         resultado.append(CitaOut(
             id_cita=cita.id_cita,

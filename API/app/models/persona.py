@@ -2,10 +2,20 @@ from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.db.database import Base
-from app.models.associations import persona_grupo, persona_programa
+from app.models.associations import user_grupo, user_programa
+from app.models.encryption_mixin import EncryptedFieldsMixin
 
-class Persona(Base):
-    __tablename__ = "personas"
+class User(Base, EncryptedFieldsMixin):
+    __tablename__ = "users"
+
+    # Campos a cifrar automáticamente
+    __encrypted_fields__ = [
+        "celular",
+        "extension_telefonica",
+        "lugar_trabajo",
+        "colonia_residencia_actual",
+        "observaciones",
+    ]
 
     id = Column(Integer, primary_key=True, index=True)
     sexo = Column(String, nullable=False)  # masculino, femenino, no_decir, otro
@@ -37,11 +47,10 @@ class Persona(Base):
 
     # Relaciones
     # Nota: cohorte_id ahora es string, no hay relación directa con tabla cohorte
-    grupos = relationship("Grupo", secondary=persona_grupo, back_populates="personas")
-    programas = relationship("ProgramaEducativo", secondary=persona_programa, back_populates="personas")
-    personal = relationship("Personal", back_populates="persona", uselist=False)
-    contactos_emergencia = relationship("ContactoEmergencia", back_populates="persona")
-    cuestionarios_completados = relationship("Cuestionario", back_populates="persona")
+    grupos = relationship("Grupo", secondary=user_grupo, back_populates="users")
+    programas = relationship("ProgramaEducativo", secondary=user_programa, back_populates="users")
+    personal = relationship("Personal", back_populates="user", uselist=False)
+    contactos_emergencia = relationship("ContactoEmergencia", back_populates="user")
 
     # Relaciones para cuestionarios administrativos
     cuestionarios_creados = relationship("CuestionarioAdmin", back_populates="creador")

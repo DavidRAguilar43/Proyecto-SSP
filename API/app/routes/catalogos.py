@@ -8,11 +8,13 @@ from app.db.database import get_db
 from app.models.religion import Religion
 from app.models.grupo_etnico import GrupoEtnico
 from app.models.discapacidad import Discapacidad
-from app.models.persona import Persona
+from app.models.modelo_ia import ModeloIA
+from app.models.persona import User
 from app.schemas.catalogos import (
     ReligionCreate, ReligionUpdate, ReligionOut, ReligionBulkDelete,
     GrupoEtnicoCreate, GrupoEtnicoUpdate, GrupoEtnicoOut, GrupoEtnicoBulkDelete,
     DiscapacidadCreate, DiscapacidadUpdate, DiscapacidadOut, DiscapacidadBulkDelete,
+    ModeloIACreate, ModeloIAUpdate, ModeloIAOut, ModeloIABulkDelete,
     ElementosPendientes, ElementoPersonalizado
 )
 from app.utils.deps import (
@@ -33,7 +35,7 @@ def create_religion(
     *,
     db: Session = Depends(get_db),
     religion_in: ReligionCreate,
-    current_user: Persona = Depends(check_admin_or_coordinador_role)
+    current_user: User = Depends(check_admin_or_coordinador_role)
 ) -> Any:
     """
     Crear una nueva religión (administradores y coordinadores).
@@ -56,7 +58,7 @@ def read_religiones(
     skip: int = 0,
     limit: int = 100,
     activo: Optional[bool] = None,
-    current_user: Persona = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user)
 ) -> Any:
     """
     Obtener lista de religiones.
@@ -86,7 +88,7 @@ def update_religion(
     db: Session = Depends(get_db),
     religion_id: int,
     religion_in: ReligionUpdate,
-    current_user: Persona = Depends(check_admin_or_coordinador_role)
+    current_user: User = Depends(check_admin_or_coordinador_role)
 ) -> Any:
     """
     Actualizar una religión (administradores y coordinadores).
@@ -115,7 +117,7 @@ def delete_religion(
     *,
     db: Session = Depends(get_db),
     religion_id: int,
-    current_user: Persona = Depends(check_deletion_permission)
+    current_user: User = Depends(check_deletion_permission)
 ) -> Any:
     """
     Eliminar una religión (solo administradores - coordinadores NO pueden eliminar).
@@ -136,7 +138,7 @@ def create_grupo_etnico(
     *,
     db: Session = Depends(get_db),
     grupo_etnico_in: GrupoEtnicoCreate,
-    current_user: Persona = Depends(check_admin_or_coordinador_role)
+    current_user: User = Depends(check_admin_or_coordinador_role)
 ) -> Any:
     """
     Crear un nuevo grupo étnico (administradores y coordinadores).
@@ -159,7 +161,7 @@ def read_grupos_etnicos(
     skip: int = 0,
     limit: int = 100,
     activo: Optional[bool] = None,
-    current_user: Persona = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user)
 ) -> Any:
     """
     Obtener lista de grupos étnicos.
@@ -189,7 +191,7 @@ def update_grupo_etnico(
     db: Session = Depends(get_db),
     grupo_id: int,
     grupo_etnico_in: GrupoEtnicoUpdate,
-    current_user: Persona = Depends(check_admin_or_coordinador_role)
+    current_user: User = Depends(check_admin_or_coordinador_role)
 ) -> Any:
     """
     Actualizar un grupo étnico (administradores y coordinadores).
@@ -218,7 +220,7 @@ def delete_grupo_etnico(
     *,
     db: Session = Depends(get_db),
     grupo_id: int,
-    current_user: Persona = Depends(check_deletion_permission)
+    current_user: User = Depends(check_deletion_permission)
 ) -> Any:
     """
     Eliminar un grupo étnico (solo administradores - coordinadores NO pueden eliminar).
@@ -239,7 +241,7 @@ def create_discapacidad(
     *,
     db: Session = Depends(get_db),
     discapacidad_in: DiscapacidadCreate,
-    current_user: Persona = Depends(check_admin_or_coordinador_role)
+    current_user: User = Depends(check_admin_or_coordinador_role)
 ) -> Any:
     """
     Crear una nueva discapacidad (administradores y coordinadores).
@@ -262,7 +264,7 @@ def read_discapacidades(
     skip: int = 0,
     limit: int = 100,
     activo: Optional[bool] = None,
-    current_user: Persona = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user)
 ) -> Any:
     """
     Obtener lista de discapacidades.
@@ -292,7 +294,7 @@ def update_discapacidad(
     db: Session = Depends(get_db),
     discapacidad_id: int,
     discapacidad_in: DiscapacidadUpdate,
-    current_user: Persona = Depends(check_admin_or_coordinador_role)
+    current_user: User = Depends(check_admin_or_coordinador_role)
 ) -> Any:
     """
     Actualizar una discapacidad (administradores y coordinadores).
@@ -321,7 +323,7 @@ def delete_discapacidad(
     *,
     db: Session = Depends(get_db),
     discapacidad_id: int,
-    current_user: Persona = Depends(check_deletion_permission)
+    current_user: User = Depends(check_deletion_permission)
 ) -> Any:
     """
     Eliminar una discapacidad (solo administradores - coordinadores NO pueden eliminar).
@@ -340,7 +342,7 @@ def delete_discapacidad(
 @router.get("/pendientes/", response_model=ElementosPendientes)
 def get_elementos_pendientes(
     db: Session = Depends(get_db),
-    current_user: Persona = Depends(check_admin_or_coordinador_role)
+    current_user: User = Depends(check_admin_or_coordinador_role)
 ) -> Any:
     """
     Obtener todos los elementos pendientes de activación (administradores y coordinadores).
@@ -348,13 +350,15 @@ def get_elementos_pendientes(
     religiones_pendientes = db.query(Religion).filter(Religion.activo == False).all()
     grupos_pendientes = db.query(GrupoEtnico).filter(GrupoEtnico.activo == False).all()
     discapacidades_pendientes = db.query(Discapacidad).filter(Discapacidad.activo == False).all()
+    modelos_ia_pendientes = db.query(ModeloIA).filter(ModeloIA.activo == False).all()
 
-    total = len(religiones_pendientes) + len(grupos_pendientes) + len(discapacidades_pendientes)
+    total = len(religiones_pendientes) + len(grupos_pendientes) + len(discapacidades_pendientes) + len(modelos_ia_pendientes)
 
     return ElementosPendientes(
         religiones=religiones_pendientes,
         grupos_etnicos=grupos_pendientes,
         discapacidades=discapacidades_pendientes,
+        modelos_ia=modelos_ia_pendientes,
         total=total
     )
 
@@ -435,6 +439,32 @@ def create_elemento_personalizado(
             nuevo_elemento = Discapacidad(titulo=titulo_original, activo=False)
             db.add(nuevo_elemento)
 
+        elif elemento_in.tipo_catalogo == "modelo_ia":
+            # Verificar si ya existe (case-insensitive)
+            existing = db.query(ModeloIA).filter(
+                ModeloIA.titulo.ilike(f"%{titulo_normalizado}%")
+            ).first()
+
+            # Verificación más estricta: comparar títulos normalizados exactamente
+            if existing and existing.titulo.strip().lower() == titulo_normalizado:
+                return {
+                    "message": "El elemento ya existe",
+                    "id": existing.id,
+                    "activo": existing.activo,
+                    "elemento_existente": existing.titulo
+                }
+
+            # Crear nuevo elemento inactivo (requiere campos adicionales)
+            # Por ahora solo creamos con título, el admin debe completar los demás campos
+            nuevo_elemento = ModeloIA(
+                titulo=titulo_original,
+                model_id=f"pending/{titulo_original.lower().replace(' ', '-')}",  # ID temporal
+                proveedor="Pendiente",
+                categoria="standard",
+                activo=False
+            )
+            db.add(nuevo_elemento)
+
         db.commit()
         db.refresh(nuevo_elemento)
 
@@ -455,7 +485,7 @@ def activar_elementos_multiples(
     *,
     db: Session = Depends(get_db),
     elementos: dict,  # {"religiones": [1,2], "grupos_etnicos": [3,4], "discapacidades": [5,6]}
-    current_user: Persona = Depends(check_admin_or_coordinador_role)
+    current_user: User = Depends(check_admin_or_coordinador_role)
 ) -> Any:
     """
     Activar múltiples elementos de diferentes catálogos (administradores y coordinadores).
@@ -504,7 +534,7 @@ def bulk_delete_religiones(
     *,
     db: Session = Depends(get_db),
     bulk_delete: ReligionBulkDelete,
-    current_user: Persona = Depends(check_admin_role)
+    current_user: User = Depends(check_admin_role)
 ) -> Any:
     """
     Eliminar múltiples religiones en una sola operación (solo administradores).
@@ -526,7 +556,7 @@ def bulk_delete_grupos_etnicos(
     *,
     db: Session = Depends(get_db),
     bulk_delete: GrupoEtnicoBulkDelete,
-    current_user: Persona = Depends(check_admin_role)
+    current_user: User = Depends(check_admin_role)
 ) -> Any:
     """
     Eliminar múltiples grupos étnicos en una sola operación (solo administradores).
@@ -548,7 +578,7 @@ def bulk_delete_discapacidades(
     *,
     db: Session = Depends(get_db),
     bulk_delete: DiscapacidadBulkDelete,
-    current_user: Persona = Depends(check_admin_role)
+    current_user: User = Depends(check_admin_role)
 ) -> Any:
     """
     Eliminar múltiples discapacidades en una sola operación (solo administradores).
@@ -560,6 +590,164 @@ def bulk_delete_discapacidades(
         if discapacidad:
             db.delete(discapacidad)
             deleted_ids.append(discapacidad_id)
+
+    db.commit()
+    return deleted_ids
+
+
+# ==================== MODELOS IA ====================
+
+@router.post("/modelos-ia/", response_model=ModeloIAOut)
+def create_modelo_ia(
+    *,
+    db: Session = Depends(get_db),
+    modelo_in: ModeloIACreate,
+    current_user: User = Depends(check_admin_or_coordinador_role)
+) -> Any:
+    """
+    Crear un nuevo modelo de IA (administradores y coordinadores).
+    """
+    # Verificar si ya existe por título
+    db_modelo = db.query(ModeloIA).filter(ModeloIA.titulo == modelo_in.titulo).first()
+    if db_modelo:
+        raise HTTPException(status_code=400, detail="Ya existe un modelo con este título")
+
+    # Verificar si ya existe por model_id
+    db_modelo = db.query(ModeloIA).filter(ModeloIA.model_id == modelo_in.model_id).first()
+    if db_modelo:
+        raise HTTPException(status_code=400, detail="Ya existe un modelo con este ID")
+
+    db_modelo = ModeloIA(**modelo_in.dict())
+    db.add(db_modelo)
+    db.commit()
+    db.refresh(db_modelo)
+    return db_modelo
+
+
+@router.get("/modelos-ia/", response_model=List[ModeloIAOut])
+def read_modelos_ia(
+    db: Session = Depends(get_db),
+    skip: int = 0,
+    limit: int = 100,
+    activo: Optional[bool] = None,
+    categoria: Optional[str] = None,
+    recomendado: Optional[bool] = None,
+    current_user: User = Depends(get_current_active_user)
+) -> Any:
+    """
+    Obtener lista de modelos de IA.
+    """
+    query = db.query(ModeloIA)
+    if activo is not None:
+        query = query.filter(ModeloIA.activo == activo)
+    if categoria is not None:
+        query = query.filter(ModeloIA.categoria == categoria)
+    if recomendado is not None:
+        query = query.filter(ModeloIA.recomendado == recomendado)
+
+    modelos = query.offset(skip).limit(limit).all()
+    return modelos
+
+
+@router.get("/modelos-ia/activos/", response_model=List[ModeloIAOut])
+def read_modelos_ia_activos(
+    db: Session = Depends(get_db)
+) -> Any:
+    """
+    Obtener solo modelos de IA activos (sin autenticación para formularios).
+    """
+    modelos = db.query(ModeloIA).filter(ModeloIA.activo == True).all()
+    return modelos
+
+
+@router.get("/modelos-ia/{modelo_id}", response_model=ModeloIAOut)
+def read_modelo_ia(
+    *,
+    db: Session = Depends(get_db),
+    modelo_id: int,
+    current_user: User = Depends(get_current_active_user)
+) -> Any:
+    """
+    Obtener un modelo de IA por ID.
+    """
+    modelo = db.query(ModeloIA).filter(ModeloIA.id == modelo_id).first()
+    if not modelo:
+        raise HTTPException(status_code=404, detail="Modelo de IA no encontrado")
+    return modelo
+
+
+@router.put("/modelos-ia/{modelo_id}", response_model=ModeloIAOut)
+def update_modelo_ia(
+    *,
+    db: Session = Depends(get_db),
+    modelo_id: int,
+    modelo_in: ModeloIAUpdate,
+    current_user: User = Depends(check_admin_or_coordinador_role)
+) -> Any:
+    """
+    Actualizar un modelo de IA (administradores y coordinadores).
+    """
+    modelo = db.query(ModeloIA).filter(ModeloIA.id == modelo_id).first()
+    if not modelo:
+        raise HTTPException(status_code=404, detail="Modelo de IA no encontrado")
+
+    # Verificar duplicados si se actualiza el título
+    if modelo_in.titulo and modelo_in.titulo != modelo.titulo:
+        existing = db.query(ModeloIA).filter(ModeloIA.titulo == modelo_in.titulo).first()
+        if existing:
+            raise HTTPException(status_code=400, detail="Ya existe un modelo con este título")
+
+    # Verificar duplicados si se actualiza el model_id
+    if modelo_in.model_id and modelo_in.model_id != modelo.model_id:
+        existing = db.query(ModeloIA).filter(ModeloIA.model_id == modelo_in.model_id).first()
+        if existing:
+            raise HTTPException(status_code=400, detail="Ya existe un modelo con este ID")
+
+    update_data = modelo_in.dict(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(modelo, field, value)
+
+    db.commit()
+    db.refresh(modelo)
+    return modelo
+
+
+@router.delete("/modelos-ia/{modelo_id}")
+def delete_modelo_ia(
+    *,
+    db: Session = Depends(get_db),
+    modelo_id: int,
+    current_user: User = Depends(check_admin_role)
+) -> Any:
+    """
+    Eliminar un modelo de IA (solo administradores).
+    """
+    modelo = db.query(ModeloIA).filter(ModeloIA.id == modelo_id).first()
+    if not modelo:
+        raise HTTPException(status_code=404, detail="Modelo de IA no encontrado")
+
+    db.delete(modelo)
+    db.commit()
+    return {"message": "Modelo de IA eliminado exitosamente"}
+
+
+@router.post("/modelos-ia/bulk-delete", response_model=List[int])
+def bulk_delete_modelos_ia(
+    *,
+    db: Session = Depends(get_db),
+    bulk_delete: ModeloIABulkDelete,
+    current_user: User = Depends(check_admin_role)
+) -> Any:
+    """
+    Eliminar múltiples modelos de IA en una sola operación (solo administradores).
+    """
+    deleted_ids = []
+
+    for modelo_id in bulk_delete.ids:
+        modelo = db.query(ModeloIA).filter(ModeloIA.id == modelo_id).first()
+        if modelo:
+            db.delete(modelo)
+            deleted_ids.append(modelo_id)
 
     db.commit()
     return deleted_ids

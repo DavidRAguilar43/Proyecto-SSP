@@ -12,6 +12,6 @@ class Personal(Base):
     rol = Column(String, index=True)
     numero_empleado = Column(String, unique=True, index=True)
 
-    # Relación con Persona
-    id_persona = Column(Integer, ForeignKey("personas.id"), unique=True)
-    persona = relationship("Persona", back_populates="personal")
+    # Relación con User
+    id_user = Column(Integer, ForeignKey("users.id"), unique=True)
+    user = relationship("User", back_populates="personal")

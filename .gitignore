@@ -1,4 +1,16 @@
+# ============================================
+# Environment Variables
+# ============================================
+.env
+.env.local
+.env.*.local
+API/.env
+API/.env.local
+API/.env.*.local
+
+# ============================================
 # Database files
+# ============================================
 *.db
 *.sqlite
 *.sqlite3
@@ -6,59 +18,51 @@ ssp.db
 API/ssp.db
 *.sql
 
+# ============================================
 # Python cache
+# ============================================
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 .Python
+*.egg-info/
+dist/
+build/
 
+# ============================================
 # Virtual environment
-venv/# Database files
-*.db
-*.sqlite
-*.sqlite3
-ssp.db
-API/ssp.db
-
-# Python cache
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.Python
-
-# Virtual environment
+# ============================================
 venv/
+env/
+ENV/
 
+# ============================================
 # IDE
+# ============================================
 .vscode/
 .idea/
+*.swp
+*.swo
+*~
 
+# ============================================
 # OS
-.DS_Store
-Thumbs.db# Database files
-*.db
-*.sqlite
-*.sqlite3
-ssp.db
-API/ssp.db
-
-# Python cache
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.Python
-
-# Virtual environment
-venv/
-
-# IDE
-.vscode/
-.idea/
-
-# OS
+# ============================================
 .DS_Store
 Thumbs.db
 *.log
+
+# ============================================
+# Node modules (Frontend)
+# ============================================
+node_modules/
+Frontend/ssp-frontend/node_modules/
+Frontend/ssp-frontend/dist/
+
+# ============================================
+# Misc
+# ============================================
+.env.local
+.env.*.local
+*.pem

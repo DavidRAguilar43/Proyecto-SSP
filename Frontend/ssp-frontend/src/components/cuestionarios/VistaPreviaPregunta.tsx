@@ -23,8 +23,12 @@ interface VistaPreviaPreguntaProps {
   value?: any;
   onChange?: (value: any, autoAvanzar?: boolean) => void;
   disabled?: boolean;
+  readOnly?: boolean;
   showValidation?: boolean;
   onSubmit?: () => void; // Callback para cuando se presiona Shift+Enter en preguntas abiertas
+  respuesta?: any; // Respuesta guardada (para modo de solo lectura)
+  textoOtro?: string; // Texto de la opción "Otro" (para modo de solo lectura)
+  hideTitle?: boolean; // Ocultar el título de la pregunta (útil cuando se muestra en el componente padre)
 }
 
 /**
@@ -35,15 +39,21 @@ const VistaPreviaPregunta: React.FC<VistaPreviaPreguntaProps> = ({
   value,
   onChange,
   disabled = false,
+  readOnly = false,
   showValidation = false,
-  onSubmit
+  onSubmit,
+  respuesta,
+  textoOtro,
+  hideTitle = false
 }) => {
-  const [localValue, setLocalValue] = useState<any>(value || '');
+  // En modo readOnly, usar la respuesta guardada; de lo contrario, usar value
+  const displayValue = readOnly ? respuesta : value;
+  const [localValue, setLocalValue] = useState<any>(displayValue ?? '');
 
   // Sincronizar el estado local con el prop value cuando cambia
   useEffect(() => {
-    setLocalValue(value || '');
-  }, [value, pregunta.id]); // Incluir pregunta.id para forzar actualización al cambiar de pregunta
+    setLocalValue(displayValue ?? '');
+  }, [displayValue, pregunta.id]); // Incluir pregunta.id para forzar actualización al cambiar de pregunta
 
   const handleChange = (newValue: any, autoAvanzar: boolean = false) => {
     setLocalValue(newValue);
@@ -67,6 +77,15 @@ const VistaPreviaPregunta: React.FC<VistaPreviaPreguntaProps> = ({
   const renderPreguntaContent = () => {
     const { tipo, configuracion } = pregunta;
 
+    // Si está en modo readOnly y no hay respuesta, mostrar mensaje
+    if (readOnly && (localValue === '' || localValue === null || localValue === undefined)) {
+      return (
+        <Typography variant="body2" color="text.secondary" fontStyle="italic">
+          Sin respuesta
+        </Typography>
+      );
+    }
+
     switch (tipo) {
       case 'abierta':
         return (
@@ -75,23 +94,28 @@ const VistaPreviaPregunta: React.FC<VistaPreviaPreguntaProps> = ({
               fullWidth
               multiline
               rows={4}
-              value={localValue}
+              value={localValue || ''}
               onChange={(e) => handleChange(e.target.value)}
               onKeyDown={handleKeyDown}
-              disabled={disabled}
+              disabled={disabled || readOnly}
+              InputProps={{
+                readOnly: readOnly
+              }}
               inputProps={{
                 maxLength: configuracion.limite_caracteres
               }}
               helperText={
-                configuracion.limite_caracteres
-                  ? `${localValue.length}/${configuracion.limite_caracteres} caracteres`
+                !readOnly && configuracion.limite_caracteres
+                  ? `${(localValue || '').length}/${configuracion.limite_caracteres} caracteres`
                   : undefined
               }
-              error={showValidation && configuracion.longitud_minima && localValue.length < configuracion.longitud_minima}
+              error={showValidation && configuracion.longitud_minima && (localValue || '').length < configuracion.longitud_minima}
             />
-            <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block', fontStyle: 'italic' }}>
-              💡 Presiona <strong>Shift + Enter</strong> para continuar a la siguiente pregunta
-            </Typography>
+            {!readOnly && (
+              <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block', fontStyle: 'italic' }}>
+                💡 Presiona <strong>Shift + Enter</strong> para continuar a la siguiente pregunta
+              </Typography>
+            )}
           </Box>
         );
 
@@ -113,7 +137,7 @@ const VistaPreviaPregunta: React.FC<VistaPreviaPreguntaProps> = ({
                           handleChange(currentValues.filter(v => v !== opcion), false);
                         }
                       }}
-                      disabled={disabled}
+                      disabled={disabled || readOnly}
                     />
                   }
                   label={opcion}
@@ -133,17 +157,21 @@ const VistaPreviaPregunta: React.FC<VistaPreviaPreguntaProps> = ({
                             handleChange(currentValues.filter(v => v !== '__otro__'), false);
                           }
                         }}
-                        disabled={disabled}
+                        disabled={disabled || readOnly}
                       />
                     }
                     label="Otro:"
                   />
-                  {localValue?.includes('__otro__') && (
+                  {(localValue?.includes('__otro__') || (readOnly && textoOtro)) && (
                     <TextField
                       size="small"
                       placeholder="Especifique..."
+                      value={readOnly ? textoOtro : undefined}
                       sx={{ ml: 4, mt: 1 }}
-                      disabled={disabled}
+                      disabled={disabled || readOnly}
+                      InputProps={{
+                        readOnly: readOnly
+                      }}
                     />
                   )}
                 </Box>
@@ -161,7 +189,7 @@ const VistaPreviaPregunta: React.FC<VistaPreviaPreguntaProps> = ({
                   <FormControlLabel
                     key={index}
                     value={opcion}
-                    control={<Radio disabled={disabled} />}
+                    control={<Radio disabled={disabled || readOnly} />}
                     label={opcion}
                   />
                 ))}
@@ -169,15 +197,19 @@ const VistaPreviaPregunta: React.FC<VistaPreviaPreguntaProps> = ({
                   <Box>
                     <FormControlLabel
                       value="__otro__"
-                      control={<Radio disabled={disabled} />}
+                      control={<Radio disabled={disabled || readOnly} />}
                       label="Otro:"
                     />
-                    {localValue === '__otro__' && (
+                    {(localValue === '__otro__' || (readOnly && textoOtro)) && (
                       <TextField
                         size="small"
                         placeholder="Especifique..."
+                        value={readOnly ? textoOtro : undefined}
                         sx={{ ml: 4, mt: 1 }}
-                        disabled={disabled}
+                        disabled={disabled || readOnly}
+                        InputProps={{
+                          readOnly: readOnly
+                        }}
                       />
                     )}
                   </Box>
@@ -196,12 +228,12 @@ const VistaPreviaPregunta: React.FC<VistaPreviaPreguntaProps> = ({
             >
               <FormControlLabel
                 value="verdadero"
-                control={<Radio disabled={disabled} />}
+                control={<Radio disabled={disabled || readOnly} />}
                 label="Verdadero"
               />
               <FormControlLabel
                 value="falso"
-                control={<Radio disabled={disabled} />}
+                control={<Radio disabled={disabled || readOnly} />}
                 label="Falso"
               />
             </RadioGroup>
@@ -215,7 +247,7 @@ const VistaPreviaPregunta: React.FC<VistaPreviaPreguntaProps> = ({
             <Select
               value={localValue}
               onChange={(e) => handleChange(e.target.value, true)} // Auto-avanzar
-              disabled={disabled}
+              disabled={disabled || readOnly}
               label="Seleccione una opción"
             >
               {configuracion.opcion_por_defecto && (
@@ -250,14 +282,14 @@ const VistaPreviaPregunta: React.FC<VistaPreviaPreguntaProps> = ({
                           handleChange(currentValues.filter(v => v !== opcion), false);
                         }
                       }}
-                      disabled={disabled}
+                      disabled={disabled || readOnly}
                     />
                   }
                   label={opcion}
                 />
               ))}
             </FormGroup>
-            {(configuracion.minimo_selecciones || configuracion.maximo_selecciones) && (
+            {!readOnly && (configuracion.minimo_selecciones || configuracion.maximo_selecciones) && (
               <FormHelperText>
                 {configuracion.minimo_selecciones && `Mínimo: ${configuracion.minimo_selecciones} `}
                 {configuracion.maximo_selecciones && `Máximo: ${configuracion.maximo_selecciones}`}
@@ -277,7 +309,7 @@ const VistaPreviaPregunta: React.FC<VistaPreviaPreguntaProps> = ({
                 <FormControlLabel
                   key={index}
                   value={opcion}
-                  control={<Radio disabled={disabled} />}
+                  control={<Radio disabled={disabled || readOnly} />}
                   label={opcion}
                 />
               ))}
@@ -306,7 +338,7 @@ const VistaPreviaPregunta: React.FC<VistaPreviaPreguntaProps> = ({
               step={1}
               marks={configuracion.mostrar_numeros !== false}
               valueLabelDisplay="auto"
-              disabled={disabled}
+              disabled={disabled || readOnly}
             />
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
               {Array.from({ length: puntos }, (_, i) => (
@@ -330,20 +362,24 @@ const VistaPreviaPregunta: React.FC<VistaPreviaPreguntaProps> = ({
   return (
     <Box>
       {/* Título de la pregunta */}
-      <Typography variant="h6" component="h4" sx={{ mb: 1 }}>
-        {pregunta.texto}
-        {pregunta.obligatoria && (
-          <Typography component="span" color="error" sx={{ ml: 0.5 }}>
-            *
+      {!hideTitle && (
+        <>
+          <Typography variant="h6" component="h4" sx={{ mb: 1 }}>
+            {pregunta.texto}
+            {pregunta.obligatoria && (
+              <Typography component="span" color="error" sx={{ ml: 0.5 }}>
+                *
+              </Typography>
+            )}
           </Typography>
-        )}
-      </Typography>
 
-      {/* Descripción si existe */}
-      {pregunta.descripcion && (
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          {pregunta.descripcion}
-        </Typography>
+          {/* Descripción si existe */}
+          {pregunta.descripcion && (
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              {pregunta.descripcion}
+            </Typography>
+          )}
+        </>
       )}
 
       {/* Contenido de la pregunta */}

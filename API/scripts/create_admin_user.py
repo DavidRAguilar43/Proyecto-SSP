@@ -15,7 +15,7 @@ from sqlalchemy.exc import SQLAlchemyError
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.db.database import SessionLocal  # noqa: E402
-from app.models.persona import Persona  # noqa: E402
+from app.models.persona import User  # noqa: E402
 from app.core.security import get_password_hash  # noqa: E402
 
 ADMIN_EMAIL = "admin@uabc.edu.mx"
@@ -27,8 +27,8 @@ def create_or_update_admin():
     db = SessionLocal()
     try:
         admin_user = (
-            db.query(Persona)
-            .filter(Persona.correo_institucional == ADMIN_EMAIL)
+            db.query(User)
+            .filter(User.correo_institucional == ADMIN_EMAIL)
             .first()
         )
 
@@ -43,7 +43,7 @@ def create_or_update_admin():
             print(f"    Nueva contraseña: {ADMIN_PASSWORD}")
             return
 
-        admin_user = Persona(
+        admin_user = User(
             sexo="no_decir",
             genero="no_decir",
             edad=30,

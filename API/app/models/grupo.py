@@ -2,7 +2,7 @@ from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
 from app.db.database import Base
-from app.models.associations import persona_grupo
+from app.models.associations import user_grupo
 
 class Grupo(Base):
     __tablename__ = "grupo"
@@ -15,6 +15,6 @@ class Grupo(Base):
     cohorte_id = Column(Integer, ForeignKey("cohorte.id"), nullable=True)
 
     # Relaciones
-    personas = relationship("Persona", secondary=persona_grupo, back_populates="grupos")
+    users = relationship("User", secondary=user_grupo, back_populates="grupos")
     citas = relationship("Cita", back_populates="grupo")
     cohorte = relationship("Cohorte", back_populates="grupos")

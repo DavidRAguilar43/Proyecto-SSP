@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -50,6 +50,27 @@ const SolicitudCitaForm: React.FC<SolicitudCitaFormProps> = ({
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const previousOpen = useRef(open);
+
+  // Limpiar formulario cuando el modal se cierra exitosamente
+  useEffect(() => {
+    // Si el modal se cerró (de open -> closed) y no está cargando (envío exitoso)
+    if (previousOpen.current && !open && !loading) {
+      // Limpiar formulario después de un pequeño delay para que no se vea el cambio antes de que se cierre
+      const timer = setTimeout(() => {
+        setFormData({
+          tipo_cita: 'general',
+          motivo: '',
+          fecha_propuesta_alumno: undefined,
+          observaciones_alumno: ''
+        });
+        setErrors({});
+      }, 300); // Delay de 300ms para que el modal termine su animación de cierre
+
+      return () => clearTimeout(timer);
+    }
+    previousOpen.current = open;
+  }, [open, loading]);
 
   const handleChange = (field: keyof CitaCreate, value: any) => {
     setFormData(prev => ({
@@ -81,23 +102,44 @@ const SolicitudCitaForm: React.FC<SolicitudCitaFormProps> = ({
       newErrors.observaciones_alumno = 'Las observaciones no pueden exceder 500 caracteres';
     }
 
+    // Validar que la fecha propuesta no sea en el pasado
+    if (formData.fecha_propuesta_alumno) {
+      const fechaPropuesta = new Date(formData.fecha_propuesta_alumno);
+      const ahora = new Date();
+
+      if (fechaPropuesta < ahora) {
+        newErrors.fecha_propuesta_alumno = 'La fecha y hora no pueden ser en el pasado';
+      }
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
 
     // Preparar datos para envío
+    let fechaPropuesta = formData.fecha_propuesta_alumno;
+    if (fechaPropuesta) {
+      const fecha = new Date(fechaPropuesta);
+      // Formatear como ISO pero sin conversión de zona horaria
+      const year = fecha.getFullYear();
+      const month = String(fecha.getMonth() + 1).padStart(2, '0');
+      const day = String(fecha.getDate()).padStart(2, '0');
+      const hours = String(fecha.getHours()).padStart(2, '0');
+      const minutes = String(fecha.getMinutes()).padStart(2, '0');
+      const seconds = String(fecha.getSeconds()).padStart(2, '0');
+      fechaPropuesta = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}` as any;
+    }
+
     const submitData: CitaCreate = {
       ...formData,
-      fecha_propuesta_alumno: formData.fecha_propuesta_alumno 
-        ? new Date(formData.fecha_propuesta_alumno).toISOString()
-        : undefined
+      fecha_propuesta_alumno: fechaPropuesta
     };
 
     onSubmit(submitData);
@@ -221,7 +263,8 @@ const SolicitudCitaForm: React.FC<SolicitudCitaFormProps> = ({
                 textField: {
                   fullWidth: true,
                   sx: { mb: 3 },
-                  helperText: "Indica tu fecha y hora preferida. El personal confirmará la disponibilidad."
+                  error: !!errors.fecha_propuesta_alumno,
+                  helperText: errors.fecha_propuesta_alumno || "Indica tu fecha y hora preferida. El personal confirmará la disponibilidad."
                 }
               }}
               minDateTime={new Date()}

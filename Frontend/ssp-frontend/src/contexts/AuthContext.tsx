@@ -71,10 +71,17 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   // Función para cerrar sesión
   const logout = () => {
+    // Limpiar todos los datos de autenticación del localStorage
     localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    localStorage.removeItem('redirectAfterLogin');
+
+    // Limpiar el estado
     setToken(null);
     setUser(null);
     setIsAuthenticated(false);
+
+    console.log('🔓 Sesión cerrada correctamente');
   };
 
   return (

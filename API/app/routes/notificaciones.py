@@ -6,7 +6,7 @@ from sqlalchemy import or_, and_
 
 from app.db.database import get_db
 from app.models.notificacion import NotificacionRegistro
-from app.models.persona import Persona
+from app.models.persona import User
 from app.schemas.notificacion import (
     NotificacionRegistroOut,
     NotificacionRegistroUpdate,
@@ -26,7 +26,7 @@ router = APIRouter(prefix="/notificaciones", tags=["notificaciones"])
 def get_notificaciones_registros(
     *,
     db: Session = Depends(get_db),
-    current_user: Persona = Depends(check_admin_role),
+    current_user: User = Depends(check_admin_role),
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=100),
     solo_pendientes: bool = Query(False),
@@ -100,7 +100,7 @@ def get_notificaciones_registros(
 def marcar_notificacion_leida(
     *,
     db: Session = Depends(get_db),
-    current_user: Persona = Depends(check_admin_role),
+    current_user: User = Depends(check_admin_role),
     notificacion_id: int
 ) -> Any:
     """
@@ -124,7 +124,7 @@ def marcar_notificacion_leida(
 def procesar_notificacion_registro(
     *,
     db: Session = Depends(get_db),
-    current_user: Persona = Depends(check_admin_role),
+    current_user: User = Depends(check_admin_role),
     notificacion_id: int,
     datos_procesamiento: NotificacionRegistroProcesar
 ) -> Any:
@@ -170,7 +170,7 @@ def procesar_notificacion_registro(
 def get_estadisticas_notificaciones(
     *,
     db: Session = Depends(get_db),
-    current_user: Persona = Depends(check_admin_role)
+    current_user: User = Depends(check_admin_role)
 ) -> Any:
     """
     Obtener estadísticas de notificaciones de registros.

@@ -12,14 +12,14 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from sqlalchemy.orm import Session
 from app.db.database import SessionLocal
-from app.models.persona import Persona
+from app.models.persona import User
 
 def fix_null_matriculas(db: Session):
     """Corregir registros con matricula = NULL."""
     print("=== CORRIGIENDO MATRÍCULAS NULL ===")
     
     # Buscar personas con matricula NULL
-    personas_sin_matricula = db.query(Persona).filter(Persona.matricula.is_(None)).all()
+    personas_sin_matricula = db.query(User).filter(User.matricula.is_(None)).all()
     
     if not personas_sin_matricula:
         print("✅ No hay registros con matrícula NULL")
@@ -33,7 +33,7 @@ def fix_null_matriculas(db: Session):
         temp_matricula = f"TEMP-{persona.id:06d}"
         
         # Verificar que la matrícula temporal no exista
-        existing = db.query(Persona).filter(Persona.matricula == temp_matricula).first()
+        existing = db.query(User).filter(User.matricula == temp_matricula).first()
         if existing:
             # Si existe, usar un formato diferente
             temp_matricula = f"TEMP-{persona.id:06d}-{persona.correo_institucional[:5]}"

@@ -35,6 +35,7 @@ import {
   Phone as PhoneIcon,
   Badge as BadgeIcon,
   CalendarToday as CalendarIcon,
+  LocationOn as LocationIcon,
   Check as CheckIcon,
   Close as CloseIcon,
   Today as TodayIcon,
@@ -159,13 +160,26 @@ const SolicitudesPendientesCards: React.FC<SolicitudesPendientesCardsProps> = ({
 
     try {
       setConfirmLoading(true);
+
+      // Preparar fecha sin conversión a UTC - mantener la hora local
+      let fechaConfirmada = confirmData.fecha_confirmada;
+      if (fechaConfirmada) {
+        const fecha = new Date(fechaConfirmada);
+        // Formatear como ISO pero sin conversión de zona horaria
+        const year = fecha.getFullYear();
+        const month = String(fecha.getMonth() + 1).padStart(2, '0');
+        const day = String(fecha.getDate()).padStart(2, '0');
+        const hours = String(fecha.getHours()).padStart(2, '0');
+        const minutes = String(fecha.getMinutes()).padStart(2, '0');
+        const seconds = String(fecha.getSeconds()).padStart(2, '0');
+        fechaConfirmada = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+      }
+
       await citasApi.confirmar(selectedSolicitud.id_cita, {
         ...confirmData,
-        fecha_confirmada: confirmData.fecha_confirmada 
-          ? new Date(confirmData.fecha_confirmada).toISOString()
-          : undefined
+        fecha_confirmada: fechaConfirmada
       });
-      
+
       setConfirmDialogOpen(false);
       setSelectedSolicitud(null);
       onRefresh();
@@ -314,19 +328,19 @@ const SolicitudesPendientesCards: React.FC<SolicitudesPendientesCardsProps> = ({
    *     boolean: true si la cita es de hoy
    */
   const esCitaDeHoy = (solicitud: SolicitudCita): boolean => {
-    const fechaCita = solicitud.fecha_confirmada
-      ? new Date(solicitud.fecha_confirmada)
-      : solicitud.fecha_propuesta_alumno
-        ? new Date(solicitud.fecha_propuesta_alumno)
-        : null;
+    const fechaCitaStr = solicitud.fecha_confirmada || solicitud.fecha_propuesta_alumno;
+    if (!fechaCitaStr) return false;
 
-    if (!fechaCita) return false;
+    // Crear fecha desde el string ISO (esto la convierte a hora local del navegador)
+    const fechaCita = new Date(fechaCitaStr);
 
+    // Obtener la fecha actual en hora local
     const ahora = new Date();
-    const ahoraFecha = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
-    const citaFecha = new Date(fechaCita.getFullYear(), fechaCita.getMonth(), fechaCita.getDate());
 
-    return citaFecha.getTime() === ahoraFecha.getTime();
+    // Comparar solo año, mes y día
+    return fechaCita.getFullYear() === ahora.getFullYear() &&
+           fechaCita.getMonth() === ahora.getMonth() &&
+           fechaCita.getDate() === ahora.getDate();
   };
 
   /**
@@ -339,17 +353,15 @@ const SolicitudesPendientesCards: React.FC<SolicitudesPendientesCardsProps> = ({
    *     boolean: true si la fecha de la cita ya pasó
    */
   const esCitaPasada = (solicitud: SolicitudCita): boolean => {
-    const fechaCita = solicitud.fecha_confirmada
-      ? new Date(solicitud.fecha_confirmada)
-      : solicitud.fecha_propuesta_alumno
-        ? new Date(solicitud.fecha_propuesta_alumno)
-        : null;
+    const fechaCitaStr = solicitud.fecha_confirmada || solicitud.fecha_propuesta_alumno;
+    if (!fechaCitaStr) return false;
 
-    if (!fechaCita) return false;
-
+    const fechaCita = new Date(fechaCitaStr);
     const ahora = new Date();
-    const ahoraFecha = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
+
+    // Normalizar a medianoche para comparar solo fechas
     const citaFecha = new Date(fechaCita.getFullYear(), fechaCita.getMonth(), fechaCita.getDate());
+    const ahoraFecha = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
 
     return citaFecha < ahoraFecha;
   };
@@ -568,9 +580,14 @@ const SolicitudesPendientesCards: React.FC<SolicitudesPendientesCardsProps> = ({
               </Badge>
               Solicitudes Pendientes
             </Typography>
-            <IconButton size="small">
-              {listExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-            </IconButton>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <Typography variant="caption" color="text.secondary">
+                {listExpanded ? 'Ocultar' : 'Expandir'}
+              </Typography>
+              <IconButton size="small">
+                {listExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+              </IconButton>
+            </Box>
           </Box>
 
           <Collapse in={listExpanded}>
@@ -682,9 +699,14 @@ const SolicitudesPendientesCards: React.FC<SolicitudesPendientesCardsProps> = ({
                       <Typography variant="body2" fontWeight="bold" color="text.secondary">
                         Detalles del Estudiante
                       </Typography>
-                      <IconButton size="small">
-                        {expandedDetails[solicitud.id_cita] ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
-                      </IconButton>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        <Typography variant="caption" color="text.secondary">
+                          {expandedDetails[solicitud.id_cita] ? 'Ocultar' : 'Expandir'}
+                        </Typography>
+                        <IconButton size="small">
+                          {expandedDetails[solicitud.id_cita] ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
+                        </IconButton>
+                      </Box>
                     </Box>
 
                     <Collapse in={expandedDetails[solicitud.id_cita]}>
@@ -820,9 +842,14 @@ const SolicitudesPendientesCards: React.FC<SolicitudesPendientesCardsProps> = ({
               <CheckIcon sx={{ mr: 1, color: 'success.main' }} />
               Citas Confirmadas ({solicitudesConfirmadas.length})
             </Typography>
-            <IconButton size="small">
-              {confirmadasExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-            </IconButton>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <Typography variant="caption" color="text.secondary">
+                {confirmadasExpanded ? 'Ocultar' : 'Expandir'}
+              </Typography>
+              <IconButton size="small">
+                {confirmadasExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+              </IconButton>
+            </Box>
           </Box>
 
           <Collapse in={confirmadasExpanded}>
@@ -867,6 +894,119 @@ const SolicitudesPendientesCards: React.FC<SolicitudesPendientesCardsProps> = ({
                     <Typography variant="body2" color="text.secondary">
                       Cita {getTipoLabel(solicitud.tipo_cita)} • {solicitud.alumno_email}
                     </Typography>
+
+                    <List dense sx={{ mt: 1 }}>
+                      {solicitud.fecha_confirmada && (
+                        <ListItem disablePadding>
+                          <ListItemIcon>
+                            <ScheduleIcon fontSize="small" color="success" />
+                          </ListItemIcon>
+                          <ListItemText
+                            primary="Fecha y hora de la cita"
+                            secondary={formatDate(solicitud.fecha_confirmada)}
+                          />
+                        </ListItem>
+                      )}
+
+                      {solicitud.ubicacion && (
+                        <ListItem disablePadding>
+                          <ListItemIcon>
+                            <LocationIcon fontSize="small" />
+                          </ListItemIcon>
+                          <ListItemText
+                            primary="Ubicación"
+                            secondary={solicitud.ubicacion}
+                          />
+                        </ListItem>
+                      )}
+
+                      {solicitud.fecha_actualizacion && (
+                        <ListItem disablePadding>
+                          <ListItemIcon>
+                            <CalendarIcon fontSize="small" color="info" />
+                          </ListItemIcon>
+                          <ListItemText
+                            primary="Fecha de confirmación"
+                            secondary={formatDate(solicitud.fecha_actualizacion)}
+                          />
+                        </ListItem>
+                      )}
+
+                      {solicitud.personal_nombre && (
+                        <ListItem disablePadding>
+                          <ListItemIcon>
+                            <PersonIcon fontSize="small" />
+                          </ListItemIcon>
+                          <ListItemText
+                            primary="Personal asignado"
+                            secondary={solicitud.personal_nombre}
+                          />
+                        </ListItem>
+                      )}
+
+                      {solicitud.personal_email && (
+                        <ListItem disablePadding>
+                          <ListItemIcon>
+                            <EmailIcon fontSize="small" />
+                          </ListItemIcon>
+                          <ListItemText
+                            primary="Correo del personal"
+                            secondary={solicitud.personal_email}
+                          />
+                        </ListItem>
+                      )}
+                    </List>
+
+                    <Box sx={{ mt: 1 }}>
+                      <Typography variant="body2" component="span">
+                        <strong>Motivo:</strong>{' '}
+                        {expandedTexts[`motivo-confirm-${solicitud.id_cita}`] || solicitud.motivo.length <= 100
+                          ? solicitud.motivo
+                          : truncateText(solicitud.motivo, 100)}
+                      </Typography>
+                      {solicitud.motivo.length > 100 && (
+                        <Button
+                          size="small"
+                          onClick={() => toggleText(`motivo-confirm-${solicitud.id_cita}`)}
+                          sx={{
+                            ml: 1,
+                            textTransform: 'none',
+                            minWidth: 'auto',
+                            p: 0,
+                            fontSize: '0.875rem'
+                          }}
+                        >
+                          {expandedTexts[`motivo-confirm-${solicitud.id_cita}`] ? 'Ver menos' : 'Ver más'}
+                        </Button>
+                      )}
+                    </Box>
+
+                    {solicitud.observaciones_personal && (
+                      <Box sx={{ mt: 1 }}>
+                        <Typography variant="body2" component="span">
+                          <strong>Observaciones del personal:</strong>{' '}
+                          {expandedTexts[`obs-confirm-${solicitud.id_cita}`] ||
+                          solicitud.observaciones_personal.length <= 120
+                            ? solicitud.observaciones_personal
+                            : truncateText(solicitud.observaciones_personal, 120)}
+                        </Typography>
+                        {solicitud.observaciones_personal.length > 120 && (
+                          <Button
+                            size="small"
+                            onClick={() => toggleText(`obs-confirm-${solicitud.id_cita}`)}
+                            sx={{
+                              ml: 1,
+                              textTransform: 'none',
+                              minWidth: 'auto',
+                              p: 0,
+                              fontSize: '0.875rem'
+                            }}
+                          >
+                            {expandedTexts[`obs-confirm-${solicitud.id_cita}`] ? 'Ver menos' : 'Ver más'}
+                          </Button>
+                        )}
+                      </Box>
+                    )}
                   </CardContent>
                 </Card>
               </Grid>

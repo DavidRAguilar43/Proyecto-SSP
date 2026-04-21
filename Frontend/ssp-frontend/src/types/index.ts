@@ -17,6 +17,7 @@ export interface AuthResponse {
   token_type: string;
 }
 
+// User básico para autenticación
 export interface User {
   id: number;
   correo_institucional: string;
@@ -44,7 +45,8 @@ export interface Cohorte {
   fecha_creacion: string;
 }
 
-export interface Persona {
+// UserData completo (anteriormente Persona)
+export interface UserData {
   id: number;
   sexo?: string;
   genero?: string;
@@ -72,7 +74,10 @@ export interface Persona {
   cohorte?: Cohorte;
 }
 
-export interface PersonaCreate {
+// Alias para compatibilidad (DEPRECATED: usar UserData)
+export type Persona = UserData;
+
+export interface UserCreate {
   sexo: 'no_decir' | 'masculino' | 'femenino' | 'otro';
   genero: 'no_decir' | 'masculino' | 'femenino' | 'no_binario' | 'otro';
   edad: number;
@@ -99,6 +104,17 @@ export interface PersonaCreate {
   programas_ids?: number[];
   grupos_ids?: number[];
 }
+
+// Alias para compatibilidad (DEPRECATED: usar UserCreate)
+export type PersonaCreate = UserCreate;
+
+// UserCreateAdmin incluye is_active para administradores
+export interface UserCreateAdmin extends UserCreate {
+  is_active?: boolean;
+}
+
+// Alias para compatibilidad (DEPRECATED: usar UserCreateAdmin)
+export type PersonaCreateAdmin = UserCreateAdmin;
 
 // Programa Educativo
 export interface ProgramaEducativo {
@@ -208,6 +224,12 @@ export interface SolicitudCita {
   fecha_propuesta_alumno?: string;
   observaciones_alumno?: string;
 
+  // Campos de confirmación (para citas confirmadas)
+  fecha_confirmada?: string;
+  observaciones_personal?: string;
+  ubicacion?: string;
+  fecha_actualizacion?: string;
+
   // Información del alumno
   id_alumno: number;
   alumno_nombre: string;
@@ -215,6 +237,10 @@ export interface SolicitudCita {
   alumno_celular?: string;
   alumno_matricula?: string;
   alumno_semestre?: number;
+
+  // Información del personal asignado
+  personal_nombre?: string;
+  personal_email?: string;
 }
 
 export interface NotificacionCita {
@@ -235,24 +261,6 @@ export interface EstadisticasCitas {
   por_tipo: Record<string, number>;
 }
 
-// Tipos para cuestionario psicopedagógico
-export interface CuestionarioPsicopedagogicoEstudianteOut {
-  id_cuestionario: number;
-  fecha_creacion: string;
-  fecha_completado: string | null;
-  completado: boolean;
-  persona_nombre?: string;
-  persona_email?: string;
-}
-
-export interface ReportePsicopedagogicoOut {
-  id_cuestionario: number;
-  fecha_completado: string;
-  reporte_ia: string;
-  persona_nombre?: string;
-  persona_email?: string;
-}
-
 // Interfaces para Catálogos
 export interface CatalogoBase {
   id: number;
@@ -268,6 +276,14 @@ export interface GrupoEtnico extends CatalogoBase {}
 
 export interface Discapacidad extends CatalogoBase {}
 
+export interface ModeloIA extends CatalogoBase {
+  model_id: string;
+  proveedor: string;
+  descripcion?: string;
+  categoria: 'premium' | 'standard' | 'budget';
+  recomendado: boolean;
+}
+
 export interface CatalogoCreate {
   titulo: string;
   activo?: boolean;
@@ -275,6 +291,26 @@ export interface CatalogoCreate {
 
 export interface CatalogoUpdate {
   titulo?: string;
+  activo?: boolean;
+}
+
+export interface ModeloIACreate {
+  titulo: string;
+  model_id: string;
+  proveedor: string;
+  descripcion?: string;
+  categoria: 'premium' | 'standard' | 'budget';
+  recomendado?: boolean;
+  activo?: boolean;
+}
+
+export interface ModeloIAUpdate {
+  titulo?: string;
+  model_id?: string;
+  proveedor?: string;
+  descripcion?: string;
+  categoria?: 'premium' | 'standard' | 'budget';
+  recomendado?: boolean;
   activo?: boolean;
 }
 

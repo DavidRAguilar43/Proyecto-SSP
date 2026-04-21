@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -32,7 +32,8 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  Divider
+  Divider,
+  Tooltip
 } from '@mui/material';
 import {
   ArrowBack as ArrowBackIcon,
@@ -44,13 +45,24 @@ import {
   CalendarToday as CalendarIcon,
   Visibility as VisibilityIcon,
   HourglassEmpty as HourglassEmptyIcon,
-  PlayArrow as PlayArrowIcon
+  PlayArrow as PlayArrowIcon,
+  FileDownload as FileDownloadIcon,
+  Refresh as RefreshIcon,
+  Edit as EditIcon,
+  Delete as DeleteIcon
 } from '@mui/icons-material';
 import { AuthContext } from '@/contexts/AuthContext';
 import { cuestionariosAdminApi } from '@/services/api';
 import { useNotification } from '@/hooks/useNotification';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import GenerarReporteButton from '@/components/GenerarReporteButton';
+import ReporteIAViewer from '@/components/ReporteIAViewer';
+import GenericTableWithBulkDelete from '@/components/GenericTableWithBulkDelete';
+import type { Reporte } from '@/types/reporte';
+import type { PersonaInfoReportePayload, PreguntaRespuestaReportePayload } from '@/types/reporte';
+import type { TableColumn } from '@/types';
+import { Cancel as CancelIcon } from '@mui/icons-material';
 
 interface Pregunta {
   id: string;
@@ -90,6 +102,9 @@ interface RespuestaCuestionario {
   cuestionario_titulo: string;
   cuestionario_descripcion: string;
   respuestas_preguntas: RespuestaPregunta[];
+  cuestionario_instruccion_sistema?: string | null;
+  cuestionario_modelo_ia?: string | null;
+  instruccion_sistema_default?: string | null;
 }
 
 interface RespuestasData {
@@ -124,6 +139,64 @@ const CuestionariosContestadosPage: React.FC = () => {
   // Detalle de respuesta
   const [respuestaSeleccionada, setRespuestaSeleccionada] = useState<RespuestaCuestionario | null>(null);
   const [detalleOpen, setDetalleOpen] = useState(false);
+
+  // Reportes IA
+  const [reporteActual, setReporteActual] = useState<Reporte | null>(null);
+  const [reporteViewerOpen, setReporteViewerOpen] = useState(false);
+  const [cargandoReporte, setCargandoReporte] = useState(false);
+  const [regenerandoReporte, setRegenerandoReporte] = useState(false);
+
+  // Modal de confirmación de borrado
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [respuestaABorrar, setRespuestaABorrar] = useState<RespuestaCuestionario | null>(null);
+  const [borrando, setBorrando] = useState(false);
+
+  const preguntasRespuestasPayload = useMemo<PreguntaRespuestaReportePayload[]>(() => {
+    if (!respuestaSeleccionada || !respuestaSeleccionada.respuestas_preguntas) {
+      return [];
+    }
+
+    return respuestaSeleccionada.respuestas_preguntas
+      .filter(rp => {
+        const textoPregunta = rp.pregunta?.texto ?? '';
+        return textoPregunta.trim().length > 0;
+      })
+      .map((rp): PreguntaRespuestaReportePayload => ({
+        pregunta_id: rp.pregunta_id,
+        pregunta: rp.pregunta?.texto || 'Pregunta sin texto',
+        respuesta: rp.valor ?? undefined,
+        texto_otro: rp.texto_otro,
+        tipo: rp.pregunta?.tipo,
+        orden: rp.pregunta?.orden
+      }));
+  }, [respuestaSeleccionada]);
+
+  // PROTECCIÓN DE DATOS:
+  // - Se envían: edad, género, semestre (datos demográficos útiles)
+  // - NO se envían: nombres, correos, teléfonos, direcciones
+  // - Matrícula: comentada temporalmente para pruebas
+  const personaInfoPayload = useMemo<PersonaInfoReportePayload | undefined>(() => {
+    if (!respuestaSeleccionada) return undefined;
+
+    const payload: PersonaInfoReportePayload = {
+      // COMENTADO TEMPORALMENTE PARA PRUEBAS
+      // matricula: respuestaSeleccionada.usuario_matricula || undefined
+
+      // Datos demográficos útiles para el análisis
+      edad: respuestaSeleccionada.usuario_edad || undefined,
+      genero: respuestaSeleccionada.usuario_genero || undefined,
+      semestre: respuestaSeleccionada.usuario_semestre || undefined
+    };
+
+    const tieneDatos = Object.values(payload).some(valor => Boolean(valor));
+    return tieneDatos ? payload : undefined;
+  }, [respuestaSeleccionada]);
+
+  const instruccionSistemaSeleccionada = respuestaSeleccionada?.cuestionario_instruccion_sistema ?? null;
+  const instruccionSistemaDefault = respuestaSeleccionada?.instruccion_sistema_default ?? null;
+  const modeloIASeleccionado = respuestaSeleccionada?.cuestionario_modelo_ia ?? null;
+  const maxTokensSeleccionado = respuestaSeleccionada?.cuestionario?.max_tokens ?? null;
+  const temperatureSeleccionado = respuestaSeleccionada?.cuestionario?.temperature ?? null;
 
   useEffect(() => {
     cargarRespuestas();
@@ -167,6 +240,107 @@ const CuestionariosContestadosPage: React.FC = () => {
   const handleVerDetalle = (respuesta: RespuestaCuestionario) => {
     setRespuestaSeleccionada(respuesta);
     setDetalleOpen(true);
+    // Cargar reporte si existe
+    cargarReporte(respuesta.id);
+  };
+
+  const handleContestarCuestionario = (cuestionarioId: string) => {
+    // Navegar a la página de responder cuestionario
+    navigate(`/usuario/cuestionarios/responder/${cuestionarioId}`);
+  };
+
+  const handleOpenDeleteDialog = (respuesta: RespuestaCuestionario) => {
+    setRespuestaABorrar(respuesta);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleCloseDeleteDialog = () => {
+    setDeleteDialogOpen(false);
+    setRespuestaABorrar(null);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!respuestaABorrar) return;
+
+    try {
+      setBorrando(true);
+      await cuestionariosAdminApi.eliminarRespuesta(respuestaABorrar.id);
+      showNotification('Respuesta eliminada correctamente', 'success');
+      handleCloseDeleteDialog();
+      // Recargar la lista
+      cargarRespuestas();
+    } catch (error: any) {
+      console.error('Error al eliminar respuesta:', error);
+      showNotification(
+        error.response?.data?.detail || 'Error al eliminar la respuesta',
+        'error'
+      );
+    } finally {
+      setBorrando(false);
+    }
+  };
+
+  const handleBulkCancel = async (ids: string[]) => {
+    try {
+      const result = await cuestionariosAdminApi.bulkCancelRespuestas(ids);
+
+      if (result.total_cancelled > 0) {
+        showNotification(
+          `${result.total_cancelled} respuesta(s) cancelada(s) exitosamente`,
+          'success'
+        );
+      }
+
+      if (result.errors && result.errors.length > 0) {
+        showNotification(
+          `Algunas respuestas no pudieron cancelarse: ${result.errors.join(', ')}`,
+          'warning'
+        );
+      }
+
+      await cargarRespuestas();
+    } catch (error: any) {
+      console.error('Error en batch cancel:', error);
+      showNotification(
+        error.response?.data?.detail || 'Error al cancelar respuestas',
+        'error'
+      );
+      throw error;
+    }
+  };
+
+  const cargarReporte = async (respuestaId: string) => {
+    try {
+      setCargandoReporte(true);
+      const response = await cuestionariosAdminApi.obtenerReporteActual(respuestaId);
+      if (response && response.reporte) {
+        setReporteActual(response.reporte);
+      } else {
+        setReporteActual(null);
+      }
+    } catch (error: any) {
+      console.error('Error cargando reporte:', error);
+      setReporteActual(null);
+    } finally {
+      setCargandoReporte(false);
+    }
+  };
+
+  const handleRegenerarReporte = async () => {
+    if (!respuestaSeleccionada) return;
+
+    try {
+      setRegenerandoReporte(true);
+      await cuestionariosAdminApi.regenerarReporte(respuestaSeleccionada.id);
+      showNotification('Reporte regenerado exitosamente', 'success');
+      // Recargar el reporte
+      await cargarReporte(respuestaSeleccionada.id);
+    } catch (error: any) {
+      console.error('Error regenerando reporte:', error);
+      showNotification('Error al regenerar el reporte', 'error');
+    } finally {
+      setRegenerandoReporte(false);
+    }
   };
 
   const formatearFecha = (fechaString: string | null) => {
@@ -234,6 +408,80 @@ const CuestionariosContestadosPage: React.FC = () => {
       respuesta.cuestionario_titulo?.toLowerCase().includes(busquedaLower)
     );
   });
+
+  // Definir columnas para la tabla
+  const columns: TableColumn<RespuestaCuestionario>[] = [
+    {
+      id: 'usuario',
+      label: 'Usuario',
+      render: (respuesta) => (
+        <Box>
+          <Typography variant="body2" fontWeight="bold">
+            {respuesta.usuario_nombre || 'N/A'}
+          </Typography>
+          <Typography variant="caption" color="text.secondary" display="block">
+            {respuesta.usuario_correo}
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            Mat: {respuesta.usuario_matricula || 'N/A'}
+          </Typography>
+        </Box>
+      )
+    },
+    {
+      id: 'cuestionario',
+      label: 'Cuestionario',
+      render: (respuesta) => (
+        <Typography variant="body2" fontWeight="medium">
+          {respuesta.cuestionario_titulo}
+        </Typography>
+      )
+    },
+    {
+      id: 'estado',
+      label: 'Estado',
+      render: (respuesta) => getEstadoChip(respuesta.estado)
+    },
+    {
+      id: 'progreso',
+      label: 'Progreso',
+      render: (respuesta) => (
+        <Chip
+          label={`${respuesta.progreso}%`}
+          size="small"
+          color={respuesta.progreso === 100 ? 'success' : 'default'}
+        />
+      )
+    },
+    {
+      id: 'fecha_inicio',
+      label: 'Fecha Inicio',
+      render: (respuesta) => (
+        <Typography variant="caption">
+          {formatearFecha(respuesta.fecha_inicio)}
+        </Typography>
+      )
+    },
+    {
+      id: 'fecha_completado',
+      label: 'Fecha Completado',
+      render: (respuesta) => (
+        <Typography variant="caption">
+          {formatearFecha(respuesta.fecha_completado)}
+        </Typography>
+      )
+    }
+  ];
+
+  // Definir acciones adicionales para cada fila
+  const actions = [
+    {
+      icon: <VisibilityIcon />,
+      tooltip: 'Ver detalle',
+      onClick: (respuesta: RespuestaCuestionario) => handleVerDetalle(respuesta),
+      color: 'primary' as const
+    }
+  ];
 
   if (loading && respuestas.length === 0) {
     return (
@@ -347,110 +595,28 @@ const CuestionariosContestadosPage: React.FC = () => {
         </Card>
 
         {/* Tabla de respuestas */}
-        <Paper elevation={2}>
-          {error && (
-            <Alert severity="error" sx={{ m: 2 }}>
-              {error}
-            </Alert>
-          )}
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        )}
 
-          <TableContainer>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell><strong>Usuario</strong></TableCell>
-                  <TableCell><strong>Cuestionario</strong></TableCell>
-                  <TableCell><strong>Estado</strong></TableCell>
-                  <TableCell><strong>Progreso</strong></TableCell>
-                  <TableCell><strong>Fecha Inicio</strong></TableCell>
-                  <TableCell><strong>Fecha Completado</strong></TableCell>
-                  <TableCell align="center"><strong>Acciones</strong></TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {loading ? (
-                  <TableRow>
-                    <TableCell colSpan={7} align="center">
-                      <CircularProgress sx={{ my: 2 }} />
-                    </TableCell>
-                  </TableRow>
-                ) : respuestasFiltradas.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={7} align="center">
-                      <Typography variant="body2" color="text.secondary" sx={{ py: 3 }}>
-                        {busqueda ? 'No se encontraron respuestas que coincidan con la búsqueda' : 'No hay respuestas de cuestionarios'}
-                      </Typography>
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  respuestasFiltradas.map((respuesta) => (
-                    <TableRow key={respuesta.id} hover>
-                      <TableCell>
-                        <Box>
-                          <Typography variant="body2" fontWeight="bold">
-                            {respuesta.usuario_nombre || 'N/A'}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            {respuesta.usuario_correo}
-                          </Typography>
-                          <br />
-                          <Typography variant="caption" color="text.secondary">
-                            Mat: {respuesta.usuario_matricula || 'N/A'}
-                          </Typography>
-                        </Box>
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2" fontWeight="medium">
-                          {respuesta.cuestionario_titulo}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>{getEstadoChip(respuesta.estado)}</TableCell>
-                      <TableCell>
-                        <Chip 
-                          label={`${respuesta.progreso}%`} 
-                          size="small" 
-                          color={respuesta.progreso === 100 ? 'success' : 'default'}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="caption">
-                          {formatearFecha(respuesta.fecha_inicio)}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="caption">
-                          {formatearFecha(respuesta.fecha_completado)}
-                        </Typography>
-                      </TableCell>
-                      <TableCell align="center">
-                        <IconButton
-                          size="small"
-                          color="primary"
-                          onClick={() => handleVerDetalle(respuesta)}
-                          title="Ver detalle"
-                        >
-                          <VisibilityIcon />
-                        </IconButton>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </TableContainer>
-
-          <TablePagination
-            rowsPerPageOptions={[5, 10, 25, 50]}
-            component="div"
-            count={total}
-            rowsPerPage={rowsPerPage}
-            page={page}
-            onPageChange={handleChangePage}
-            onRowsPerPageChange={handleChangeRowsPerPage}
-            labelRowsPerPage="Filas por página:"
-            labelDisplayedRows={({ from, to, count }) => `${from}-${to} de ${count}`}
-          />
-        </Paper>
+        <GenericTableWithBulkDelete
+          data={respuestasFiltradas}
+          columns={columns}
+          getItemId={(respuesta) => respuesta.id}
+          onDelete={(respuesta) => handleOpenDeleteDialog(respuesta)}
+          onBulkDelete={handleBulkCancel}
+          actions={actions}
+          loading={loading}
+          entityName="respuestas"
+          currentUserRole={user?.rol}
+          allowBulkDelete={user?.rol === 'admin' || user?.rol === 'coordinador'}
+          bulkDeleteWarning="Se cancelarán todas las respuestas seleccionadas. El estado cambiará a 'cancelado'."
+          emptyMessage={busqueda ? 'No se encontraron respuestas que coincidan con la búsqueda' : 'No hay respuestas de cuestionarios'}
+          bulkActionLabel="Cancelar"
+          bulkActionDialogTitle="Confirmar Cancelación Masiva"
+        />
       </Container>
 
       {/* Dialog de detalle */}
@@ -510,19 +676,25 @@ const CuestionariosContestadosPage: React.FC = () => {
                       >
                         {/* Pregunta */}
                         <Box sx={{ mb: 2 }}>
-                          <Typography variant="subtitle1" fontWeight="bold" color="primary.main">
+                          <Typography variant="subtitle1" fontWeight="bold" color={respuestaPregunta.pregunta ? "primary.main" : "warning.dark"}>
                             {index + 1}. {respuestaPregunta.pregunta?.texto || 'Pregunta no disponible'}
                           </Typography>
+                          {!respuestaPregunta.pregunta && (
+                            <Typography variant="caption" color="warning.dark" sx={{ display: 'block', mt: 0.5, fontStyle: 'italic' }}>
+                              Esta pregunta fue modificada o eliminada después de que se respondió el cuestionario.
+                            </Typography>
+                          )}
                           {respuestaPregunta.pregunta?.descripcion && (
                             <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
                               {respuestaPregunta.pregunta.descripcion}
                             </Typography>
                           )}
                           <Chip
-                            label={respuestaPregunta.pregunta?.tipo || 'N/A'}
+                            label={respuestaPregunta.pregunta?.tipo || 'Tipo desconocido'}
                             size="small"
                             sx={{ mt: 1 }}
                             variant="outlined"
+                            color={respuestaPregunta.pregunta ? "default" : "warning"}
                           />
                         </Box>
 
@@ -548,11 +720,142 @@ const CuestionariosContestadosPage: React.FC = () => {
                   No hay respuestas registradas para este cuestionario.
                 </Alert>
               )}
+
+              {/* Sección de Reportes IA */}
+              <Divider sx={{ my: 3 }} />
+              <Typography variant="h6" gutterBottom sx={{ mt: 3, mb: 2 }}>
+                Reporte Psicopedagógico
+              </Typography>
+
+              {cargandoReporte ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+                  <CircularProgress size={30} />
+                </Box>
+              ) : reporteActual ? (
+                <Paper sx={{ p: 2, bgcolor: 'success.50', border: '1px solid', borderColor: 'success.200' }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Box>
+                      <Typography variant="subtitle2" color="success.main" gutterBottom>
+                        ✓ Reporte Generado
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Versión {reporteActual.version} - {formatearFecha(reporteActual.fecha_generacion)}
+                      </Typography>
+                    </Box>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      onClick={() => setReporteViewerOpen(true)}
+                    >
+                      Ver Reporte
+                    </Button>
+                  </Box>
+                </Paper>
+              ) : (
+                <Alert severity="info">
+                  No hay reporte generado aún. Haz clic en "Generar Reporte" para crear uno.
+                </Alert>
+              )}
             </Box>
           )}
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ gap: 1 }}>
+          {respuestaSeleccionada && (
+            <>
+              <GenerarReporteButton
+                respuestaId={respuestaSeleccionada.id}
+                isAdmin={true}
+                isRegenerate={!!reporteActual}
+                variant="contained"
+                size="small"
+                preguntasRespuestas={preguntasRespuestasPayload}
+                instruccionSistema={instruccionSistemaSeleccionada}
+                instruccionSistemaDefault={instruccionSistemaDefault}
+                modeloIA={modeloIASeleccionado}
+                maxTokens={maxTokensSeleccionado}
+                temperature={temperatureSeleccionado}
+                personaInfo={personaInfoPayload}
+                onSuccess={() => cargarReporte(respuestaSeleccionada.id)}
+              />
+              {reporteActual && (
+                <Tooltip title="Ver reporte actual">
+                  <Button
+                    onClick={() => setReporteViewerOpen(true)}
+                    variant="outlined"
+                    size="small"
+                    startIcon={<FileDownloadIcon />}
+                  >
+                    Ver Reporte
+                  </Button>
+                </Tooltip>
+              )}
+            </>
+          )}
           <Button onClick={() => setDetalleOpen(false)}>Cerrar</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Visor de Reporte IA */}
+      <ReporteIAViewer
+        open={reporteViewerOpen}
+        reporte={reporteActual}
+        respuestaId={respuestaSeleccionada?.id}
+        onClose={() => setReporteViewerOpen(false)}
+        onRegenerate={handleRegenerarReporte}
+        isRegenerating={regenerandoReporte}
+        isAdmin={true}
+      />
+
+      {/* Modal de confirmación de borrado */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={handleCloseDeleteDialog}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          Confirmar Eliminación
+        </DialogTitle>
+        <DialogContent>
+          <Typography>
+            ¿Estás seguro de que deseas eliminar esta respuesta?
+          </Typography>
+          {respuestaABorrar && (
+            <Box sx={{ mt: 2, p: 2, bgcolor: 'grey.100', borderRadius: 1 }}>
+              <Typography variant="body2" gutterBottom>
+                <strong>Cuestionario:</strong> {respuestaABorrar.cuestionario_titulo}
+              </Typography>
+              <Typography variant="body2" gutterBottom>
+                <strong>Usuario:</strong> {respuestaABorrar.usuario_correo}
+              </Typography>
+              <Typography variant="body2" gutterBottom>
+                <strong>Matrícula:</strong> {respuestaABorrar.usuario_matricula}
+              </Typography>
+              <Typography variant="body2">
+                <strong>Fecha:</strong> {formatearFecha(respuestaABorrar.fecha_completado)}
+              </Typography>
+            </Box>
+          )}
+          <Alert severity="warning" sx={{ mt: 2 }}>
+            Esta acción no se puede deshacer. Se eliminarán todas las respuestas y reportes asociados.
+          </Alert>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={handleCloseDeleteDialog}
+            disabled={borrando}
+          >
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleConfirmDelete}
+            color="error"
+            variant="contained"
+            disabled={borrando}
+            startIcon={borrando ? <CircularProgress size={20} /> : <DeleteIcon />}
+          >
+            {borrando ? 'Eliminando...' : 'Eliminar'}
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>
@@ -560,4 +863,3 @@ const CuestionariosContestadosPage: React.FC = () => {
 };
 
 export default CuestionariosContestadosPage;
-
